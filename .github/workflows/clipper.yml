@@ -1,0 +1,40 @@
+name: Vice City Clips - 6x Daily Auto Live Clipper
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 6 Peak Global Gaming Windows (12:00, 15:00, 18:00, 21:00, 00:00, 03:00 UTC)
+    # IST Equivalent: 5:30 PM, 8:30 PM, 11:30 PM, 2:30 AM, 5:30 AM, 8:30 AM
+    - cron: '0 0,3,12,15,18,21 * * *'
+
+jobs:
+  clip-and-upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install Python packages
+        run: pip install -r requirements.txt
+
+      - name: Decode YouTube cookies (Optional anti-block)
+        if: env.YOUTUBE_COOKIES_B64 != ''
+        env:
+          YOUTUBE_COOKIES_B64: ${{ secrets.YOUTUBE_COOKIES_B64 }}
+        run: echo "$YOUTUBE_COOKIES_B64" | base64 --decode > cookies.txt
+
+      - name: Find Live Stream, Edit Viral Short & Auto-Upload
+        env:
+          YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python main.py
