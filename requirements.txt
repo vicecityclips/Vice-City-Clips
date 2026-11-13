@@ -1,0 +1,10 @@
+yt-dlp
+numpy
+scipy
+faster-whisper
+edge-tts
+gTTS
+google-genai
+google-api-python-client
+google-auth-oauthlib
+google-auth-httplib2
