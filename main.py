@@ -45,7 +45,7 @@ def find_live_stream():
             print(f"[Watchlist Hit] Live stream: {title} ({live_url})", flush=True)
             return live_url, title
 
-    search_query = "ytsearch5:GTA 6 live gameplay"
+    search_query = "ytsearch5:GTA 5 live gameplay"
     cmd_search = [
         "yt-dlp", "--print", "%(is_live)s|%(concurrent_view_count)s|%(title)s|%(webpage_url)s",
         "--no-warnings", "--ignore-errors"
