@@ -36,6 +36,7 @@ def get_cookies_arg():
 
 def find_live_stream():
     cookies = get_cookies_arg()
+    # 1. Check curated watchlist first
     for url in WATCHLIST:
         cmd = ["yt-dlp", "--print", "%(is_live)s|%(title)s|%(webpage_url)s", "--no-warnings"] + cookies + [url]
         res = subprocess.run(cmd, capture_output=True, text=True)
@@ -45,28 +46,29 @@ def find_live_stream():
             print(f"[Watchlist Hit] Live stream: {title} ({live_url})", flush=True)
             return live_url, title
 
-    search_query = "ytsearch5:GTA 5 live gameplay"
+    # 2. Fallback: Force YouTube's "Live Only" search filter (sp=EgJAAQ%3D%3D)
+    # Change GTA+5 to GTA+6 after your test succeeds!
+    search_url = "https://youtube.com/results?search_query=GTA+5+live+gameplay&sp=EgJAAQ%253D%253D"
     cmd_search = [
-        "yt-dlp", "--print", "%(is_live)s|%(concurrent_view_count)s|%(title)s|%(webpage_url)s",
+        "yt-dlp", "--flat-playlist", "--playlist-end", "5",
+        "--print", "%(title)s|%(url)s",
         "--no-warnings", "--ignore-errors"
-    ] + cookies + [search_query]
+    ] + cookies + [search_url]
     res = subprocess.run(cmd_search, capture_output=True, text=True)
-    best_url, best_title, max_views = None, None, -1
 
     for line in res.stdout.strip().splitlines():
-        if line.startswith("True|"):
-            parts = line.split("|", 3)
-            if len(parts) == 4:
-                _, views_str, title, url = parts
-                views = int(views_str) if views_str.isdigit() else 0
-                if views > max_views:
-                    max_views = views
-                    best_url = url
-                    best_title = title
+        if "|" in line:
+            title, url = line.split("|", 1)
+            chk = subprocess.run(
+                ["yt-dlp", "--print", "%(is_live)s", "--no-warnings"] + cookies + [url],
+                capture_output=True, text=True
+            )
+            if chk.stdout.strip() == "True":
+                print(f"[Live Search Hit] Found active stream: {title} ({url})", flush=True)
+                return url, title
 
-    if best_url:
-        print(f"[Auto-Search Hit] Live stream ({max_views} viewers): {best_title}", flush=True)
-    return best_url, best_title
+    return None, None
+
 
 def record_live_chunk(live_url):
     cookies = get_cookies_arg()
