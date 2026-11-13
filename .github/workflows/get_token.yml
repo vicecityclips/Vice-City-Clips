@@ -1,0 +1,43 @@
+name: Generate YouTube Token (Delete After Use)
+
+on:
+  workflow_dispatch:
+    inputs:
+      redirect_url:
+        description: 'Leave blank on Run 1. Paste full http://localhost/... URL on Run 2.'
+        required: false
+        default: ''
+
+jobs:
+  auth:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Google Auth
+        run: pip install google-auth-oauthlib
+
+      - name: Generate Link or Exchange Token
+        env:
+          CLIENT_SECRET_JSON: ${{ secrets.CLIENT_SECRET_JSON }}
+          REDIRECT_URL: ${{ github.event.inputs.redirect_url }}
+        run: |
+          echo "$CLIENT_SECRET_JSON" > client_secret.json
+          python -c '
+          import os
+          os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+          from google_auth_oauthlib.flow import InstalledAppFlow
+
+          SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+          flow = InstalledAppFlow.from_client_secrets_file("client_secret.json", SCOPES, redirect_uri="http://localhost")
+          redirect_url = os.environ.get("REDIRECT_URL", "").strip()
+
+          if not redirect_url:
+              auth_url, _ = flow.authorization_url(prompt="consent", access_type="offline")
+              print("\n=== STEP 1: COPY & OPEN THIS LINK IN YOUR BROWSER ===\n")
+              print(auth_url)
+              print("\n====================================================\n")
+          else:
+              flow.fetch_token(authorization_response=redirect_url)
+              print("\n=== STEP 2: COPY THIS ENTIRE JSON FOR YOUTUBE_TOKEN_JSON ===\n")
+              print(flow.credentials.to_json())
+              print("\n============================================================\n")
+          '
