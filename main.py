@@ -99,7 +99,7 @@ def find_live_stream():
              return live_url, title, channel_name
 
         # 2. Fallback: Check top 10 search results for active live broadcasts
-    search_query = "ytsearch10:GTA 5 live"
+    search_query = "https://youtube.com/gaming/live"
     cmd_ids = [
         "yt-dlp", "--flat-playlist", "--print", "%(id)s",
         "--no-warnings", "--ignore-errors"
@@ -118,9 +118,11 @@ def find_live_stream():
         chk = subprocess.run(cmd_chk, capture_output=True, text=True).stdout.strip()
         if chk.startswith("True|"):
             _, title, channel_name = chk.split("|", 2)
-            if can_clip_stream(vid_url, history):
-                print(f"[Live Search Hit] Found active stream by {channel_name}: {title} ({vid_url})", flush=True)
-                return vid_url, title, channel_name
+            if chk.startswith("True|"):
+                _, title, channel_name = chk.split("|", 2)
+                if "gta" in title.lower() and can_clip_stream(vid_url, history):
+                    print(f"[Live Search Hit] Found active stream by {channel_name}: {title} ({vid_url})", flush=True)
+                    return vid_url, title, channel_name
 
     return None, None, None
 
