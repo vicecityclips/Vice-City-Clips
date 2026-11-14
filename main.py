@@ -137,7 +137,6 @@ def find_live_stream():
 
     return None, None, None
 
-
 def record_live_chunk(live_url):
     print(f"Recording {CHUNK_SECONDS}s live chunk from Twitch...", flush=True)
     cmd = [
@@ -145,6 +144,7 @@ def record_live_chunk(live_url):
         "-f", "best[height<=720]",
         "--downloader", "ffmpeg",
         "--downloader-args", f"ffmpeg_i:-t {CHUNK_SECONDS}",
+        "--fixup", "never",
         "-o", "raw_chunk.ts",
         "--no-part",
         "--no-warnings",
@@ -152,6 +152,7 @@ def record_live_chunk(live_url):
     ]
     subprocess.run(cmd, check=True, timeout=CHUNK_SECONDS + 180)
     print("Finished recording live chunk!", flush=True)
+
 def find_best_highlight(video_path):
     subprocess.run(["ffmpeg", "-y", "-i", video_path, "-vn", "-ac", "1", "-ar", "16000", "audio.wav"], check=True)
     rate, data = wavfile.read("audio.wav")
