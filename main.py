@@ -145,7 +145,7 @@ def record_live_chunk(live_url):
         "-f", "best[height<=720]",
         "--downloader", "ffmpeg",
         "--downloader-args", f"ffmpeg_i:-t {CHUNK_SECONDS}",
-        "-o", "raw_chunk.mp4",
+        "-o", "raw_chunk.ts",
         "--no-part",
         "--no-warnings",
         live_url
@@ -391,13 +391,13 @@ if __name__ == "__main__":
         exit(0)
 
     record_live_chunk(live_url)
-    start_sec, peak_sec = find_best_highlight("raw_chunk.mp4")
+    start_sec, peak_sec = find_best_highlight("raw_chunk.ts")
     if start_sec is None:
         print("No major hype spike in this 5-minute window. Skipping upload.", flush=True)
         exit(0)
 
     subprocess.run([
-        "ffmpeg", "-y", "-ss", str(start_sec), "-i", "raw_chunk.mp4",
+        "ffmpeg", "-y", "-ss", str(start_sec), "-i", "raw_chunk.ts",
         "-t", str(CLIP_DURATION), "-c", "copy", "temp_transcribe.mp4"
     ], check=True)
 
@@ -407,7 +407,7 @@ if __name__ == "__main__":
         exit(0)
 
     viral_title, voice_hook = generate_viral_metadata_and_hook(transcript, stream_title)
-    render_viral_short("raw_chunk.mp4", start_sec, peak_sec, srt_path, voice_hook, meme_trigger_sec, channel_name)
+    render_viral_short("raw_chunk.ts", start_sec, peak_sec, srt_path, voice_hook, meme_trigger_sec, channel_name)
     upload_to_youtube("final_short.mp4", viral_title, stream_title, channel_name, live_url)
     record_clip_history(live_url, stream_title, channel_name, peak_sec)
 
