@@ -25,7 +25,7 @@ WATCHLIST = [
     "https://youtube.com",
 ]
 
-CHUNK_SECONDS = 900         # Record 15-minute live buffer
+CHUNK_SECONDS = 300         # Record 15-minute live buffer
 CLIP_DURATION = 40          # Core highlight duration (seconds)
 MIN_SPIKE_RATIO = 2.3       # Climax must be 2.3x louder than average
 MIN_WORD_COUNT = 12         # Minimum spoken words to avoid silent clips
@@ -73,19 +73,25 @@ def find_live_stream():
 def record_live_chunk(live_url):
     cookies = get_cookies_arg()
     cmd_url = ["yt-dlp", "-g", "-f", "best[height<=1080]"] + cookies + [live_url]
-    urls = subprocess.run(cmd_url, capture_output=True, text=True).stdout.strip().splitlines()
+    urls = subprocess.run(cmd_url, capture_output=True, text=True, timeout=30).stdout.strip().splitlines()
     if not urls:
         raise RuntimeError("Could not extract playable stream URL.")
-    stream_url = urls[0]
+    stream_url = urls
 
     cmd_rec = [
-        "ffmpeg", "-y", "-i", stream_url,
+        "ffmpeg", "-y",
+        "-reconnect", "1",
+        "-reconnect_streamed", "1",
+        "-reconnect_delay_max", "5",
+        "-rw_timeout", "15000000",
+        "-i", stream_url,
         "-t", str(CHUNK_SECONDS),
         "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
         "-c:a", "aac", "-b:a", "128k",
         "raw_chunk.mp4"
     ]
-    subprocess.run(cmd_rec, check=True)
+    subprocess.run(cmd_rec, check=True, timeout=CHUNK_SECONDS + 180)
+
 
 def find_best_highlight(video_path):
     subprocess.run(["ffmpeg", "-y", "-i", video_path, "-vn", "-ac", "1", "-ar", "16000", "audio.wav"], check=True)
