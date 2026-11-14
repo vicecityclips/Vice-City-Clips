@@ -75,7 +75,7 @@ def record_clip_history(stream_url, stream_title, channel_name, peak_sec):
 def find_live_stream():
     history = load_history()
     # Change "Grand Theft Auto V" to "Grand Theft Auto VI" before November 19 launch!
-    game_name = "Grand Theft Auto V"
+    game_name = "Valorant"
 
     query = """
     query($name: String!) {
