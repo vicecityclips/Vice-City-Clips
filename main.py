@@ -210,9 +210,9 @@ def transcribe_clip(clip_path):
     idx = 1
     for i in range(0, len(words), 2):
         chunk = words[i : i + 2]
-        start_t = chunk
-        end_t = chunk[-1]
-        text = " ".join(w for w in chunk)
+        start_t = chunk[0][0]
+        end_t = chunk[-1][1]
+        text = " ".join(w[2] for w in chunk)
         full_text.append(text)
 
         def fmt_time(t):
