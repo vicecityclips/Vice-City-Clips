@@ -17,12 +17,14 @@ from googleapiclient.http import MediaFileUpload
 CHANNEL_HANDLE = "@Vice-City-Clips-Vault"
 
 WATCHLIST = [
-    "https://youtube.com",
-    "https://youtube.com",
-    "https://youtube.com",
-    "https://youtube.com",
-    "https://youtube.com",
-    "https://youtube.com",
+    "https://youtube.com/@TypicalGamer/live",
+    "https://youtube.com/@DarkViperAU/live",
+    "https://youtube.com/@TGG/live",
+    "https://youtube.com/@Valkyrae/live",
+    "https://youtube.com/@Sykkuno/live",
+    "https://youtube.com/@xQcOW/live",
+    "https://youtube.com/@KaiCenatLive/live",
+    "https://youtube.com/@IShowSpeed/live",
 ]
 
 CHUNK_SECONDS = 300         # Record 15-minute live buffer
@@ -38,37 +40,34 @@ def find_live_stream():
     cookies = get_cookies_arg()
     # 1. Check curated watchlist first
     for url in WATCHLIST:
-        cmd = ["yt-dlp", "--print", "%(is_live)s|%(title)s|%(webpage_url)s", "--no-warnings"] + cookies + [url]
+        cmd = ["yt-dlp", "--print", "%(is_live)s|%(title)s|%(channel)s|%(webpage_url)s", "--no-warnings"] + cookies + [url]
         res = subprocess.run(cmd, capture_output=True, text=True)
         out = res.stdout.strip()
         if out.startswith("True|"):
-            _, title, live_url = out.split("|", 2)
-            print(f"[Watchlist Hit] Live stream: {title} ({live_url})", flush=True)
-            return live_url, title
+            _, title, channel_name, live_url = out.split("|", 3)
+            print(f"[Watchlist Hit] Live stream by {channel_name}: {title} ({live_url})", flush=True)
+            return live_url, title, channel_name
 
-    # 2. Fallback: Force YouTube's "Live Only" search filter (sp=EgJAAQ%3D%3D)
-    # Change GTA+5 to GTA+6 after your test succeeds!
-    search_url = "https://youtube.com/results?search_query=GTA+5+live+gameplay&sp=EgJAAQ%253D%253D"
+    # 2. Fallback: Use yt-dlp's native live filter on top 10 search results
+    search_query = "ytsearch10:GTA 5 live gameplay"
     cmd_search = [
-        "yt-dlp", "--flat-playlist", "--playlist-end", "5",
-        "--print", "%(title)s|%(url)s",
+        "yt-dlp",
+        "--match-filter", "is_live",
+        "--playlist-end", "10",
+        "--print", "%(title)s|%(channel)s|%(webpage_url)s",
         "--no-warnings", "--ignore-errors"
-    ] + cookies + [search_url]
+    ] + cookies + [search_query]
     res = subprocess.run(cmd_search, capture_output=True, text=True)
 
     for line in res.stdout.strip().splitlines():
-        if "|" in line:
-            title, url = line.split("|", 1)
-            chk = subprocess.run(
-                ["yt-dlp", "--print", "%(is_live)s", "--no-warnings"] + cookies + [url],
-                capture_output=True, text=True
-            )
-            if chk.stdout.strip() == "True":
-                print(f"[Live Search Hit] Found active stream: {title} ({url})", flush=True)
-                return url, title
+        parts = line.split("|", 2)
+        if len(parts) == 3:
+            title, channel_name, url = parts
+            print(f"[Live Search Hit] Found active stream by {channel_name}: {title} ({url})", flush=True)
+            return url, title, channel_name
 
-    return None, None
-
+    return None, None, None
+    
 
 def record_live_chunk(live_url):
     cookies = get_cookies_arg()
@@ -195,7 +194,7 @@ async def create_voiceover_audio(text, filename="hook_vo.mp3"):
     tts = gTTS(text=text, lang="en", slow=False)
     tts.save(filename)
     return filename
-def render_viral_short(raw_path, start_sec, peak_sec, srt_path, voice_hook_text, meme_trigger_sec):
+def render_viral_short(raw_path, start_sec, peak_sec, srt_path, voice_hook_text, meme_trigger_sec, channel_name):
     subprocess.run([
         "ffmpeg", "-y", "-ss", str(start_sec), "-i", raw_path,
         "-t", str(CLIP_DURATION), "-c", "copy", "base_clip.mp4"
@@ -258,6 +257,15 @@ def render_viral_short(raw_path, start_sec, peak_sec, srt_path, voice_hook_text,
         current_v = "[meme_v]"
         next_idx += 1
 
+        safe_creator = channel_name.replace("'", "").replace(":", "")
+    polish_filter = (
+        f"{current_v}drawbox=x=0:y=ih-14:w=iw*(t/{CLIP_DURATION + 2.5}):h=14:color=#FF00FF@0.85:t=fill,"
+        f"drawtext=text='{CHANNEL_HANDLE}':fontcolor=white@0.55:fontsize=28:x=(w-text_w)/2:y=215,"
+        f"drawtext=text='Credit\\: {safe_creator}':fontcolor=white@0.80:fontsize=24:x=(w-text_w)/2:y=255,"
+        f"subtitles={srt_path}:force_style='FontName=Arial,FontSize=19,Bold=1,PrimaryColour=&H0000FFFF,OutlineColour=&H00000000,Outline=2,Alignment=2,MarginV=48'[out_v]"
+    )
+
+
     polish_filter = (
         f"{current_v}drawbox=x=0:y=ih-14:w=iw*(t/{CLIP_DURATION + 2.5}):h=14:color=#FF00FF@0.85:t=fill,"
         f"drawtext=text='{CHANNEL_HANDLE}':fontcolor=white@0.50:fontsize=28:x=(w-text_w)/2:y=230,"
@@ -286,7 +294,7 @@ def render_viral_short(raw_path, start_sec, peak_sec, srt_path, voice_hook_text,
         "final_short.mp4"
     ], check=True)
 
-def upload_to_youtube(video_path, title, stream_title):
+def upload_to_youtube(video_path, title, stream_title, channel_name, live_url):
     creds_data = json.loads(os.environ["YOUTUBE_TOKEN_JSON"])
     creds = Credentials.from_authorized_user_info(creds_data)
     if creds.expired and creds.refresh_token:
@@ -297,11 +305,13 @@ def upload_to_youtube(video_path, title, stream_title):
         "snippet": {
             "title": title[:95],
             "description": (
-                f"Live highlight from: {stream_title}\n"
+                f"🎥 Credit: {channel_name}\n"
+                f"🔗 Original Stream: {live_url}\n"
+                f"📺 Stream Title: {stream_title}\n\n"
                 f"Subscribe to {CHANNEL_HANDLE} for 6 daily GTA 6 live clips! 🔥🌴\n\n"
                 "#GTA6 #GrandTheftAuto6 #ViceCityClips #GTA6Shorts #GamingShorts #Leonida"
             ),
-            "tags": ["GTA 6", "Grand Theft Auto 6", "Vice City Clips", "GTA 6 Shorts", "GTA 6 Gameplay", "Gaming Shorts"],
+            "tags": ["GTA 6", "Grand Theft Auto 6", "Vice City Clips", channel_name, "GTA 6 Shorts", "Gaming Shorts"],
             "categoryId": "20",
         },
         "status": {
@@ -316,15 +326,15 @@ def upload_to_youtube(video_path, title, stream_title):
     print(f"Uploaded PUBLIC Short to {CHANNEL_HANDLE}! Video ID: {response['id']}", flush=True)
 
 if __name__ == "__main__":
-    live_url, stream_title = find_live_stream()
+    live_url, stream_title, channel_name = find_live_stream()
     if not live_url:
-        print("No live GTA 6 streams found right now. Exiting cleanly.", flush=True)
+        print("No live streams found right now. Exiting cleanly.", flush=True)
         exit(0)
 
     record_live_chunk(live_url)
     start_sec, peak_sec = find_best_highlight("raw_chunk.mp4")
     if start_sec is None:
-        print("No major hype spike in this 15-minute window. Skipping upload.", flush=True)
+        print("No major hype spike in this window. Skipping upload.", flush=True)
         exit(0)
 
     subprocess.run([
@@ -338,5 +348,6 @@ if __name__ == "__main__":
         exit(0)
 
     viral_title, voice_hook = generate_viral_metadata_and_hook(transcript, stream_title)
-    render_viral_short("raw_chunk.mp4", start_sec, peak_sec, srt_path, voice_hook, meme_trigger_sec)
-    upload_to_youtube("final_short.mp4", viral_title, stream_title)
+    render_viral_short("raw_chunk.mp4", start_sec, peak_sec, srt_path, voice_hook, meme_trigger_sec, channel_name)
+    upload_to_youtube("final_short.mp4", viral_title, stream_title, channel_name, live_url)
+
