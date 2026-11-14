@@ -50,5 +50,17 @@
       }
     ],
     "last_clipped_at": 1794671001
+  },
+  "https://www.twitch.tv/dansgaming": {
+    "title": "One Last Run before GTA6! - GTAV Story Mode",
+    "channel": "DansGaming",
+    "count": 1,
+    "clips": [
+      {
+        "utc_time": "2026-11-14 18:47:52 UTC",
+        "chunk_peak_sec": 29
+      }
+    ],
+    "last_clipped_at": 1794682072
   }
 }
