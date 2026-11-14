@@ -41,7 +41,8 @@ MAX_CLIPS_PER_STREAM = 6    # Allow up to 6 Shorts from a single multi-hour stre
 MIN_GAP_SECONDS = 1800      # Wait at least 30 mins (1800s) before clipping the same stream again
 
 def get_cookies_arg():
-    return ["--cookies", "cookies.txt"] if os.path.exists("cookies.txt") else []
+    base_args = ["--extractor-args", "youtube:player_client=web,tv"]
+    return (["--cookies", "cookies.txt"] + base_args) if os.path.exists("cookies.txt") else base_args
 
 def load_history():
     if os.path.exists(HISTORY_FILE):
