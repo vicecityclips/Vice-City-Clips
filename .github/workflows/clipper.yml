@@ -25,7 +25,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Install Python packages
-        run: pip install -r requirements.txt
+        run: pip install -U yt-dlp && pip install -r requirements.txt
 
       - name: Decode YouTube cookies (Optional anti-block)
         if: env.YOUTUBE_COOKIES_B64 != ''
