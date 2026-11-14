@@ -19,15 +19,14 @@ from googleapiclient.http import MediaFileUpload
 
 CHANNEL_HANDLE = "@Vice-City-Clips-Vault"
 
-CHUNK_SECONDS = 300         # Record 5-minute live buffer (saves monthly GitHub minutes)
+CHUNK_SECONDS = 300         # Record 5-minute live buffer
 CLIP_DURATION = 40          # Core highlight duration (seconds)
-MIN_SPIKE_RATIO = 1.6       # Climax loudness threshold (raise to 2.3 after testing)
+MIN_SPIKE_RATIO = 1.6       # Climax loudness threshold (raise to 2.3 for GTA 6 launch)
 MIN_WORD_COUNT = 10         # Minimum spoken words to skip silent clips
 ENABLE_AI_VOICEOVER = True  # Adds energetic 2.5s AI hook voiceover at the start
 
 HISTORY_FILE = "history.json"
 MAX_CLIPS_PER_STREAM = 6    # Allow up to 6 Shorts from one multi-hour stream
-
 MIN_GAP_SECONDS = 1800      # Wait at least 30 mins before clipping the same stream again
 
 def load_history():
@@ -74,13 +73,13 @@ def record_clip_history(stream_url, stream_title, channel_name, peak_sec):
 
 def find_live_stream():
     history = load_history()
-    # Change "Grand Theft Auto V" to "Grand Theft Auto VI" before November 19 launch!
-    game_name = "GTA 5"
+    # Change "VALORANT" to "Grand Theft Auto VI" before November 19 launch!
+    game_name = "VALORANT"
 
     query = """
     query($name: String!) {
       game(name: $name) {
-        streams(first: 15) {
+        streams(first: 20) {
           edges {
             node {
               title
@@ -127,10 +126,11 @@ def find_live_stream():
             login = broadcaster["login"]
             channel_name = broadcaster["displayName"]
             title = node.get("title", "")
-            
-            # Filter: Must mention target game in title & not be a rerun/rebroadcast
+
+            # Verify stream title matches target game & skip reruns
+            # For GTA 6 launch, change "valorant" to: ("gta 6" not in t_low and "gta vi" not in t_low and "grand theft auto" not in t_low)
             t_low = title.lower()
-            if "gta 5" not in t_low and "gta v" not in t_low and "grand theft auto 5" not in t_low or "rerun" in t_low or "rebroadcast" in t_low:
+            if "valorant" not in t_low or "rerun" in t_low or "rebroadcast" in t_low:
                 continue
 
             live_url = urllib.parse.urlunparse(("https", "www.twitch.tv", "/" + login, "", "", ""))
@@ -138,7 +138,6 @@ def find_live_stream():
             if can_clip_stream(live_url, history):
                 print(f"[Twitch Live Hit] Stream by {channel_name}: {title} ({live_url})", flush=True)
                 return live_url, title, channel_name
-
     except Exception as e:
         print(f"Twitch GQL error: {e}", flush=True)
 
@@ -199,7 +198,7 @@ def transcribe_clip(clip_path):
         return None, "", None
 
     meme_trigger_sec = None
-    trigger_keywords = {"COPS", "POLICE", "WASTED", "DEAD", "WHAT", "BRO", "CRAZY"}
+    trigger_keywords = {"COPS", "POLICE", "WASTED", "DEAD", "WHAT", "BRO", "CRAZY", "CLUTCH", "ACE"}
     for start_t, _, word_txt in words:
         clean_w = "".join(c for c in word_txt if c.isalpha())
         if clean_w in trigger_keywords:
@@ -211,9 +210,9 @@ def transcribe_clip(clip_path):
     idx = 1
     for i in range(0, len(words), 2):
         chunk = words[i : i + 2]
-        start_t = chunk[0][0]
-        end_t = chunk[-1][1]
-        text = " ".join(w[2] for w in chunk)
+        start_t = chunk
+        end_t = chunk[-1]
+        text = " ".join(w for w in chunk)
         full_text.append(text)
 
         def fmt_time(t):
@@ -232,30 +231,43 @@ def transcribe_clip(clip_path):
     return "captions.srt", " ".join(full_text), meme_trigger_sec
 
 def generate_viral_metadata_and_hook(transcript, stream_title):
-    api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    words_list = [w.capitalize() for w in transcript.split() if len(w) > 3]
+    snippet = " ".join(words_list[:4]) if words_list else stream_title[:30]
+    dynamic_fallback_title = f"\"{snippet}...\" 😱 #shorts #gaming"
+
     if not api_key:
-        return "You won't believe what just happened in GTA! 😱 #gta6 #shorts", "Wait till you see what happens next!"
+        print("Warning: GEMINI_API_KEY is missing! Using dynamic fallback title.", flush=True)
+        return dynamic_fallback_title, "Watch what happens right here!"
 
     client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=30000))
-    prompt = f"""You are a viral gaming YouTube Shorts editor for GTA 6.
+    prompt = f"""You are a viral gaming YouTube Shorts editor.
 Stream Title: {stream_title}
 Clip Transcript: {transcript}
 
-Return ONLY valid JSON with two keys:
-1. "title": A high-CTR curiosity-gap YouTube Shorts title under 65 characters including 1 emoji and #gta6 #shorts.
-2. "voice_hook": An energetic 6-to-8 word spoken hook for a 2.5-second intro voiceover that builds suspense without spoiling the ending."""
+Write a unique, high-CTR YouTube Shorts title under 65 characters (include 1 emoji and #shorts) and a 6-word spoken intro hook.
+Reply in this exact 2-line format only:
+TITLE: <your unique title here>
+HOOK: <your 6-word spoken hook here>"""
 
     try:
         resp = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt,
-            config=types.GenerateContentConfig(response_mime_type="application/json"),
         )
-        data = json.loads(resp.text)
-        return data.get("title", "INSANE GTA Live Moment! 😱 #gta6 #shorts"), data.get("voice_hook", "Watch what happens right here!")
+        lines = resp.text.strip().splitlines()
+        title = dynamic_fallback_title
+        hook = "Wait till you see this!"
+        for line in lines:
+            if line.upper().startswith("TITLE:"):
+                title = line.split(":", 1).strip()
+            elif line.upper().startswith("HOOK:"):
+                hook = line.split(":", 1).strip()
+        print(f"Gemini generated title: {title}", flush=True)
+        return title, hook
     except Exception as e:
-        print(f"Gemini fallback triggered: {e}", flush=True)
-        return "INSANE GTA Live Moment! 😱 #gta6 #shorts", "Watch what happens right here!"
+        print(f"Gemini API error: {e}", flush=True)
+        return dynamic_fallback_title, "Wait till you see this!"
 
 async def create_voiceover_audio(text, filename="hook_vo.mp3"):
     for voice in ["en-US-GuyNeural", "en-US-ChristopherNeural"]:
@@ -269,16 +281,16 @@ async def create_voiceover_audio(text, filename="hook_vo.mp3"):
     tts = gTTS(text=text, lang="en", slow=False)
     tts.save(filename)
     return filename
-def render_viral_short(raw_path, start_sec, peak_sec, srt_path, voice_hook_text, meme_trigger_sec, channel_name):
+def render_viral_short(raw_path, start_sec, peak_sec, srt_path, voice_hook_text, meme_trigger_sec):
     subprocess.run([
         "ffmpeg", "-y", "-ss", str(start_sec), "-i", raw_path,
-        "-t", str(CLIP_DURATION), "-c", "copy", "base_clip.mp4"
+        "-t", str(CLIP_DURATION), "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "base_clip.mp4"
     ], check=True)
 
     hook_start = max(0, peak_sec - 1)
     subprocess.run([
         "ffmpeg", "-y", "-ss", str(hook_start), "-i", raw_path,
-        "-t", "2.5", "-c", "copy", "hook_clip.mp4"
+        "-t", "2.5", "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "hook_clip.mp4"
     ], check=True)
 
     if ENABLE_AI_VOICEOVER and voice_hook_text:
@@ -310,11 +322,12 @@ def render_viral_short(raw_path, start_sec, peak_sec, srt_path, voice_hook_text,
         bg_filter = "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=28:6,eq=brightness=-0.08:saturation=1.3[bg];"
 
     fg_filter = (
-        "[0:v]scale=1080:-2,eq=contrast=1.15:saturation=1.25,"
-        f"crop=iw*if(between(t\\,{climax_rel-0.2}\\,{climax_rel+0.45})\\,0.91\\,if(lt(mod(t\\,5)\\,0.35)\\,0.94\\,1.0)):"
-        f"ih*if(between(t\\,{climax_rel-0.2}\\,{climax_rel+0.45})\\,0.91\\,if(lt(mod(t\\,5)\\,0.35)\\,0.94\\,1.0)):"
-        f"(iw-ow)/2+if(between(t\\,{climax_rel-0.2}\\,{climax_rel+0.45})\\,20*sin(t*65)\\,0):"
-        f"(ih-oh)/2+if(between(t\\,{climax_rel-0.2}\\,{climax_rel+0.45})\\,20*cos(t*65)\\,0),"
+        "[0:v]scale=1080:-2,"
+        f"eq=contrast=1.18:saturation=1.30:brightness='if(between(t,{climax_rel-0.1},{climax_rel+0.15}),0.18,0)':eval=frame,"
+        f"crop=w='iw*if(between(t,{climax_rel-0.25},{climax_rel+0.55}),0.85,if(lt(mod(t,4),0.4),0.92,1.0))':"
+        f"h='ih*if(between(t,{climax_rel-0.25},{climax_rel+0.55}),0.85,if(lt(mod(t,4),0.4),0.92,1.0))':"
+        f"x='(iw-ow)/2+if(between(t,{climax_rel-0.25},{climax_rel+0.55}),28*sin(t*70),0)':"
+        f"y='(ih-oh)/2+if(between(t,{climax_rel-0.25},{climax_rel+0.55}),28*cos(t*70),0)':eval=frame,"
         "scale=1080:-2[fg];"
         "[bg][fg]overlay=(W-w)/2:(H-h)/2[base_v];"
     )
@@ -332,11 +345,9 @@ def render_viral_short(raw_path, start_sec, peak_sec, srt_path, voice_hook_text,
         current_v = "[meme_v]"
         next_idx += 1
 
-    safe_creator = channel_name.replace("'", "").replace(":", "")
     polish_filter = (
         f"{current_v}drawbox=x=0:y=ih-14:w=iw*(t/{CLIP_DURATION + 2.5}):h=14:color=#FF00FF@0.85:t=fill,"
-        f"drawtext=text='{CHANNEL_HANDLE}':fontcolor=white@0.55:fontsize=28:x=(w-text_w)/2:y=215,"
-        f"drawtext=text='Credit\\: {safe_creator}':fontcolor=white@0.80:fontsize=24:x=(w-text_w)/2:y=255,"
+        f"drawtext=text='{CHANNEL_HANDLE}':fontcolor=white@0.55:fontsize=28:x=(w-text_w)/2:y=225,"
         f"subtitles={srt_path}:force_style='FontName=Arial,FontSize=19,Bold=1,PrimaryColour=&H0000FFFF,OutlineColour=&H00000000,Outline=2,Alignment=2,MarginV=48'[out_v]"
     )
 
@@ -361,7 +372,7 @@ def render_viral_short(raw_path, start_sec, peak_sec, srt_path, voice_hook_text,
         "-c:a", "aac", "-b:a", "192k",
         "final_short.mp4"
     ], check=True)
-def upload_to_youtube(video_path, title, stream_title, channel_name, live_url):
+def upload_to_youtube(video_path, title):
     creds_data = json.loads(os.environ["YOUTUBE_TOKEN_JSON"])
     creds = Credentials.from_authorized_user_info(creds_data)
     if creds.expired and creds.refresh_token:
@@ -372,13 +383,11 @@ def upload_to_youtube(video_path, title, stream_title, channel_name, live_url):
         "snippet": {
             "title": title[:95],
             "description": (
-                f"🎥 Credit: {channel_name}\n"
-                f"🔗 Original Stream: {live_url}\n"
-                f"📺 Stream Title: {stream_title}\n\n"
-                f"Subscribe to {CHANNEL_HANDLE} for 6 daily GTA 6 live clips! 🔥🌴\n\n"
-                "#GTA6 #GrandTheftAuto6 #ViceCityClips #GTA6Shorts #GamingShorts #Leonida"
+                f"Insane live gaming highlight! 🔥\n\n"
+                f"Subscribe to {CHANNEL_HANDLE} for daily viral gaming clips! 🎮⚡\n\n"
+                "#GamingShorts #Shorts #ViralClips #GamingHighlights #LiveClips"
             ),
-            "tags": ["GTA 6", "Grand Theft Auto 6", "Vice City Clips", channel_name, "GTA 6 Shorts", "Gaming Shorts"],
+            "tags": ["Gaming Shorts", "Viral Clips", "Vice City Clips", "Gaming Highlights", "Live Clips"],
             "categoryId": "20",
         },
         "status": {
@@ -406,7 +415,7 @@ if __name__ == "__main__":
 
     subprocess.run([
         "ffmpeg", "-y", "-ss", str(start_sec), "-i", "raw_chunk.ts",
-        "-t", str(CLIP_DURATION), "-c", "copy", "temp_transcribe.mp4"
+        "-t", str(CLIP_DURATION), "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "temp_transcribe.mp4"
     ], check=True)
 
     srt_path, transcript, meme_trigger_sec = transcribe_clip("temp_transcribe.mp4")
@@ -415,7 +424,6 @@ if __name__ == "__main__":
         exit(0)
 
     viral_title, voice_hook = generate_viral_metadata_and_hook(transcript, stream_title)
-    render_viral_short("raw_chunk.ts", start_sec, peak_sec, srt_path, voice_hook, meme_trigger_sec, channel_name)
-    upload_to_youtube("final_short.mp4", viral_title, stream_title, channel_name, live_url)
+    render_viral_short("raw_chunk.ts", start_sec, peak_sec, srt_path, voice_hook, meme_trigger_sec)
+    upload_to_youtube("final_short.mp4", viral_title)
     record_clip_history(live_url, stream_title, channel_name, peak_sec)
-
