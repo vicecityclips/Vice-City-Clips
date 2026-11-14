@@ -126,12 +126,19 @@ def find_live_stream():
             broadcaster = node["broadcaster"]
             login = broadcaster["login"]
             channel_name = broadcaster["displayName"]
-            title = node.get("title", "Live GTA Gameplay")
+            title = node.get("title", "")
+            
+            # Filter: Must mention target game in title & not be a rerun/rebroadcast
+            t_low = title.lower()
+            if "valorant" not in t_low or "rerun" in t_low or "rebroadcast" in t_low:
+                continue
+
             live_url = urllib.parse.urlunparse(("https", "www.twitch.tv", "/" + login, "", "", ""))
 
             if can_clip_stream(live_url, history):
                 print(f"[Twitch Live Hit] Stream by {channel_name}: {title} ({live_url})", flush=True)
                 return live_url, title, channel_name
+
     except Exception as e:
         print(f"Twitch GQL error: {e}", flush=True)
 
