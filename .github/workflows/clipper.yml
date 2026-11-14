@@ -35,7 +35,6 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python -u main.py
 
-
       - name: Save clipped stream history
         if: always()
         run: |
