@@ -1,5 +1,7 @@
 import os
 import json
+import re
+import urllib.request
 import time
 import asyncio
 import subprocess
@@ -98,34 +100,40 @@ def find_live_stream():
              print(f"[Watchlist Hit] Live stream by {channel_name}: {title} ({live_url})", flush=True)
              return live_url, title, channel_name
 
-        # 2. Fallback: Check top 10 search results for active live broadcasts
-    search_query = "https://youtube.com/gaming/live"
-    cmd_ids = [
-        "yt-dlp", "--flat-playlist", "--print", "%(id)s",
-        "--no-warnings", "--ignore-errors"
-    ] + cookies + [search_query]
-    res_ids = subprocess.run(cmd_ids, capture_output=True, text=True)
+    # 2. Fallback: Full free YouTube search for active LIVE streams (0 API quota)
+    # Change "GTA+5+live" to "GTA+6+live" before November 19 launch!
+    query = "GTA+5+live"
+    search_page = "https://youtube.com" + query
+    req = urllib.request.Request(
+        search_page,
+        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+    )
+    try:
+        html = urllib.request.urlopen(req, timeout=15).read().decode("utf-8", errors="ignore")
+        # Extract only video IDs that have YouTube's active LIVE badge nearby
+        live_ids = re.findall(r'"videoId":"([a-zA-Z0-9_-]{11})".{0,1500}?"BADGE_STYLE_TYPE_LIVE_NOW"', html)
+        # Remove duplicates while keeping top-ranked search order
+        seen = set()
+        unique_live_ids = [x for x in live_ids if not (x in seen or seen.add(x))]
+        print(f"[Full Search] Found {len(unique_live_ids)} active live streams on YouTube.", flush=True)
 
-    for vid_id in res_ids.stdout.strip().splitlines():
-        vid_id = vid_id.strip()
-        if not vid_id:
-            continue
-        vid_url = f"https://youtube.com/watch?v={vid_id}"
-        cmd_chk = [
-            "yt-dlp", "--print", "%(is_live)s|%(title)s|%(channel)s",
-            "--no-warnings", "--ignore-errors"
-        ] + cookies + [vid_url]
-        chk = subprocess.run(cmd_chk, capture_output=True, text=True).stdout.strip()
-        if chk.startswith("True|"):
-            _, title, channel_name = chk.split("|", 2)
+        for vid_id in unique_live_ids[:10]:
+            vid_url = "https://youtube.com" + vid_id
+            cmd_chk = [
+                "yt-dlp", "--print", "%(is_live)s|%(title)s|%(channel)s",
+                "--no-warnings", "--ignore-errors"
+            ] + cookies + [vid_url]
+            chk = subprocess.run(cmd_chk, capture_output=True, text=True).stdout.strip()
             if chk.startswith("True|"):
                 _, title, channel_name = chk.split("|", 2)
-                if "gta" in title.lower() and can_clip_stream(vid_url, history):
-                    print(f"[Live Search Hit] Found active stream by {channel_name}: {title} ({vid_url})", flush=True)
+                if can_clip_stream(vid_url, history):
+                    print(f"[Full Search Hit] Live stream by {channel_name}: {title} ({vid_url})", flush=True)
                     return vid_url, title, channel_name
+    except Exception as e:
+        print(f"Full search error: {e}", flush=True)
 
     return None, None, None
-
+    
     
 
 def record_live_chunk(live_url):
