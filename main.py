@@ -130,7 +130,7 @@ def find_live_stream():
             
             # Filter: Must mention target game in title & not be a rerun/rebroadcast
             t_low = title.lower()
-            if "valorant" not in t_low or "rerun" in t_low or "rebroadcast" in t_low:
+            if "gta 5" not in t_low and "gta v" not in t_low and "grand theft auto 5" not in t_low or "rerun" in t_low or "rebroadcast" in t_low:
                 continue
 
             live_url = urllib.parse.urlunparse(("https", "www.twitch.tv", "/" + login, "", "", ""))
