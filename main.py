@@ -1,10 +1,9 @@
 import os
 import json
-import re
-import urllib.request
 import time
 import asyncio
 import subprocess
+import urllib.parse
 import numpy as np
 from scipy.io import wavfile
 from faster_whisper import WhisperModel
@@ -19,30 +18,16 @@ from googleapiclient.http import MediaFileUpload
 
 CHANNEL_HANDLE = "@Vice-City-Clips-Vault"
 
-WATCHLIST = [
-    "https://youtube.com/@TypicalGamer/live",
-    "https://youtube.com/@DarkViperAU/live",
-    "https://youtube.com/@TGG/live",
-    "https://youtube.com/@Valkyrae/live",
-    "https://youtube.com/@Sykkuno/live",
-    "https://youtube.com/@xQcOW/live",
-    "https://youtube.com/@KaiCenatLive/live",
-    "https://youtube.com/@IShowSpeed/live",
-]
-
-CHUNK_SECONDS = 300         # Record 15-minute live buffer
+CHUNK_SECONDS = 300         # Record 5-minute live buffer (saves monthly GitHub minutes)
 CLIP_DURATION = 40          # Core highlight duration (seconds)
-MIN_SPIKE_RATIO = 2.3       # Climax must be 2.3x louder than average
-MIN_WORD_COUNT = 12         # Minimum spoken words to avoid silent clips
-ENABLE_AI_VOICEOVER = True  # Adds energetic 2.5s AI hook voiceover
+MIN_SPIKE_RATIO = 1.6       # Climax loudness threshold (raise to 2.3 after testing)
+MIN_WORD_COUNT = 10         # Minimum spoken words to skip silent clips
+ENABLE_AI_VOICEOVER = True  # Adds energetic 2.5s AI hook voiceover at the start
 
 HISTORY_FILE = "history.json"
-MAX_CLIPS_PER_STREAM = 6    # Allow up to 6 Shorts from a single multi-hour stream
-MIN_GAP_SECONDS = 1800      # Wait at least 30 mins (1800s) before clipping the same stream again
+MAX_CLIPS_PER_STREAM = 6    # Allow up to 6 Shorts from one multi-hour stream
 
-def get_cookies_arg():
-    base_args = ["--extractor-args", "youtube:player_client=mweb"]
-    return (["--cookies", "cookies.txt"] + base_args) if os.path.exists("cookies.txt") else base_args
+MIN_GAP_SECONDS = 1800      # Wait at least 30 mins before clipping the same stream again
 
 def load_history():
     if os.path.exists(HISTORY_FILE):
@@ -60,8 +45,7 @@ def can_clip_stream(stream_url, history):
     if entry.get("count", 0) >= MAX_CLIPS_PER_STREAM:
         print(f"Skipping {stream_url}: reached max {MAX_CLIPS_PER_STREAM} clips.", flush=True)
         return False
-    last_time = entry.get("last_clipped_at", 0)
-    elapsed = int(time.time() - last_time)
+    elapsed = int(time.time() - entry.get("last_clipped_at", 0))
     if elapsed < MIN_GAP_SECONDS:
         mins_left = (MIN_GAP_SECONDS - elapsed) // 60
         print(f"Skipping {stream_url}: cooldown active ({mins_left}m remaining).", flush=True)
@@ -89,79 +73,45 @@ def record_clip_history(stream_url, stream_title, channel_name, peak_sec):
 
 def find_live_stream():
     history = load_history()
-    cookies = get_cookies_arg()
-    # 1. Check curated watchlist first
-    for url in WATCHLIST:
-        cmd = ["yt-dlp", "--print", "%(is_live)s|%(title)s|%(channel)s|%(webpage_url)s", "--no-warnings"] + cookies + [url]
-        res = subprocess.run(cmd, capture_output=True, text=True)
-        out = res.stdout.strip()
-    if out.startswith("True|"):
-         _, title, channel_name, live_url = out.split("|", 3)
-         if can_clip_stream(live_url, history):
-             print(f"[Watchlist Hit] Live stream by {channel_name}: {title} ({live_url})", flush=True)
-             return live_url, title, channel_name
+    # Change "grand-theft-auto-v" to "grand-theft-auto-vi" before November 19 launch!
+    category_slug = "grand-theft-auto-v"
+    twitch_dir = urllib.parse.urlunparse(("https", "www.twitch.tv", "/directory/category/" + category_slug, "", "", ""))
 
-    # 2. Fallback: Full free YouTube search for active LIVE streams (0 API quota)
-    # Change "GTA+5+live" to "GTA+6+live" before November 19 launch!
-    import urllib.parse
-    query = "GTA+5+live"
-    search_page = urllib.parse.urlunparse(("https", "youtube.com", "/results", "", "search_query=" + query, ""))
-    req = urllib.request.Request(
-        search_page,
-        headers={
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            "Cookie": "CONSENT=YES+cb.20210328-17-p0.en+FX+111"
-        }
-    )
-    try:
-        html = urllib.request.urlopen(req, timeout=15).read().decode("utf-8", errors="ignore")
-        # Match both LIVE badge formats across a 4000-char block
-        live_ids = re.findall(r'"videoId":"([a-zA-Z0-9_-]{11})".{0,4000}?(?:BADGE_STYLE_TYPE_LIVE_NOW|"style":"LIVE")', html)
+    cmd = [
+        "yt-dlp",
+        "--flat-playlist",
+        "--playlist-end", "10",
+        "--print", "%(title)s|%(uploader)s|%(webpage_url)s",
+        "--no-warnings",
+        "--ignore-errors",
+        twitch_dir
+    ]
+    res = subprocess.run(cmd, capture_output=True, text=True)
 
-        # Remove duplicates while keeping top-ranked search order
-        seen = set()
-        unique_live_ids = [x for x in live_ids if not (x in seen or seen.add(x))]
-        print(f"[Full Search] Found {len(unique_live_ids)} active live streams on YouTube.", flush=True)
-
-        for vid_id in unique_live_ids[:15]:
-            vid_url = urllib.parse.urlunparse(("https", "youtube.com", "/watch", "", "v=" + vid_id, ""))
-            cmd_chk = [
-                "yt-dlp", "--print", "%(is_live)s|%(title)s|%(channel)s",
-                "--no-warnings",
-            ] + cookies + [vid_url]
-            chk = subprocess.run(cmd_chk, capture_output=True, text=True).stdout.strip()
-            res_chk = subprocess.run(cmd_chk, capture_output=True, text=True)
-            chk = res_chk.stdout.strip()
-            print(f"Checking {vid_id}: stdout='{chk}' | stderr='{res_chk.stderr.strip()[:120]}'", flush=True)
-
-            if chk.startswith("True|"):
-                _, title, channel_name = chk.split("|", 2)
-                if can_clip_stream(vid_url, history):
-                    print(f"[Full Search Hit] Live stream by {channel_name}: {title} ({vid_url})", flush=True)
-                    return vid_url, title, channel_name
-    except Exception as e:
-        print(f"Full search error: {e}", flush=True)
+    for line in res.stdout.strip().splitlines():
+        parts = line.split("|", 2)
+        if len(parts) == 3:
+            title, channel_name, live_url = parts
+            if can_clip_stream(live_url, history):
+                print(f"[Twitch Live Hit] Stream by {channel_name}: {title} ({live_url})", flush=True)
+                return live_url, title, channel_name
 
     return None, None, None
-    
-    
 
 def record_live_chunk(live_url):
-    cookies = get_cookies_arg()
-    print(f"Recording {CHUNK_SECONDS}s live chunk via yt-dlp...", flush=True)
+    print(f"Recording {CHUNK_SECONDS}s live chunk from Twitch...", flush=True)
     cmd = [
         "yt-dlp",
         "-f", "best[height<=720]",
         "--downloader", "ffmpeg",
         "--downloader-args", f"ffmpeg_i:-t {CHUNK_SECONDS}",
         "-o", "raw_chunk.mp4",
-        "--no-part", "--no-warnings"
-    ] + cookies + [live_url]
+        "--no-part",
+        "--no-warnings",
+        live_url
+    ]
     subprocess.run(cmd, check=True, timeout=CHUNK_SECONDS + 180)
     print("Finished recording live chunk!", flush=True)
-
-
-
 def find_best_highlight(video_path):
     subprocess.run(["ffmpeg", "-y", "-i", video_path, "-vn", "-ac", "1", "-ar", "16000", "audio.wav"], check=True)
     rate, data = wavfile.read("audio.wav")
@@ -236,7 +186,7 @@ def transcribe_clip(clip_path):
 def generate_viral_metadata_and_hook(transcript, stream_title):
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        return "You won't believe what just happened in GTA 6! 😱 #gta6 #shorts", "Wait till you see what happens next!"
+        return "You won't believe what just happened in GTA! 😱 #gta6 #shorts", "Wait till you see what happens next!"
 
     client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=30000))
     prompt = f"""You are a viral gaming YouTube Shorts editor for GTA 6.
@@ -254,10 +204,10 @@ Return ONLY valid JSON with two keys:
             config=types.GenerateContentConfig(response_mime_type="application/json"),
         )
         data = json.loads(resp.text)
-        return data.get("title", "INSANE GTA 6 Moment! 😱 #gta6 #shorts"), data.get("voice_hook", "Watch what happens right here!")
+        return data.get("title", "INSANE GTA Live Moment! 😱 #gta6 #shorts"), data.get("voice_hook", "Watch what happens right here!")
     except Exception as e:
         print(f"Gemini fallback triggered: {e}", flush=True)
-        return "INSANE GTA 6 Live Moment! 😱 #gta6 #shorts", "Watch what happens right here!"
+        return "INSANE GTA Live Moment! 😱 #gta6 #shorts", "Watch what happens right here!"
 
 async def create_voiceover_audio(text, filename="hook_vo.mp3"):
     for voice in ["en-US-GuyNeural", "en-US-ChristopherNeural"]:
@@ -334,18 +284,11 @@ def render_viral_short(raw_path, start_sec, peak_sec, srt_path, voice_hook_text,
         current_v = "[meme_v]"
         next_idx += 1
 
-        safe_creator = channel_name.replace("'", "").replace(":", "")
+    safe_creator = channel_name.replace("'", "").replace(":", "")
     polish_filter = (
         f"{current_v}drawbox=x=0:y=ih-14:w=iw*(t/{CLIP_DURATION + 2.5}):h=14:color=#FF00FF@0.85:t=fill,"
         f"drawtext=text='{CHANNEL_HANDLE}':fontcolor=white@0.55:fontsize=28:x=(w-text_w)/2:y=215,"
         f"drawtext=text='Credit\\: {safe_creator}':fontcolor=white@0.80:fontsize=24:x=(w-text_w)/2:y=255,"
-        f"subtitles={srt_path}:force_style='FontName=Arial,FontSize=19,Bold=1,PrimaryColour=&H0000FFFF,OutlineColour=&H00000000,Outline=2,Alignment=2,MarginV=48'[out_v]"
-    )
-
-
-    polish_filter = (
-        f"{current_v}drawbox=x=0:y=ih-14:w=iw*(t/{CLIP_DURATION + 2.5}):h=14:color=#FF00FF@0.85:t=fill,"
-        f"drawtext=text='{CHANNEL_HANDLE}':fontcolor=white@0.50:fontsize=28:x=(w-text_w)/2:y=230,"
         f"subtitles={srt_path}:force_style='FontName=Arial,FontSize=19,Bold=1,PrimaryColour=&H0000FFFF,OutlineColour=&H00000000,Outline=2,Alignment=2,MarginV=48'[out_v]"
     )
 
@@ -370,7 +313,6 @@ def render_viral_short(raw_path, start_sec, peak_sec, srt_path, voice_hook_text,
         "-c:a", "aac", "-b:a", "192k",
         "final_short.mp4"
     ], check=True)
-
 def upload_to_youtube(video_path, title, stream_title, channel_name, live_url):
     creds_data = json.loads(os.environ["YOUTUBE_TOKEN_JSON"])
     creds = Credentials.from_authorized_user_info(creds_data)
@@ -405,13 +347,13 @@ def upload_to_youtube(video_path, title, stream_title, channel_name, live_url):
 if __name__ == "__main__":
     live_url, stream_title, channel_name = find_live_stream()
     if not live_url:
-        print("No live streams found right now. Exiting cleanly.", flush=True)
+        print("No eligible live streams found right now. Exiting cleanly.", flush=True)
         exit(0)
 
     record_live_chunk(live_url)
     start_sec, peak_sec = find_best_highlight("raw_chunk.mp4")
     if start_sec is None:
-        print("No major hype spike in this window. Skipping upload.", flush=True)
+        print("No major hype spike in this 5-minute window. Skipping upload.", flush=True)
         exit(0)
 
     subprocess.run([
@@ -428,5 +370,4 @@ if __name__ == "__main__":
     render_viral_short("raw_chunk.mp4", start_sec, peak_sec, srt_path, voice_hook, meme_trigger_sec, channel_name)
     upload_to_youtube("final_short.mp4", viral_title, stream_title, channel_name, live_url)
     record_clip_history(live_url, stream_title, channel_name, peak_sec)
-
 
