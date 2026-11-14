@@ -38,4 +38,17 @@ jobs:
           YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python -u main.py
+  
+     
+      - name: Save clipped stream history
+        if: always()
+        run: |
+          if [ -f history.txt ] || [ -f history.json ]; then
+            git config user.name "ViceCityClipsBot"
+            git config user.email "bot@://github.com"
+            git add history.json || true
+            git commit -m "Log clipped stream timestamp" || true
+            git push || true
+          fi
+
 
