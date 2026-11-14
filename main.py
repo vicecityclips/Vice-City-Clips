@@ -102,8 +102,9 @@ def find_live_stream():
 
     # 2. Fallback: Full free YouTube search for active LIVE streams (0 API quota)
     # Change "GTA+5+live" to "GTA+6+live" before November 19 launch!
+    import urllib.parse
     query = "GTA+5+live"
-    search_page = "https://youtube.com" + query
+    search_page = urllib.parse.urlunparse(("https", "youtube.com", "/results", "", "search_query=" + query, ""))
     req = urllib.request.Request(
         search_page,
         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
@@ -118,7 +119,7 @@ def find_live_stream():
         print(f"[Full Search] Found {len(unique_live_ids)} active live streams on YouTube.", flush=True)
 
         for vid_id in unique_live_ids[:10]:
-            vid_url = "https://youtube.com" + vid_id
+            vid_url = urllib.parse.urlunparse(("https", "youtube.com", "/watch", "", "v=" + vid_id, ""))
             cmd_chk = [
                 "yt-dlp", "--print", "%(is_live)s|%(title)s|%(channel)s",
                 "--no-warnings", "--ignore-errors"
