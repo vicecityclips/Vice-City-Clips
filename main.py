@@ -21,7 +21,7 @@ CHANNEL_HANDLE = "@Vice-City-Clips-Vault"
 
 CHUNK_SECONDS = 300         # Record 5-minute live buffer
 CLIP_DURATION = 40          # Core highlight duration (seconds)
-MIN_SPIKE_RATIO = 1.6       # Climax loudness threshold (raise to 2.3 for GTA 6 launch)
+MIN_SPIKE_RATIO = 2.3       # Climax loudness threshold (raise to 2.3 for GTA 6 launch)
 MIN_WORD_COUNT = 10         # Minimum spoken words to skip silent clips
 ENABLE_AI_VOICEOVER = True  # Adds energetic 2.5s AI hook voiceover at the start
 
@@ -74,7 +74,7 @@ def record_clip_history(stream_url, stream_title, channel_name, peak_sec):
 def find_live_stream():
     history = load_history()
     # Change "VALORANT" to "Grand Theft Auto VI" before November 19 launch!
-    game_name = "VALORANT"
+    game_name = "GTA 6"
 
     query = """
     query($name: String!) {
@@ -130,7 +130,7 @@ def find_live_stream():
             # Verify stream title matches target game & skip reruns
             # For GTA 6 launch, change "valorant" to: ("gta 6" not in t_low and "gta vi" not in t_low and "grand theft auto" not in t_low)
             t_low = title.lower()
-            if "valorant" not in t_low or "rerun" in t_low or "rebroadcast" in t_low:
+            if "gta 6" not in t_low or "rerun" in t_low or "rebroadcast" in t_low:
                 continue
 
             live_url = urllib.parse.urlunparse(("https", "www.twitch.tv", "/" + login, "", "", ""))
