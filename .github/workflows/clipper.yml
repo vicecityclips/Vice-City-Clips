@@ -24,23 +24,10 @@ jobs:
       - name: Install FFmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Install Python packages & Start PO Token Server
+      - name: Install Python packages
         run: |
-          pip install -U yt-dlp bgutil-ytdlp-pot-provider
+          pip install -U yt-dlp
           pip install -r requirements.txt
-          docker run -d --name pot-provider -p 4416:4416 brainicism/bgutil-ytdlp-pot-provider
-          sleep 3
-
-
-      - name: Decode YouTube cookies
-        env:
-          YOUTUBE_COOKIES_B64: ${{ secrets.YOUTUBE_COOKIES_B64 }}
-        run: |
-          if [ -n "$YOUTUBE_COOKIES_B64" ]; then
-            echo "$YOUTUBE_COOKIES_B64" | base64 --decode > cookies.txt
-            echo "Cookies decoded successfully!"
-          fi
-
 
       - name: Find Live Stream, Edit Viral Short & Auto-Upload
         env:
@@ -48,12 +35,13 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python -u main.py
 
+
       - name: Save clipped stream history
         if: always()
         run: |
           if [ -f history.json ]; then
             git config user.name "ViceCityClipsBot"
-            git config user.email "bot@://github.com"
+            git config user.email "actions@github.com"
             git add history.json || true
             git commit -m "Log clipped stream timestamp" || true
             git push || true
