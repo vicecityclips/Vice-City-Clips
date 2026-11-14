@@ -77,21 +77,28 @@ def find_live_stream():
     # Change "Grand Theft Auto V" to "Grand Theft Auto VI" before November 19 launch!
     game_name = "Grand Theft Auto V"
 
-    gql_payload = json.dumps([{
-        "operationName": "DirectoryPage_Game",
-        "variables": {
-            "name": game_name.lower(),
-            "options": {"sort": "VIEWER_COUNT", "recommendationsContext": {"platform": "web"}, "requestID": "JIRA-VXP-2397"},
-            "sortTypeIsRecency": False,
-            "limit": 15
-        },
-        "extensions": {
-            "persistedQuery": {
-                "version": 1,
-                "sha256Hash": "d5c5df7ab9ae65c3ea0f225738c08a36a4a76e4c6c31db7f8c4b8dc064227f9e"
+    query = """
+    query($name: String!) {
+      game(name: $name) {
+        streams(first: 15) {
+          edges {
+            node {
+              title
+              broadcaster {
+                login
+                displayName
+              }
             }
+          }
         }
-    }]).encode("utf-8")
+      }
+    }
+    """
+
+    gql_payload = json.dumps({
+        "query": query,
+        "variables": {"name": game_name}
+    }).encode("utf-8")
 
     gql_url = urllib.parse.urlunparse(("https", "gql.twitch.tv", "/gql", "", "", ""))
     req = urllib.request.Request(
@@ -104,8 +111,14 @@ def find_live_stream():
     )
 
     try:
-        resp_data = json.loads(urllib.request.urlopen(req, timeout=15).read().decode("utf-8"))
-        edges = resp_data[0]["data"]["game"]["streams"]["edges"]
+        raw_resp = urllib.request.urlopen(req, timeout=15).read().decode("utf-8")
+        resp_data = json.loads(raw_resp)
+        game_obj = resp_data.get("data", {}).get("game")
+        if not game_obj:
+            print(f"Twitch GQL response: {raw_resp[:200]}", flush=True)
+            return None, None, None
+
+        edges = game_obj["streams"]["edges"]
         print(f"[Twitch GQL] Found {len(edges)} live '{game_name}' streams.", flush=True)
 
         for edge in edges:
