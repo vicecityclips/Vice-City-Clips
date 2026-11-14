@@ -4,6 +4,7 @@ import time
 import asyncio
 import subprocess
 import urllib.parse
+import urllib.request
 import numpy as np
 from scipy.io import wavfile
 from faster_whisper import WhisperModel
@@ -73,30 +74,56 @@ def record_clip_history(stream_url, stream_title, channel_name, peak_sec):
 
 def find_live_stream():
     history = load_history()
-    # Change "grand-theft-auto-v" to "grand-theft-auto-vi" before November 19 launch!
-    category_slug = "grand-theft-auto-v"
-    twitch_dir = urllib.parse.urlunparse(("https", "www.twitch.tv", "/directory/category/" + category_slug, "", "", ""))
+    # Change "Grand Theft Auto V" to "Grand Theft Auto VI" before November 19 launch!
+    game_name = "Grand Theft Auto V"
 
-    cmd = [
-        "yt-dlp",
-        "--flat-playlist",
-        "--playlist-end", "10",
-        "--print", "%(title)s|%(uploader)s|%(webpage_url)s",
-        "--no-warnings",
-        "--ignore-errors",
-        twitch_dir
-    ]
-    res = subprocess.run(cmd, capture_output=True, text=True)
+    gql_payload = json.dumps([{
+        "operationName": "DirectoryPage_Game",
+        "variables": {
+            "name": game_name.lower(),
+            "options": {"sort": "VIEWER_COUNT", "recommendationsContext": {"platform": "web"}, "requestID": "JIRA-VXP-2397"},
+            "sortTypeIsRecency": False,
+            "limit": 15
+        },
+        "extensions": {
+            "persistedQuery": {
+                "version": 1,
+                "sha256Hash": "d5c5df7ab9ae65c3ea0f225738c08a36a4a76e4c6c31db7f8c4b8dc064227f9e"
+            }
+        }
+    }]).encode("utf-8")
 
-    for line in res.stdout.strip().splitlines():
-        parts = line.split("|", 2)
-        if len(parts) == 3:
-            title, channel_name, live_url = parts
+    gql_url = urllib.parse.urlunparse(("https", "gql.twitch.tv", "/gql", "", "", ""))
+    req = urllib.request.Request(
+        gql_url,
+        data=gql_payload,
+        headers={
+            "Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko",
+            "Content-Type": "application/json"
+        }
+    )
+
+    try:
+        resp_data = json.loads(urllib.request.urlopen(req, timeout=15).read().decode("utf-8"))
+        edges = resp_data[0]["data"]["game"]["streams"]["edges"]
+        print(f"[Twitch GQL] Found {len(edges)} live '{game_name}' streams.", flush=True)
+
+        for edge in edges:
+            node = edge["node"]
+            broadcaster = node["broadcaster"]
+            login = broadcaster["login"]
+            channel_name = broadcaster["displayName"]
+            title = node.get("title", "Live GTA Gameplay")
+            live_url = urllib.parse.urlunparse(("https", "www.twitch.tv", "/" + login, "", "", ""))
+
             if can_clip_stream(live_url, history):
                 print(f"[Twitch Live Hit] Stream by {channel_name}: {title} ({live_url})", flush=True)
                 return live_url, title, channel_name
+    except Exception as e:
+        print(f"Twitch GQL error: {e}", flush=True)
 
     return None, None, None
+
 
 def record_live_chunk(live_url):
     print(f"Recording {CHUNK_SECONDS}s live chunk from Twitch...", flush=True)
