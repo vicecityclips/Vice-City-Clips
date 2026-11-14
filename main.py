@@ -74,7 +74,7 @@ def record_clip_history(stream_url, stream_title, channel_name, peak_sec):
 def find_live_stream():
     history = load_history()
     # Change "VALORANT" to "Grand Theft Auto VI" before November 19 launch!
-    game_name = "GTA 6"
+    game_name = "GTA 5"
 
     query = """
     query($name: String!) {
@@ -130,7 +130,7 @@ def find_live_stream():
             # Verify stream title matches target game & skip reruns
             # For GTA 6 launch, change "valorant" to: ("gta 6" not in t_low and "gta vi" not in t_low and "grand theft auto" not in t_low)
             t_low = title.lower()
-            if "gta 6" not in t_low or "rerun" in t_low or "rebroadcast" in t_low:
+            if "gta 5" not in t_low or "rerun" in t_low or "rebroadcast" in t_low:
                 continue
 
             live_url = urllib.parse.urlunparse(("https", "www.twitch.tv", "/" + login, "", "", ""))
