@@ -24,14 +24,13 @@ jobs:
       - name: Install FFmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Install Python packages & Node PO Token Server
+      - name: Install Python packages & Start PO Token Server
         run: |
           pip install -U yt-dlp bgutil-ytdlp-pot-provider
           pip install -r requirements.txt
-          git clone --single-branch --branch 1.2.2 https://github.com /tmp/pot
-          cd /tmp/pot/server && npm install && npx tsc
-          nohup node /tmp/pot/server/build/main.js > /tmp/pot.log 2>&1 &
-          sleep 4
+          docker run -d --name pot-provider -p 4416:4416 brainicism/bgutil-ytdlp-pot-provider
+          sleep 3
+
 
       - name: Decode YouTube cookies
         env:
