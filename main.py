@@ -118,13 +118,17 @@ def find_live_stream():
         unique_live_ids = [x for x in live_ids if not (x in seen or seen.add(x))]
         print(f"[Full Search] Found {len(unique_live_ids)} active live streams on YouTube.", flush=True)
 
-        for vid_id in unique_live_ids[:10]:
+        for vid_id in unique_live_ids[:15]:
             vid_url = urllib.parse.urlunparse(("https", "youtube.com", "/watch", "", "v=" + vid_id, ""))
             cmd_chk = [
                 "yt-dlp", "--print", "%(is_live)s|%(title)s|%(channel)s",
-                "--no-warnings", "--ignore-errors"
+                "--no-warnings",
             ] + cookies + [vid_url]
             chk = subprocess.run(cmd_chk, capture_output=True, text=True).stdout.strip()
+            res_chk = subprocess.run(cmd_chk, capture_output=True, text=True)
+            chk = res_chk.stdout.strip()
+            print(f"Checking {vid_id}: stdout='{chk}' | stderr='{res_chk.stderr.strip()[:120]}'", flush=True)
+
             if chk.startswith("True|"):
                 _, title, channel_name = chk.split("|", 2)
                 if can_clip_stream(vid_url, history):
