@@ -22,5 +22,17 @@
       }
     ],
     "last_clipped_at": 1794661536
+  },
+  "https://www.twitch.tv/darkviperau": {
+    "title": "GTA 5 100% Speedrun Practice | $6,767 USD !giveaway",
+    "channel": "DarkViperAU",
+    "count": 1,
+    "clips": [
+      {
+        "utc_time": "2026-11-14 13:27:32 UTC",
+        "chunk_peak_sec": 135
+      }
+    ],
+    "last_clipped_at": 1794662852
   }
 }
