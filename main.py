@@ -108,12 +108,16 @@ def find_live_stream():
     search_page = urllib.parse.urlunparse(("https", "youtube.com", "/results", "", "search_query=" + query, ""))
     req = urllib.request.Request(
         search_page,
-        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Cookie": "CONSENT=YES+cb.20210328-17-p0.en+FX+111"
+        }
     )
     try:
         html = urllib.request.urlopen(req, timeout=15).read().decode("utf-8", errors="ignore")
-        # Extract only video IDs that have YouTube's active LIVE badge nearby
-        live_ids = re.findall(r'"videoId":"([a-zA-Z0-9_-]{11})".{0,1500}?"BADGE_STYLE_TYPE_LIVE_NOW"', html)
+        # Match both LIVE badge formats across a 4000-char block
+        live_ids = re.findall(r'"videoId":"([a-zA-Z0-9_-]{11})".{0,4000}?(?:BADGE_STYLE_TYPE_LIVE_NOW|"style":"LIVE")', html)
+
         # Remove duplicates while keeping top-ranked search order
         seen = set()
         unique_live_ids = [x for x in live_ids if not (x in seen or seen.add(x))]
