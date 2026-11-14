@@ -322,14 +322,14 @@ def render_viral_short(raw_path, start_sec, peak_sec, srt_path, voice_hook_text,
         bg_filter = "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=28:6,eq=brightness=-0.08:saturation=1.3[bg];"
 
     
-    zoom_expr = f"if(between(t,{climax_rel-0.25},{climax_rel+0.55}),1.18,if(lt(mod(t,4),0.4),1.08,1.0))"
+    zoom_expr = f"if(between(in_time,{climax_rel-0.25},{climax_rel+0.55}),1.18,if(lt(mod(in_time,4),0.4),1.08,1.0))"
     fg_filter = (
         f"[0:v]scale=1080:608,setsar=1,"
         f"eq=contrast=1.18:saturation=1.30:brightness='if(between(t,{climax_rel-0.1},{climax_rel+0.15}),0.18,0)':eval=frame,"
-        f"scale=w='1080*{zoom_expr}':h='608*{zoom_expr}':eval=frame,"
-        f"crop=w=1080:h=608:"
-        f"x='(iw-1080)/2+if(between(t,{climax_rel-0.25},{climax_rel+0.55}),24*sin(t*70),0)':"
-        f"y='(ih-608)/2+if(between(t,{climax_rel-0.25},{climax_rel+0.55}),24*cos(t*70),0)':eval=frame[fg];"
+        f"zoompan=z='{zoom_expr}':"
+        f"x='iw/2-(iw/zoom/2)+if(between(in_time,{climax_rel-0.25},{climax_rel+0.55}),20*sin(in_time*70),0)':"
+        f"y='ih/2-(ih/zoom/2)+if(between(in_time,{climax_rel-0.25},{climax_rel+0.55}),20*cos(in_time*70),0)':"
+        f"d=1:s=1080x608:fps=30[fg];"
         "[bg][fg]overlay=(W-w)/2:(H-h)/2[base_v];"
     )
 
