@@ -72,25 +72,18 @@ def find_live_stream():
 
 def record_live_chunk(live_url):
     cookies = get_cookies_arg()
-    cmd_url = ["yt-dlp", "-g", "-f", "best[height<=1080]"] + cookies + [live_url]
-    urls = subprocess.run(cmd_url, capture_output=True, text=True, timeout=30).stdout.strip().splitlines()
-    if not urls:
-        raise RuntimeError("Could not extract playable stream URL.")
-    stream_url = urls
+    print(f"Recording {CHUNK_SECONDS}s live chunk via yt-dlp...", flush=True)
+    cmd = [
+        "yt-dlp",
+        "-f", "best[height<=720]",
+        "--downloader", "ffmpeg",
+        "--downloader-args", f"ffmpeg_i:-t {CHUNK_SECONDS}",
+        "-o", "raw_chunk.mp4",
+        "--no-part", "--no-warnings"
+    ] + cookies + [live_url]
+    subprocess.run(cmd, check=True, timeout=CHUNK_SECONDS + 180)
+    print("Finished recording live chunk!", flush=True)
 
-    cmd_rec = [
-        "ffmpeg", "-y",
-        "-reconnect", "1",
-        "-reconnect_streamed", "1",
-        "-reconnect_delay_max", "5",
-        "-rw_timeout", "15000000",
-        "-i", stream_url,
-        "-t", str(CHUNK_SECONDS),
-        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
-        "-c:a", "aac", "-b:a", "128k",
-        "raw_chunk.mp4"
-    ]
-    subprocess.run(cmd_rec, check=True, timeout=CHUNK_SECONDS + 180)
 
 
 def find_best_highlight(video_path):
