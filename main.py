@@ -110,7 +110,7 @@ def find_live_stream():
         vid_id = vid_id.strip()
         if not vid_id:
             continue
-        vid_url = f"https://youtube.com{vid_id}"
+        vid_url = f"https://youtube.com/watch?v={vid_id}"
         cmd_chk = [
             "yt-dlp", "--print", "%(is_live)s|%(title)s|%(channel)s",
             "--no-warnings", "--ignore-errors"
