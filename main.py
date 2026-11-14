@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import asyncio
 import subprocess
 import numpy as np
@@ -33,20 +34,69 @@ MIN_SPIKE_RATIO = 2.3       # Climax must be 2.3x louder than average
 MIN_WORD_COUNT = 12         # Minimum spoken words to avoid silent clips
 ENABLE_AI_VOICEOVER = True  # Adds energetic 2.5s AI hook voiceover
 
+HISTORY_FILE = "history.json"
+MAX_CLIPS_PER_STREAM = 6    # Allow up to 6 Shorts from a single multi-hour stream
+MIN_GAP_SECONDS = 1800      # Wait at least 30 mins (1800s) before clipping the same stream again
+
 def get_cookies_arg():
     return ["--cookies", "cookies.txt"] if os.path.exists("cookies.txt") else []
 
+def load_history():
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def can_clip_stream(stream_url, history):
+    entry = history.get(stream_url)
+    if not entry:
+        return True
+    if entry.get("count", 0) >= MAX_CLIPS_PER_STREAM:
+        print(f"Skipping {stream_url}: reached max {MAX_CLIPS_PER_STREAM} clips.", flush=True)
+        return False
+    last_time = entry.get("last_clipped_at", 0)
+    elapsed = int(time.time() - last_time)
+    if elapsed < MIN_GAP_SECONDS:
+        mins_left = (MIN_GAP_SECONDS - elapsed) // 60
+        print(f"Skipping {stream_url}: cooldown active ({mins_left}m remaining).", flush=True)
+        return False
+    return True
+
+def record_clip_history(stream_url, stream_title, channel_name, peak_sec):
+    history = load_history()
+    entry = history.get(stream_url, {
+        "title": stream_title,
+        "channel": channel_name,
+        "count": 0,
+        "clips": []
+    })
+    entry["count"] += 1
+    entry["last_clipped_at"] = int(time.time())
+    entry["clips"].append({
+        "utc_time": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
+        "chunk_peak_sec": int(peak_sec)
+    })
+    history[stream_url] = entry
+    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(history, f, indent=2)
+    print(f"Saved timestamp to {HISTORY_FILE} (Clip #{entry['count']} for this stream).", flush=True)
+
 def find_live_stream():
+    history = load_history()
     cookies = get_cookies_arg()
     # 1. Check curated watchlist first
     for url in WATCHLIST:
         cmd = ["yt-dlp", "--print", "%(is_live)s|%(title)s|%(channel)s|%(webpage_url)s", "--no-warnings"] + cookies + [url]
         res = subprocess.run(cmd, capture_output=True, text=True)
         out = res.stdout.strip()
-        if out.startswith("True|"):
-            _, title, channel_name, live_url = out.split("|", 3)
-            print(f"[Watchlist Hit] Live stream by {channel_name}: {title} ({live_url})", flush=True)
-            return live_url, title, channel_name
+    if out.startswith("True|"):
+         _, title, channel_name, live_url = out.split("|", 3)
+         if can_clip_stream(live_url, history):
+             print(f"[Watchlist Hit] Live stream by {channel_name}: {title} ({live_url})", flush=True)
+             return live_url, title, channel_name
 
     # 2. Fallback: Use yt-dlp's native live filter on top 10 search results
     search_query = "ytsearch10:GTA 5 live gameplay"
@@ -61,10 +111,11 @@ def find_live_stream():
 
     for line in res.stdout.strip().splitlines():
         parts = line.split("|", 2)
-        if len(parts) == 3:
-            title, channel_name, url = parts
-            print(f"[Live Search Hit] Found active stream by {channel_name}: {title} ({url})", flush=True)
-            return url, title, channel_name
+    if len(parts) == 3:
+         title, channel_name, url = parts
+         if can_clip_stream(url, history):
+             print(f"[Live Search Hit] Found active stream by {channel_name}: {title} ({url})", flush=True)
+             return url, title, channel_name
 
     return None, None, None
     
@@ -350,4 +401,6 @@ if __name__ == "__main__":
     viral_title, voice_hook = generate_viral_metadata_and_hook(transcript, stream_title)
     render_viral_short("raw_chunk.mp4", start_sec, peak_sec, srt_path, voice_hook, meme_trigger_sec, channel_name)
     upload_to_youtube("final_short.mp4", viral_title, stream_title, channel_name, live_url)
+    record_clip_history(live_url, stream_title, channel_name, peak_sec)
+
 
