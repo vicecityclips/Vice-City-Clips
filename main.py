@@ -21,7 +21,7 @@ CHANNEL_HANDLE = "@Vice-City-Clips-Vault"
 
 CHUNK_SECONDS = 300         # Record 5-minute live buffer
 CLIP_DURATION = 40          # Core highlight duration (seconds)
-MIN_SPIKE_RATIO = 2.3       # Climax loudness threshold (raise to 2.3 for GTA 6 launch)
+MIN_SPIKE_RATIO = 1.5       # Climax loudness threshold (raise to 2.3 for GTA 6 launch)
 MIN_WORD_COUNT = 10         # Minimum spoken words to skip silent clips
 ENABLE_AI_VOICEOVER = True  # Adds energetic 2.5s AI hook voiceover at the start
 
@@ -402,28 +402,34 @@ def upload_to_youtube(video_path, title):
     print(f"Uploaded PUBLIC Short to {CHANNEL_HANDLE}! Video ID: {response['id']}", flush=True)
 
 if __name__ == "__main__":
-    live_url, stream_title, channel_name = find_live_stream()
-    if not live_url:
-        print("No eligible live streams found right now. Exiting cleanly.", flush=True)
-        exit(0)
+    for attempt in range(1, 4):
+        print(f"\n--- Attempt {attempt}/3: Searching for active stream ---", flush=True)
+        live_url, stream_title, channel_name = find_live_stream()
+        if not live_url:
+            print("No eligible live streams found right now. Exiting cleanly.", flush=True)
+            break
 
-    record_live_chunk(live_url)
-    start_sec, peak_sec = find_best_highlight("raw_chunk.ts")
-    if start_sec is None:
-        print("No major hype spike in this 5-minute window. Skipping upload.", flush=True)
-        exit(0)
+        record_live_chunk(live_url)
+        start_sec, peak_sec = find_best_highlight("raw_chunk.ts")
+        if start_sec is None:
+            print("No major hype spike in this stream. Trying next stream...", flush=True)
+            # Temporarily mark stream on cooldown so next attempt picks a different streamer
+            record_clip_history(live_url, stream_title, channel_name, 0)
+            continue
 
-    subprocess.run([
-        "ffmpeg", "-y", "-ss", str(start_sec), "-i", "raw_chunk.ts",
-        "-t", str(CLIP_DURATION), "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "temp_transcribe.mp4"
-    ], check=True)
+        subprocess.run([
+            "ffmpeg", "-y", "-ss", str(start_sec), "-i", "raw_chunk.ts",
+            "-t", str(CLIP_DURATION), "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "temp_transcribe.mp4"
+        ], check=True)
 
-    srt_path, transcript, meme_trigger_sec = transcribe_clip("temp_transcribe.mp4")
-    if not srt_path:
-        print("Not enough spoken dialogue in clip. Skipping upload.", flush=True)
-        exit(0)
+        srt_path, transcript, meme_trigger_sec = transcribe_clip("temp_transcribe.mp4")
+        if not srt_path:
+            print("Not enough spoken dialogue in clip. Trying next stream...", flush=True)
+            record_clip_history(live_url, stream_title, channel_name, 0)
+            continue
 
-    viral_title, voice_hook = generate_viral_metadata_and_hook(transcript, stream_title)
-    render_viral_short("raw_chunk.ts", start_sec, peak_sec, srt_path, voice_hook, meme_trigger_sec)
-    upload_to_youtube("final_short.mp4", viral_title)
-    record_clip_history(live_url, stream_title, channel_name, peak_sec)
+        viral_title, voice_hook = generate_viral_metadata_and_hook(transcript, stream_title)
+        render_viral_short("raw_chunk.ts", start_sec, peak_sec, srt_path, voice_hook, meme_trigger_sec)
+        upload_to_youtube("final_short.mp4", viral_title)
+        record_clip_history(live_url, stream_title, channel_name, peak_sec)
+        break
