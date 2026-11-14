@@ -130,7 +130,7 @@ def find_live_stream():
             # Verify stream title matches target game & skip reruns
             # For GTA 6 launch, change "valorant" to: ("gta 6" not in t_low and "gta vi" not in t_low and "grand theft auto" not in t_low)
             t_low = title.lower()
-            if "gta 5" not in t_low or "rerun" in t_low or "rebroadcast" in t_low:
+            if ("gta" not in t_low and "grand theft auto" not in t_low and "rp" not in t_low) or "rerun" in t_low or "rebroadcast" in t_low:
                 continue
 
             live_url = urllib.parse.urlunparse(("https", "www.twitch.tv", "/" + login, "", "", ""))
