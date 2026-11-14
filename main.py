@@ -98,26 +98,32 @@ def find_live_stream():
              print(f"[Watchlist Hit] Live stream by {channel_name}: {title} ({live_url})", flush=True)
              return live_url, title, channel_name
 
-    # 2. Fallback: Use yt-dlp's native live filter on top 10 search results
-    search_query = "ytsearch10:GTA 5 live gameplay"
-    cmd_search = [
-        "yt-dlp",
-        "--match-filter", "is_live",
-        "--playlist-end", "10",
-        "--print", "%(title)s|%(channel)s|%(webpage_url)s",
+        # 2. Fallback: Check top 10 search results for active live broadcasts
+    search_query = "ytsearch10:GTA 5 live"
+    cmd_ids = [
+        "yt-dlp", "--flat-playlist", "--print", "%(id)s",
         "--no-warnings", "--ignore-errors"
     ] + cookies + [search_query]
-    res = subprocess.run(cmd_search, capture_output=True, text=True)
+    res_ids = subprocess.run(cmd_ids, capture_output=True, text=True)
 
-    for line in res.stdout.strip().splitlines():
-        parts = line.split("|", 2)
-        if len(parts) == 3:
-            title, channel_name, url = parts
-            if can_clip_stream(url, history):
-                print(f"[Live Search Hit] Found active stream by {channel_name}: {title} ({url})", flush=True)
-                return url, title, channel_name
+    for vid_id in res_ids.stdout.strip().splitlines():
+        vid_id = vid_id.strip()
+        if not vid_id:
+            continue
+        vid_url = f"https://youtube.com{vid_id}"
+        cmd_chk = [
+            "yt-dlp", "--print", "%(is_live)s|%(title)s|%(channel)s",
+            "--no-warnings", "--ignore-errors"
+        ] + cookies + [vid_url]
+        chk = subprocess.run(cmd_chk, capture_output=True, text=True).stdout.strip()
+        if chk.startswith("True|"):
+            _, title, channel_name = chk.split("|", 2)
+            if can_clip_stream(vid_url, history):
+                print(f"[Live Search Hit] Found active stream by {channel_name}: {title} ({vid_url})", flush=True)
+                return vid_url, title, channel_name
 
     return None, None, None
+
     
 
 def record_live_chunk(live_url):
