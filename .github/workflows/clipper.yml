@@ -24,15 +24,24 @@ jobs:
       - name: Install FFmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Install Python packages & PO Token Provider
+      - name: Install Python packages & Node PO Token Server
         run: |
           pip install -U yt-dlp bgutil-ytdlp-pot-provider
           pip install -r requirements.txt
-
-      - name: Start YouTube PO Token Server
-        run: |
-          nohup python3 -m bgutil_ytdlp_pot_provider > pot_server.log 2>&1 &
+          git clone --single-branch --branch 1.2.2 https://github.com /tmp/pot
+          cd /tmp/pot/server && npm install && npx tsc
+          nohup node /tmp/pot/server/build/main.js > /tmp/pot.log 2>&1 &
           sleep 4
+
+      - name: Decode YouTube cookies
+        env:
+          YOUTUBE_COOKIES_B64: ${{ secrets.YOUTUBE_COOKIES_B64 }}
+        run: |
+          if [ -n "$YOUTUBE_COOKIES_B64" ]; then
+            echo "$YOUTUBE_COOKIES_B64" | base64 --decode > cookies.txt
+            echo "Cookies decoded successfully!"
+          fi
+
 
       - name: Find Live Stream, Edit Viral Short & Auto-Upload
         env:
