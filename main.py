@@ -111,11 +111,11 @@ def find_live_stream():
 
     for line in res.stdout.strip().splitlines():
         parts = line.split("|", 2)
-    if len(parts) == 3:
-         title, channel_name, url = parts
-         if can_clip_stream(url, history):
-             print(f"[Live Search Hit] Found active stream by {channel_name}: {title} ({url})", flush=True)
-             return url, title, channel_name
+        if len(parts) == 3:
+            title, channel_name, url = parts
+            if can_clip_stream(url, history):
+                print(f"[Live Search Hit] Found active stream by {channel_name}: {title} ({url})", flush=True)
+                return url, title, channel_name
 
     return None, None, None
     
