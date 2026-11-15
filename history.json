@@ -146,5 +146,29 @@
       }
     ],
     "last_clipped_at": 1794747224
+  },
+  "https://www.twitch.tv/heystan": {
+    "title": "[DROPS AKTIV AB 18.11] GTA 6 in 3 Tagen, Free Items erhalten, Community Tag und Murmeln | \ud83c\udfc6212 Platin/100% Games | \ud83d\udd17 !grover !whatsapp",
+    "channel": "HeyStan",
+    "count": 1,
+    "clips": [
+      {
+        "utc_time": "2026-11-15 18:47:33 UTC",
+        "chunk_peak_sec": 0
+      }
+    ],
+    "last_clipped_at": 1794768453
+  },
+  "https://www.twitch.tv/sh1ane_": {
+    "title": "GTA VI Giveaway",
+    "channel": "sh1ane_",
+    "count": 1,
+    "clips": [
+      {
+        "utc_time": "2026-11-15 18:53:52 UTC",
+        "chunk_peak_sec": 55
+      }
+    ],
+    "last_clipped_at": 1794768832
   }
 }
