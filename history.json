@@ -114,5 +114,29 @@
       }
     ],
     "last_clipped_at": 1794727099
+  },
+  "https://www.twitch.tv/domthebomblive": {
+    "title": "GRAND THEFT AUTO 6 GAMEPLAY MARATHON !Giveaway",
+    "channel": "DomTheBombLive",
+    "count": 1,
+    "clips": [
+      {
+        "utc_time": "2026-11-15 07:36:52 UTC",
+        "chunk_peak_sec": 0
+      }
+    ],
+    "last_clipped_at": 1794728212
+  },
+  "https://www.twitch.tv/ibragaming_fc": {
+    "title": "\u2705 GTA VI GIVEAWAY  \u2705 !EnterGiveaway",
+    "channel": "ibragaming_fc",
+    "count": 1,
+    "clips": [
+      {
+        "utc_time": "2026-11-15 07:43:13 UTC",
+        "chunk_peak_sec": 71
+      }
+    ],
+    "last_clipped_at": 1794728593
   }
 }
