@@ -66,13 +66,17 @@
   "https://www.twitch.tv/illojuan": {
     "title": "4 D\u00cdAS \ud83d\udcc5 ATRACO CON MONITOR OLED \ud83d\udc8e RECTA FINAL \ud83d\ude2d ESTOY NERVIOSO \ud83d\udea8 - Grand Theft Auto V #5",
     "channel": "IlloJuan",
-    "count": 1,
+    "count": 2,
     "clips": [
       {
         "utc_time": "2026-11-14 21:42:24 UTC",
         "chunk_peak_sec": 86
+      },
+      {
+        "utc_time": "2026-11-15 01:05:22 UTC",
+        "chunk_peak_sec": 197
       }
     ],
-    "last_clipped_at": 1794692544
+    "last_clipped_at": 1794704722
   }
 }
