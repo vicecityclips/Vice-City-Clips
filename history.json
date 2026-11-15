@@ -90,5 +90,29 @@
       }
     ],
     "last_clipped_at": 1794715060
+  },
+  "https://www.twitch.tv/eafcemployee26": {
+    "title": "\u2705 GTA 6  \u2705 WE MADE IT BOYS !",
+    "channel": "EAFCEMPLOYEE26",
+    "count": 1,
+    "clips": [
+      {
+        "utc_time": "2026-11-15 07:13:23 UTC",
+        "chunk_peak_sec": 0
+      }
+    ],
+    "last_clipped_at": 1794726803
+  },
+  "https://www.twitch.tv/ravenculture": {
+    "title": "\ud83d\udea8 GTA VI EST\u00c1 CHEGANDO! \ud83d\udd25 | CONTAGEM REGRESSIVA \u23f3\ud83c\udfae | 18/11 \u00c0S 08H DA MANH\u00c3! | RUMO A VICE CITY \ud83c\udf34",
+    "channel": "RaveNCulture",
+    "count": 1,
+    "clips": [
+      {
+        "utc_time": "2026-11-15 07:18:19 UTC",
+        "chunk_peak_sec": 0
+      }
+    ],
+    "last_clipped_at": 1794727099
   }
 }
