@@ -78,5 +78,17 @@
       }
     ],
     "last_clipped_at": 1794704722
+  },
+  "https://www.twitch.tv/sentry": {
+    "title": "\ud83d\udfe8\u25fc\ufe0f Ron Otterman - NEWS MAN! - NoPixel V - GTARP",
+    "channel": "Sentry",
+    "count": 1,
+    "clips": [
+      {
+        "utc_time": "2026-11-15 03:57:40 UTC",
+        "chunk_peak_sec": 166
+      }
+    ],
+    "last_clipped_at": 1794715060
   }
 }
