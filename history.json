@@ -170,5 +170,17 @@
       }
     ],
     "last_clipped_at": 1794768832
+  },
+  "https://www.twitch.tv/sorcyer": {
+    "title": "Je peut stream GTA 6 a 60 fps \ud83d\ude31",
+    "channel": "SorcYer",
+    "count": 1,
+    "clips": [
+      {
+        "utc_time": "2026-11-15 21:43:16 UTC",
+        "chunk_peak_sec": 199
+      }
+    ],
+    "last_clipped_at": 1794778996
   }
 }
