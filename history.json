@@ -130,13 +130,17 @@
   "https://www.twitch.tv/ibragaming_fc": {
     "title": "\u2705 GTA VI GIVEAWAY  \u2705 !EnterGiveaway",
     "channel": "ibragaming_fc",
-    "count": 1,
+    "count": 2,
     "clips": [
       {
         "utc_time": "2026-11-15 07:43:13 UTC",
         "chunk_peak_sec": 71
+      },
+      {
+        "utc_time": "2026-11-15 12:53:44 UTC",
+        "chunk_peak_sec": 129
       }
     ],
-    "last_clipped_at": 1794728593
+    "last_clipped_at": 1794747224
   }
 }
