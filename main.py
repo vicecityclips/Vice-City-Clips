@@ -22,7 +22,7 @@ CHANNEL_HANDLE = "@Vice-City-Clips-Vault"
 CHUNK_SECONDS = 300         # 5-minute live recording buffer
 CLIP_DURATION = 40          # Core highlight length (seconds)
 HOOK_DURATION = 2.5         # Cold-open climax preview length (seconds)
-MIN_SPIKE_RATIO = 2.2       # Strict energy threshold to skip boring/quiet streams
+MIN_SPIKE_RATIO = 1.8       # Strict energy threshold to skip boring/quiet streams
 MIN_WORD_COUNT = 14         # Requires active commentary/dialogue
 ENABLE_AI_VOICEOVER = True  # Energetic AI intro hook voiceover
 
