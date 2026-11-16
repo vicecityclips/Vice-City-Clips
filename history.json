@@ -126,14 +126,18 @@
   "https://www.twitch.tv/domthebomblive": {
     "title": "GRAND THEFT AUTO 6 GAMEPLAY MARATHON !Giveaway",
     "channel": "DomTheBombLive",
-    "count": 1,
+    "count": 2,
     "clips": [
       {
         "utc_time": "2026-11-15 07:36:52 UTC",
         "chunk_peak_sec": 0
+      },
+      {
+        "utc_time": "2026-11-16 04:14:49 UTC",
+        "chunk_peak_sec": 40
       }
     ],
-    "last_clipped_at": 1794728212
+    "last_clipped_at": 1794802489
   },
   "https://www.twitch.tv/ibragaming_fc": {
     "title": "\u2705 GTA VI GIVEAWAY  \u2705 !EnterGiveaway",
