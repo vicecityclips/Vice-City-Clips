@@ -202,5 +202,17 @@
       }
     ],
     "last_clipped_at": 1794846231
+  },
+  "https://www.twitch.tv/sharkysrk": {
+    "title": "CONCOURS PS5 + GTA 6 A GAGNER \ud83c\udf81( !sub !instantgaming !gta6 ) !hellofresh\ud83e\udd51 !concours",
+    "channel": "SharkySRK",
+    "count": 1,
+    "clips": [
+      {
+        "utc_time": "2026-11-16 16:50:01 UTC",
+        "chunk_peak_sec": 39
+      }
+    ],
+    "last_clipped_at": 1794847801
   }
 }
