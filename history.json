@@ -190,5 +190,17 @@
       }
     ],
     "last_clipped_at": 1794778996
+  },
+  "https://www.twitch.tv/gamestar": {
+    "title": "\ud83d\udea8GTA-Week: Wir gehen rein!\ud83d\udea8 | Vice City Live | !frage !clips",
+    "channel": "GameStar",
+    "count": 1,
+    "clips": [
+      {
+        "utc_time": "2026-11-16 16:23:51 UTC",
+        "chunk_peak_sec": 37
+      }
+    ],
+    "last_clipped_at": 1794846231
   }
 }
