@@ -94,7 +94,7 @@
   "https://www.twitch.tv/eafcemployee26": {
     "title": "\u2705 GTA 6  \u2705 WE MADE IT BOYS !",
     "channel": "EAFCEMPLOYEE26",
-    "count": 3,
+    "count": 4,
     "clips": [
       {
         "utc_time": "2026-11-15 07:13:23 UTC",
@@ -107,9 +107,13 @@
       {
         "utc_time": "2026-11-16 01:23:35 UTC",
         "chunk_peak_sec": 32
+      },
+      {
+        "utc_time": "2026-11-16 19:02:25 UTC",
+        "chunk_peak_sec": 0
       }
     ],
-    "last_clipped_at": 1794792215
+    "last_clipped_at": 1794855745
   },
   "https://www.twitch.tv/ravenculture": {
     "title": "\ud83d\udea8 GTA VI EST\u00c1 CHEGANDO! \ud83d\udd25 | CONTAGEM REGRESSIVA \u23f3\ud83c\udfae | 18/11 \u00c0S 08H DA MANH\u00c3! | RUMO A VICE CITY \ud83c\udf34",
@@ -194,14 +198,18 @@
   "https://www.twitch.tv/gamestar": {
     "title": "\ud83d\udea8GTA-Week: Wir gehen rein!\ud83d\udea8 | Vice City Live | !frage !clips",
     "channel": "GameStar",
-    "count": 1,
+    "count": 2,
     "clips": [
       {
         "utc_time": "2026-11-16 16:23:51 UTC",
         "chunk_peak_sec": 37
+      },
+      {
+        "utc_time": "2026-11-16 18:57:27 UTC",
+        "chunk_peak_sec": 0
       }
     ],
-    "last_clipped_at": 1794846231
+    "last_clipped_at": 1794855447
   },
   "https://www.twitch.tv/sharkysrk": {
     "title": "CONCOURS PS5 + GTA 6 A GAGNER \ud83c\udf81( !sub !instantgaming !gta6 ) !hellofresh\ud83e\udd51 !concours",
