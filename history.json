@@ -298,5 +298,17 @@
       }
     ],
     "last_clipped_at": 1794923341
+  },
+  "https://www.twitch.tv/skevich_": {
+    "title": "\u041c\u0410\u0420\u0410\u0424\u041e\u041d GTA !\u0442\u0433 !youtube !\u043f\u0456\u0434\u043f\u0438\u0441\u043a\u0430 !\u0437\u0431\u0456\u0440",
+    "channel": "Skevich_",
+    "count": 1,
+    "clips": [
+      {
+        "utc_time": "2026-11-17 14:04:55 UTC",
+        "chunk_peak_sec": 87
+      }
+    ],
+    "last_clipped_at": 1794924295
   }
 }
