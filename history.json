@@ -338,5 +338,17 @@
       }
     ],
     "last_clipped_at": 1794931345
+  },
+  "https://www.twitch.tv/deansocool": {
+    "title": "SGT DenZel Shiesty SWAT Lead | Nopixel V | !Underdog !NTE !discord !socials",
+    "channel": "Deansocool",
+    "count": 1,
+    "clips": [
+      {
+        "utc_time": "2026-11-17 19:04:36 UTC",
+        "chunk_peak_sec": 269
+      }
+    ],
+    "last_clipped_at": 1794942276
   }
 }
