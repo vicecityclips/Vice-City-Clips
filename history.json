@@ -274,5 +274,29 @@
       }
     ],
     "last_clipped_at": 1794919432
+  },
+  "https://www.twitch.tv/oskarwesterlin": {
+    "title": "WESTERTHON DAG 4 - Pr\u00f8ver \u00e5 finishe GTA5 f\u00f8r GTA6 (reklame, 18+) !dominos !storytel !onsk !clip",
+    "channel": "OskarWesterlin",
+    "count": 1,
+    "clips": [
+      {
+        "utc_time": "2026-11-17 13:41:21 UTC",
+        "chunk_peak_sec": 0
+      }
+    ],
+    "last_clipped_at": 1794922881
+  },
+  "https://www.twitch.tv/shuteye_orange": {
+    "title": "\ud83d\udea8\u3010GTA6\u9996\u767c24HR\u3011\u4f4f\u9032\u7f6a\u60e1\u90fd\u5e02\ud83c\udf34\u5b8c\u6574\u5287\u60c5\u966a\u4e00\u8d77\u8ffd\uff01\ud83c\udf81\u76f4\u64ad\u9001\u904a\u6232\ud83d\udd1e\ud83c\ude32\u6050\u6016\u6bcf\u665a6~7\u9ede\ud83c\udf81\u770b\u53f0\u514d\u8cbb\u62ffMyCard/Steam\u9ede\u6578!MY\ud83d\udd34 \u3010\ud83c\udf4a\u8766\u611b\u6a58\u5b50\u3011",
+    "channel": "\u8766\u611b\u6a58\u5b50",
+    "count": 1,
+    "clips": [
+      {
+        "utc_time": "2026-11-17 13:49:01 UTC",
+        "chunk_peak_sec": 101
+      }
+    ],
+    "last_clipped_at": 1794923341
   }
 }
