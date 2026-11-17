@@ -350,5 +350,17 @@
       }
     ],
     "last_clipped_at": 1794942276
+  },
+  "https://www.twitch.tv/ster": {
+    "title": "Magnus, Front Page | Nopixel V | Advanced Journalism",
+    "channel": "ster",
+    "count": 1,
+    "clips": [
+      {
+        "utc_time": "2026-11-17 21:59:18 UTC",
+        "chunk_peak_sec": 128
+      }
+    ],
+    "last_clipped_at": 1794952758
   }
 }
