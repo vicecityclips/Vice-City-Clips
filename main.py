@@ -98,6 +98,9 @@ def search_twitch_game(game_name, keywords, history):
               broadcaster {
                 login
                 displayName
+                broadcastSettings {
+                  language
+                }
               }
             }
           }
@@ -136,8 +139,17 @@ def search_twitch_game(game_name, keywords, history):
             login = broadcaster["login"]
             channel_name = broadcaster["displayName"]
             title = node.get("title", "")
-            t_low = title.lower()
 
+            # Skip non-English broadcasts so Whisper transcription and titles stay English-only
+            lang = (broadcaster.get("broadcastSettings") or {}).get("language", "en")
+            if lang and lang.lower() != "en":
+                continue
+
+            # Skip titles containing non-ASCII scripts (Japanese/Chinese/Korean/Cyrillic)
+            if not title.isascii():
+                continue
+
+            t_low = title.lower()
             if "rerun" in t_low or "rebroadcast" in t_low or "24/7" in t_low or "fake" in t_low:
                 continue
             if not any(kw in t_low for kw in keywords):
@@ -167,7 +179,7 @@ def find_live_stream():
             return live_url, title, channel_name, matched_game
         print("No GTA 6 streams live right now. Falling back to GTA 5...", flush=True)
     else:
-        print("Pre-release mode (before Nov 19, 2026): Searching GTA 5 only to skip fake GTA 6 streams.", flush=True)
+        print("Pre-release mode (before Nov 19, 2026): Searching English GTA 5 streams only.", flush=True)
 
     return search_twitch_game(
         "Grand Theft Auto V",
@@ -274,7 +286,7 @@ def transcribe_clip(clip_path, time_offset=HOOK_DURATION):
     with open("captions.srt", "w", encoding="utf-8") as f:
         f.write("\n".join(srt_lines))
 
-    print(f"Detected {len(bad_word_intervals)} restricted words to beep & censor.", flush=True)
+    print(f"Detected {len(bad_word_intervals)} restricted words to mute & censor.", flush=True)
     return "captions.srt", " ".join(full_text), " ".join(climax_words), meme_trigger_sec, bad_word_intervals
 
 def generate_viral_metadata_and_hook(transcript, climax_transcript, stream_title, matched_game):
@@ -282,29 +294,30 @@ def generate_viral_metadata_and_hook(transcript, climax_transcript, stream_title
     is_gta6 = "VI" in matched_game
     game_tag = "GTA 6" if is_gta6 else "GTA 5"
 
-    clean_stream = "".join(c for c in stream_title if c.isalnum() or c.isspace()).strip()
+    clean_stream = "".join(c for c in stream_title if c.isascii() and (c.isalnum() or c.isspace())).strip()
     stream_topic = " ".join(clean_stream.split()[:4]).title() if clean_stream else "Chaos In The City"
     fallback_title = f"{game_tag}: {stream_topic} Gone Wrong 😱 #gta6 #gta5 #shorts"
 
     if not api_key:
-        print("Warning: GEMINI_API_KEY is missing! Using context fallback title.", flush=True)
+        print("Warning: GEMINI_API_KEY is missing! Using English fallback title.", flush=True)
         return fallback_title, "Watch what happens at the end!"
 
     client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=30000))
-    prompt = f"""You are a viral gaming YouTube Shorts editor for a GTA 6 & GTA 5 channel.
+    prompt = f"""You are a viral gaming YouTube Shorts editor for an English-speaking GTA 6 & GTA 5 channel.
 Game: {matched_game}
 Stream Title: {stream_title}
 Setup Dialogue (Beginning): {transcript[:250]}
 CLIMAX MOMENT DIALOGUE (Main Action): {climax_transcript or transcript[-250:]}
 
 Rules:
-1. Write a catchy, story-driven YouTube Shorts title (under 68 characters, NO profanity) describing the CLIMAX MOMENT—do NOT just repeat the first few words of the setup.
-2. Include "{game_tag}" and "#gta6 #gta5 #shorts" in the title.
-3. Write a natural, exciting 5-to-7 word spoken intro hook that teases the climax without spoiling it.
+1. Write the title EXCLUSIVELY in English (never use Japanese, Chinese, or any non-English words or characters).
+2. Keep the title under 68 characters, family-friendly, and directly tied to the CLIMAX MOMENT.
+3. Include "{game_tag}" and "#gta6 #gta5 #shorts" in the title.
+4. Write a natural, exciting 5-to-7 word English spoken intro hook that teases the climax.
 
 Reply in this exact 2-line format ONLY:
-TITLE: <your climax-focused title here>
-HOOK: <your spoken hook here>"""
+TITLE: <your English climax-focused title here>
+HOOK: <your English spoken hook here>"""
 
     try:
         resp = client.models.generate_content(
@@ -315,10 +328,14 @@ HOOK: <your spoken hook here>"""
         hook = "Watch what happens right here!"
         for line in resp.text.strip().splitlines():
             if line.upper().startswith("TITLE:"):
-                title = line.partition(":")[2].strip()
+                candidate = line.partition(":")[2].strip()
+                if candidate:
+                    title = candidate
             elif line.upper().startswith("HOOK:"):
-                hook = line.partition(":")[2].strip()
-        print(f"Gemini Climax Title: {title}", flush=True)
+                candidate_hook = line.partition(":")[2].strip()
+                if candidate_hook:
+                    hook = candidate_hook
+        print(f"Gemini English Title: {title}", flush=True)
         return title, hook
     except Exception as e:
         print(f"Gemini API error: {e}", flush=True)
@@ -339,22 +356,22 @@ async def create_voiceover_audio(text, filename="hook_vo.mp3"):
 def render_viral_short(raw_path, start_sec, peak_sec, srt_path, voice_hook_text, meme_trigger_sec, bad_word_intervals):
     subprocess.run([
         "ffmpeg", "-y", "-ss", str(start_sec), "-i", raw_path,
-        "-t", str(CLIP_DURATION), "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "base_clip.mp4"
+        "-t", str(CLIP_DURATION), "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "-ar", "48000", "-ac", "2", "base_clip.mp4"
     ], check=True)
 
     hook_start = max(0, peak_sec - 3.5)
     subprocess.run([
         "ffmpeg", "-y", "-ss", str(hook_start), "-i", raw_path,
-        "-t", str(HOOK_DURATION), "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "hook_clip.mp4"
+        "-t", str(HOOK_DURATION), "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "-ar", "48000", "-ac", "2", "hook_clip.mp4"
     ], check=True)
 
     if ENABLE_AI_VOICEOVER and voice_hook_text:
         asyncio.run(create_voiceover_audio(voice_hook_text, "hook_vo.mp3"))
         subprocess.run([
             "ffmpeg", "-y", "-i", "hook_clip.mp4", "-i", "hook_vo.mp3",
-            "-filter_complex", "[0:a]volume=0.25[bg_a];[1:a]volume=1.35[vo_a];[bg_a][vo_a]amix=inputs=2:duration=first[aout]",
+            "-filter_complex", "[0:a]volume=0.25[bg_a];[1:a]aresample=48000,aformat=channel_layouts=stereo,volume=1.35[vo_a];[bg_a][vo_a]amix=inputs=2:duration=first[aout]",
             "-map", "0:v", "-map", "[aout]",
-            "-c:v", "copy", "-c:a", "aac", "hook_clip_voiced.mp4"
+            "-c:v", "copy", "-c:a", "aac", "-ar", "48000", "-ac", "2", "hook_clip_voiced.mp4"
         ], check=True)
         os.replace("hook_clip_voiced.mp4", "hook_clip.mp4")
 
@@ -407,22 +424,19 @@ def render_viral_short(raw_path, start_sec, peak_sec, srt_path, voice_hook_text,
         f"subtitles={srt_path}:force_style='FontName=Arial,FontSize=20,Bold=1,PrimaryColour=&H0000FFFF,OutlineColour=&H00000000,Outline=2,Alignment=2,MarginV=48'[out_v]"
     )
 
+    # In-place mute for restricted words without oscillator sample-rate drift (keeps full-length audio intact)
     if bad_word_intervals:
         enable_expr = "+".join([f"between(t,{s:.2f},{e:.2f})" for s, e in bad_word_intervals])
-        censor_chain = (
-            f"[0:a]loudnorm=I=-14:TP=-1.5:LRA=11,volume=0:enable='{enable_expr}'[clean_a];"
-            f"sine=frequency=1000:sample_rate=44100:duration={total_dur},volume=0.28,volume=0:enable='not({enable_expr})'[beep_a];"
-            f"[clean_a][beep_a]amix=inputs=2:duration=first[norm_a];"
-        )
+        censor_chain = f"[0:a]aresample=async=1,loudnorm=I=-14:TP=-1.5:LRA=11,volume=0:enable='{enable_expr}'[norm_a];"
     else:
-        censor_chain = "[0:a]loudnorm=I=-14:TP=-1.5:LRA=11[norm_a];"
+        censor_chain = "[0:a]aresample=async=1,loudnorm=I=-14:TP=-1.5:LRA=11[norm_a];"
 
     if has_boom_sfx:
         inputs.extend(["-i", "assets/boom.mp3"])
         delay_ms = int(climax_rel * 1000)
         audio_filter = (
             censor_chain +
-            f"[{next_idx}:a]adelay={delay_ms}|{delay_ms},volume=0.85[sfx_a];"
+            f"[{next_idx}:a]aresample=48000,aformat=channel_layouts=stereo,adelay={delay_ms}|{delay_ms},volume=0.85[sfx_a];"
             f"[norm_a][sfx_a]amix=inputs=2:duration=first[out_a]"
         )
     else:
@@ -435,7 +449,7 @@ def render_viral_short(raw_path, start_sec, peak_sec, srt_path, voice_hook_text,
         "-filter_complex", full_filter_complex,
         "-map", "[out_v]", "-map", "[out_a]",
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
-        "-c:a", "aac", "-b:a", "192k",
+        "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2",
         "final_short.mp4"
     ], check=True)
 def create_short_thumbnail(video_path, peak_rel_sec, title_text):
@@ -506,7 +520,7 @@ def upload_to_youtube(video_path, title, stream_title, channel_name, live_url):
 
 if __name__ == "__main__":
     for attempt in range(1, 5):
-        print(f"\n--- Attempt {attempt}/4: Searching for high-energy GTA live stream ---", flush=True)
+        print(f"\n--- Attempt {attempt}/4: Searching for high-energy English GTA live stream ---", flush=True)
         live_url, stream_title, channel_name, matched_game = find_live_stream()
         if not live_url:
             print("No more eligible live streams found right now. Exiting cleanly.", flush=True)
@@ -521,7 +535,7 @@ if __name__ == "__main__":
 
         subprocess.run([
             "ffmpeg", "-y", "-ss", str(start_sec), "-i", "raw_chunk.ts",
-            "-t", str(CLIP_DURATION), "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "temp_transcribe.mp4"
+            "-t", str(CLIP_DURATION), "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "-ar", "48000", "-ac", "2", "temp_transcribe.mp4"
         ], check=True)
 
         srt_path, transcript, climax_transcript, meme_trigger_sec, bad_word_intervals = transcribe_clip("temp_transcribe.mp4", time_offset=HOOK_DURATION)
