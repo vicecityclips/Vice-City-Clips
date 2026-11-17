@@ -193,6 +193,7 @@ def record_live_chunk(live_url):
     ]
     subprocess.run(cmd, check=True, timeout=CHUNK_SECONDS + 180)
     print("Finished recording live chunk!", flush=True)
+    
 def find_best_highlight(video_path):
     subprocess.run(["ffmpeg", "-y", "-i", video_path, "-vn", "-ac", "1", "-ar", "16000", "audio.wav"], check=True)
     rate, data = wavfile.read("audio.wav")
@@ -206,17 +207,20 @@ def find_best_highlight(video_path):
         np.sqrt(np.mean(data[i * rate : (i + 1) * rate] ** 2))
         for i in range(num_secs)
     ])
-    avg_energy = np.mean(energies) + 1e-6
 
-    kernel = np.ones(5) / 5.0
-    sustained_energies = np.convolve(energies, kernel, mode="same")
+    # Score each second by how sharply it JUMPS above the 12 seconds right before it
+    # (Ignores steady loud car engines, helicopters, and background music)
+    jump_scores = np.zeros(num_secs)
+    for s in range(28, num_secs - 22):
+        action_avg = np.mean(energies[s - 1 : s + 3])
+        before_avg = np.mean(energies[s - 14 : s - 2]) + 1e-6
+        jump_scores[s] = action_avg / before_avg
 
-    valid_window = sustained_energies[28 : max(29, num_secs - 22)]
-    peak_sec = 28 + int(np.argmax(valid_window))
-    peak_ratio = sustained_energies[peak_sec] / avg_energy
+    peak_sec = int(np.argmax(jump_scores))
+    best_jump = jump_scores[peak_sec]
 
-    print(f"Sustained action peak at {peak_sec}s (Ratio: {peak_ratio:.2f}x)", flush=True)
-    if peak_ratio < MIN_SPIKE_RATIO:
+    print(f"Sharpest reaction jump at {peak_sec}s (Jump Ratio: {best_jump:.2f}x)", flush=True)
+    if best_jump < MIN_SPIKE_RATIO:
         return None, None
 
     start_sec = max(0, peak_sec - 22)
@@ -227,19 +231,22 @@ def transcribe_clip(clip_path, time_offset=HOOK_DURATION):
     segments, _ = model.transcribe(clip_path, word_timestamps=True)
 
     words = []
+    climax_words = []
     bad_word_intervals = []
     for seg in segments:
         for w in seg.words:
             raw_upper = w.word.strip().upper()
             clean_alpha = "".join(c for c in raw_upper if c.isalpha())
             if clean_alpha in PROFANITY_WORDS:
-                # Record exact timestamp interval (shifted by HOOK_DURATION) for audio beeping
                 bad_word_intervals.append((max(0.0, w.start + time_offset - 0.05), w.end + time_offset + 0.05))
             censored_txt = censor_word_text(raw_upper)
             words.append((w.start, w.end, censored_txt))
+            # Capture words spoken right around the climax (15s to 36s into the 40s clip)
+            if 15.0 <= w.start <= 36.0 and "*" not in censored_txt:
+                climax_words.append(censored_txt)
 
     if len(words) < MIN_WORD_COUNT:
-        return None, "", None, []
+        return None, "", "", None, []
 
     meme_trigger_sec = None
     trigger_keywords = {"COPS", "POLICE", "WASTED", "DEAD", "WHAT", "BRO", "CRAZY", "INSANE", "NO"}
@@ -254,13 +261,12 @@ def transcribe_clip(clip_path, time_offset=HOOK_DURATION):
     idx = 1
     for i in range(0, len(words), 2):
         chunk = words[i : i + 2]
-        first_start, _, _ = chunk[0]
+        first_start, _, _ = chunk
         _, last_end, _ = chunk[-1]
         start_t = first_start + time_offset
         end_t = last_end + time_offset
         text = " ".join(word_str for _, _, word_str in chunk)
         full_text.append(text)
-
 
         def fmt_time(t):
             h = int(t // 3600)
@@ -276,32 +282,36 @@ def transcribe_clip(clip_path, time_offset=HOOK_DURATION):
         f.write("\n".join(srt_lines))
 
     print(f"Detected {len(bad_word_intervals)} restricted words to beep & censor.", flush=True)
-    return "captions.srt", " ".join(full_text), meme_trigger_sec, bad_word_intervals
+    return "captions.srt", " ".join(full_text), " ".join(climax_words), meme_trigger_sec, bad_word_intervals
 
-def generate_viral_metadata_and_hook(transcript, stream_title, matched_game):
+def generate_viral_metadata_and_hook(transcript, climax_transcript, stream_title, matched_game):
     api_key = os.environ.get("GEMINI_API_KEY", "").strip()
     is_gta6 = "VI" in matched_game
     game_tag = "GTA 6" if is_gta6 else "GTA 5"
-    clean_words = [w.capitalize() for w in transcript.split() if len(w) > 3 and "*" not in w]
-    topic = " ".join(clean_words[:4]) if clean_words else "Wild Live Moment"
-    fallback_title = f"{game_tag}: {topic} 😱 #gta6 #gta5 #shorts"
+
+    # Build a meaningful fallback from stream context + climax words (never the first 4 setup words)
+    clean_stream = "".join(c for c in stream_title if c.isalnum() or c.isspace()).strip()
+    stream_topic = " ".join(clean_stream.split()[:4]).title() if clean_stream else "Chaos In The City"
+    fallback_title = f"{game_tag}: {stream_topic} Gone Wrong 😱 #gta6 #gta5 #shorts"
 
     if not api_key:
-        return fallback_title, "Watch what happens right here!"
+        print("Warning: GEMINI_API_KEY is missing! Using context fallback title.", flush=True)
+        return fallback_title, "Watch what happens at the end!"
 
     client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=30000))
-    prompt = f"""You are an expert gaming YouTube Shorts editor for a GTA 6 & GTA 5 channel.
-Current Game: {matched_game}
+    prompt = f"""You are a viral gaming YouTube Shorts editor for a GTA 6 & GTA 5 channel.
+Game: {matched_game}
 Stream Title: {stream_title}
-Spoken Transcript from Clip: {transcript}
+Setup Dialogue (Beginning): {transcript[:250]}
+CLIMAX MOMENT DIALOGUE (Main Action): {climax_transcript or transcript[-250:]}
 
 Rules:
-1. Write a clear, logical, family-friendly YouTube Shorts title (under 68 characters, NO profanity) that accurately reflects what happens in the transcript.
+1. Write a catchy, story-driven YouTube Shorts title (under 68 characters, NO profanity) describing the CLIMAX MOMENT—do NOT just repeat the first few words of the setup.
 2. Include "{game_tag}" and "#gta6 #gta5 #shorts" in the title.
-3. Write a natural, clean 5-to-7 word spoken intro hook for a 2.5-second voiceover.
+3. Write a natural, exciting 5-to-7 word spoken intro hook that teases the climax without spoiling it.
 
 Reply in this exact 2-line format ONLY:
-TITLE: <your sensible clean title here>
+TITLE: <your climax-focused title here>
 HOOK: <your spoken hook here>"""
 
     try:
@@ -316,11 +326,12 @@ HOOK: <your spoken hook here>"""
                 title = line.split(":", 1).strip()
             elif line.upper().startswith("HOOK:"):
                 hook = line.split(":", 1).strip()
-        print(f"Generated Title: {title}", flush=True)
+        print(f"Gemini Climax Title: {title}", flush=True)
         return title, hook
     except Exception as e:
         print(f"Gemini API error: {e}", flush=True)
         return fallback_title, "Watch what happens right here!"
+
 
 async def create_voiceover_audio(text, filename="hook_vo.mp3"):
     for voice in ["en-US-GuyNeural", "en-US-ChristopherNeural"]:
@@ -495,11 +506,14 @@ if __name__ == "__main__":
             "-t", str(CLIP_DURATION), "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "temp_transcribe.mp4"
         ], check=True)
 
-        srt_path, transcript, meme_trigger_sec, bad_word_intervals = transcribe_clip("temp_transcribe.mp4", time_offset=HOOK_DURATION)
+        srt_path, transcript, climax_transcript, meme_trigger_sec, bad_word_intervals = transcribe_clip("temp_transcribe.mp4", time_offset=HOOK_DURATION)
         if not srt_path:
             print("Not enough spoken dialogue in clip. Moving on to next streamer...", flush=True)
             record_clip_history(live_url, stream_title, channel_name, 0)
             continue
+
+        viral_title, voice_hook = generate_viral_metadata_and_hook(transcript, climax_transcript, stream_title, matched_game)
+
 
         viral_title, voice_hook = generate_viral_metadata_and_hook(transcript, stream_title, matched_game)
         render_viral_short("raw_chunk.ts", start_sec, peak_sec, srt_path, voice_hook, meme_trigger_sec, bad_word_intervals)
