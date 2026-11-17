@@ -326,5 +326,17 @@
       }
     ],
     "last_clipped_at": 1794926794
+  },
+  "https://www.twitch.tv/kwoli": {
+    "title": "MICHAEL some time before GTA VI | day 1",
+    "channel": "Kwoli",
+    "count": 1,
+    "clips": [
+      {
+        "utc_time": "2026-11-17 16:02:25 UTC",
+        "chunk_peak_sec": 155
+      }
+    ],
+    "last_clipped_at": 1794931345
   }
 }
