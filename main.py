@@ -23,7 +23,7 @@ CHANNEL_HANDLE = "@Vice-City-Clips-Vault"
 CHUNK_SECONDS = 300         # 5-minute live recording buffer
 CLIP_DURATION = 40          # Core highlight length (seconds)
 HOOK_DURATION = 2.5         # Cold-open climax preview length (seconds)
-MIN_SPIKE_RATIO = 1.85      # Balanced 5s rolling energy threshold so good clips upload reliably
+MIN_SPIKE_RATIO = 1.65      # Sudden-jump reaction threshold (ignores steady loud engines)
 MIN_WORD_COUNT = 12         # Requires active commentary/dialogue
 ENABLE_AI_VOICEOVER = True  # Energetic AI intro hook voiceover
 
@@ -31,7 +31,6 @@ HISTORY_FILE = "history.json"
 MAX_CLIPS_PER_STREAM = 6    # Up to 6 clips per multi-hour broadcast
 MIN_GAP_SECONDS = 1800      # 30-minute cooldown before clipping the same stream again
 
-# Restricted words list for automatic audio beeping & caption censoring (prevents 18+ age-restriction)
 PROFANITY_WORDS = {
     "FUCK", "FUCKING", "FUCKED", "FUCKS", "MOTHERFUCKER", "MOTHERFUCKING",
     "SHIT", "SHITTING", "BULLSHIT", "BITCH", "BITCHES", "BITCHING",
@@ -46,7 +45,6 @@ def censor_word_text(word_upper):
         masked = first_char + "*" * (len(clean) - 1)
         return word_upper.replace(clean, masked)
     return word_upper
-
 def load_history():
     if os.path.exists(HISTORY_FILE):
         try:
@@ -157,7 +155,6 @@ def search_twitch_game(game_name, keywords, history):
 def find_live_stream():
     history = load_history()
     now_utc = datetime.now(timezone.utc)
-    # GTA 6 official release date: November 19, 2026 (unlocks globally starting Nov 18 11:00 UTC / NZ midnight)
     is_gta6_released = (now_utc.year > 2026) or (now_utc.year == 2026 and now_utc.month == 11 and now_utc.day >= 19)
 
     if is_gta6_released:
@@ -193,7 +190,6 @@ def record_live_chunk(live_url):
     ]
     subprocess.run(cmd, check=True, timeout=CHUNK_SECONDS + 180)
     print("Finished recording live chunk!", flush=True)
-    
 def find_best_highlight(video_path):
     subprocess.run(["ffmpeg", "-y", "-i", video_path, "-vn", "-ac", "1", "-ar", "16000", "audio.wav"], check=True)
     rate, data = wavfile.read("audio.wav")
@@ -208,8 +204,6 @@ def find_best_highlight(video_path):
         for i in range(num_secs)
     ])
 
-    # Score each second by how sharply it JUMPS above the 12 seconds right before it
-    # (Ignores steady loud car engines, helicopters, and background music)
     jump_scores = np.zeros(num_secs)
     for s in range(28, num_secs - 22):
         action_avg = np.mean(energies[s - 1 : s + 3])
@@ -241,7 +235,6 @@ def transcribe_clip(clip_path, time_offset=HOOK_DURATION):
                 bad_word_intervals.append((max(0.0, w.start + time_offset - 0.05), w.end + time_offset + 0.05))
             censored_txt = censor_word_text(raw_upper)
             words.append((w.start, w.end, censored_txt))
-            # Capture words spoken right around the climax (15s to 36s into the 40s clip)
             if 15.0 <= w.start <= 36.0 and "*" not in censored_txt:
                 climax_words.append(censored_txt)
 
@@ -261,11 +254,11 @@ def transcribe_clip(clip_path, time_offset=HOOK_DURATION):
     idx = 1
     for i in range(0, len(words), 2):
         chunk = words[i : i + 2]
-        first_start, _, _ = chunk
-        _, last_end, _ = chunk[-1]
-        start_t = first_start + time_offset
-        end_t = last_end + time_offset
-        text = " ".join(word_str for _, _, word_str in chunk)
+        first_word = chunk[0]
+        last_word = chunk[-1]
+        start_t = first_word[0] + time_offset
+        end_t = last_word[1] + time_offset
+        text = " ".join(w[2] for w in chunk)
         full_text.append(text)
 
         def fmt_time(t):
@@ -289,7 +282,6 @@ def generate_viral_metadata_and_hook(transcript, climax_transcript, stream_title
     is_gta6 = "VI" in matched_game
     game_tag = "GTA 6" if is_gta6 else "GTA 5"
 
-    # Build a meaningful fallback from stream context + climax words (never the first 4 setup words)
     clean_stream = "".join(c for c in stream_title if c.isalnum() or c.isspace()).strip()
     stream_topic = " ".join(clean_stream.split()[:4]).title() if clean_stream else "Chaos In The City"
     fallback_title = f"{game_tag}: {stream_topic} Gone Wrong 😱 #gta6 #gta5 #shorts"
@@ -323,15 +315,14 @@ HOOK: <your spoken hook here>"""
         hook = "Watch what happens right here!"
         for line in resp.text.strip().splitlines():
             if line.upper().startswith("TITLE:"):
-                title = line.split(":", 1).strip()
+                title = line.partition(":")[2].strip()
             elif line.upper().startswith("HOOK:"):
-                hook = line.split(":", 1).strip()
+                hook = line.partition(":")[2].strip()
         print(f"Gemini Climax Title: {title}", flush=True)
         return title, hook
     except Exception as e:
         print(f"Gemini API error: {e}", flush=True)
         return fallback_title, "Watch what happens right here!"
-
 
 async def create_voiceover_audio(text, filename="hook_vo.mp3"):
     for voice in ["en-US-GuyNeural", "en-US-ChristopherNeural"]:
@@ -351,7 +342,6 @@ def render_viral_short(raw_path, start_sec, peak_sec, srt_path, voice_hook_text,
         "-t", str(CLIP_DURATION), "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "base_clip.mp4"
     ], check=True)
 
-    # Start hook 3.5s before peak so the 2.5s preview stays clean and avoids cutting mid-swear
     hook_start = max(0, peak_sec - 3.5)
     subprocess.run([
         "ffmpeg", "-y", "-ss", str(hook_start), "-i", raw_path,
@@ -417,7 +407,6 @@ def render_viral_short(raw_path, start_sec, peak_sec, srt_path, voice_hook_text,
         f"subtitles={srt_path}:force_style='FontName=Arial,FontSize=20,Bold=1,PrimaryColour=&H0000FFFF,OutlineColour=&H00000000,Outline=2,Alignment=2,MarginV=48'[out_v]"
     )
 
-    # Audio chain: normalize + mute restricted words + overlay 1000Hz censor beep
     if bad_word_intervals:
         enable_expr = "+".join([f"between(t,{s:.2f},{e:.2f})" for s, e in bad_word_intervals])
         censor_chain = (
@@ -449,6 +438,24 @@ def render_viral_short(raw_path, start_sec, peak_sec, srt_path, voice_hook_text,
         "-c:a", "aac", "-b:a", "192k",
         "final_short.mp4"
     ], check=True)
+def create_short_thumbnail(video_path, peak_rel_sec, title_text):
+    hook_words = [w.upper() for w in title_text.split() if w.isalpha() and w.upper() not in {"GTA", "SHORTS"}][:3]
+    banner_txt = " ".join(hook_words) if hook_words else "NO WAY!"
+    safe_txt = banner_txt.replace("'", "").replace(":", "")
+
+    cmd = [
+        "ffmpeg", "-y", "-ss", f"{max(0.5, peak_rel_sec):.2f}", "-i", video_path,
+        "-vframes", "1",
+        "-vf", (
+            "eq=contrast=1.22:saturation=1.35,"
+            f"drawtext=text='{safe_txt}':fontcolor=#FFFF00:bordercolor=black:borderw=8:"
+            "fontsize=96:x=(w-text_w)/2:y=290"
+        ),
+        "thumb.jpg"
+    ]
+    subprocess.run(cmd, check=True)
+    return "thumb.jpg"
+
 def upload_to_youtube(video_path, title, stream_title, channel_name, live_url):
     creds_data = json.loads(os.environ["YOUTUBE_TOKEN_JSON"])
     creds = Credentials.from_authorized_user_info(creds_data)
@@ -484,11 +491,22 @@ def upload_to_youtube(video_path, title, stream_title, channel_name, live_url):
     media = MediaFileUpload(video_path, chunksize=-1, resumable=True, mimetype="video/mp4")
     request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
     response = request.execute()
-    print(f"Uploaded PUBLIC Short to {CHANNEL_HANDLE}! Video ID: {response['id']}", flush=True)
+    video_id = response["id"]
+    print(f"Uploaded PUBLIC Short to {CHANNEL_HANDLE}! Video ID: {video_id}", flush=True)
+
+    if os.path.exists("thumb.jpg"):
+        try:
+            youtube.thumbnails().set(
+                videoId=video_id,
+                media_body=MediaFileUpload("thumb.jpg", mimetype="image/jpeg")
+            ).execute()
+            print("Custom vertical thumbnail uploaded!", flush=True)
+        except Exception as e:
+            print(f"Thumbnail upload skipped: {e}", flush=True)
 
 if __name__ == "__main__":
     for attempt in range(1, 5):
-        print(f"\n--- Attempt {attempt}/4: Searching for active GTA live stream ---", flush=True)
+        print(f"\n--- Attempt {attempt}/4: Searching for high-energy GTA live stream ---", flush=True)
         live_url, stream_title, channel_name, matched_game = find_live_stream()
         if not live_url:
             print("No more eligible live streams found right now. Exiting cleanly.", flush=True)
@@ -497,7 +515,7 @@ if __name__ == "__main__":
         record_live_chunk(live_url)
         start_sec, peak_sec = find_best_highlight("raw_chunk.ts")
         if start_sec is None:
-            print("Stream was too quiet in this window. Moving on to next streamer...", flush=True)
+            print("No sharp reaction jump in this stream. Moving on to next streamer...", flush=True)
             record_clip_history(live_url, stream_title, channel_name, 0)
             continue
 
@@ -513,10 +531,11 @@ if __name__ == "__main__":
             continue
 
         viral_title, voice_hook = generate_viral_metadata_and_hook(transcript, climax_transcript, stream_title, matched_game)
-
-
-        viral_title, voice_hook = generate_viral_metadata_and_hook(transcript, stream_title, matched_game)
         render_viral_short("raw_chunk.ts", start_sec, peak_sec, srt_path, voice_hook, meme_trigger_sec, bad_word_intervals)
+
+        climax_rel = (peak_sec - start_sec) + HOOK_DURATION
+        create_short_thumbnail("final_short.mp4", climax_rel, viral_title)
+
         upload_to_youtube("final_short.mp4", viral_title, stream_title, channel_name, live_url)
         record_clip_history(live_url, stream_title, channel_name, peak_sec)
         break
