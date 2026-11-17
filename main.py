@@ -42,9 +42,11 @@ PROFANITY_WORDS = {
 def censor_word_text(word_upper):
     clean = "".join(c for c in word_upper if c.isalpha())
     if clean in PROFANITY_WORDS and len(clean) >= 2:
-        masked = clean + "*" * (len(clean) - 1)
+        first_char = clean[0]
+        masked = first_char + "*" * (len(clean) - 1)
         return word_upper.replace(clean, masked)
     return word_upper
+
 def load_history():
     if os.path.exists(HISTORY_FILE):
         try:
@@ -252,10 +254,13 @@ def transcribe_clip(clip_path, time_offset=HOOK_DURATION):
     idx = 1
     for i in range(0, len(words), 2):
         chunk = words[i : i + 2]
-        start_t = chunk + time_offset
-        end_t = chunk[-1] + time_offset
-        text = " ".join(w for w in chunk)
+        first_start, _, _ = chunk[0]
+        _, last_end, _ = chunk[-1]
+        start_t = first_start + time_offset
+        end_t = last_end + time_offset
+        text = " ".join(word_str for _, _, word_str in chunk)
         full_text.append(text)
+
 
         def fmt_time(t):
             h = int(t // 3600)
