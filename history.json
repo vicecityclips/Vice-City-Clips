@@ -226,14 +226,18 @@
   "https://www.twitch.tv/falamicatv": {
     "title": "Bora rever e reagir a TODOS os trailers de GTA 6! CHEGOU!",
     "channel": "FalaMicaTV",
-    "count": 1,
+    "count": 2,
     "clips": [
       {
         "utc_time": "2026-11-17 01:04:58 UTC",
         "chunk_peak_sec": 0
+      },
+      {
+        "utc_time": "2026-11-17 04:00:17 UTC",
+        "chunk_peak_sec": 208
       }
     ],
-    "last_clipped_at": 1794877498
+    "last_clipped_at": 1794888017
   },
   "https://www.twitch.tv/lucaobugado": {
     "title": "SORTEIO DE GTA 6 DIA 17 !GTA6",
