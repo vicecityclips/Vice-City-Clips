@@ -49,7 +49,7 @@ PROFANITY_WORDS = {
 def censor_word_text(word_upper):
     clean = "".join(c for c in word_upper if c.isalpha())
     if clean in PROFANITY_WORDS and len(clean) >= 2:
-        first_char = clean
+        first_char = clean[:1]
         masked = first_char + "*" * (len(clean) - 1)
         return word_upper.replace(clean, masked)
     return word_upper
@@ -177,7 +177,7 @@ def search_twitch_gta6(history):
 
         # Pass 2: Fallback to highest-viewer eligible English GTA 6 stream
         if valid_streams:
-            login, live_url, title, channel_name = valid_streams
+            login, live_url, title, channel_name = next(iter(valid_streams))
             print(f"[Top GTA 6 Hit] {channel_name}: {title}", flush=True)
             return live_url, title, channel_name
 
@@ -271,11 +271,11 @@ REASON: <short 1-sentence summary>"""
             framing = random.choice(["crop", "blur"])
             for line in resp.text.strip().splitlines():
                 if line.upper().startswith("PEAK_SEC:"):
-                    raw_num = "".join(c for c in line.partition(":") if c.isdigit())
+                    raw_num = "".join(c for c in line.split(":", 1)[-1] if c.isdigit())
                     if raw_num:
                         ai_peak = int(raw_num)
                 elif line.upper().startswith("FRAMING:"):
-                    f_choice = line.partition(":").strip().lower()
+                    f_choice = line.split(":", 1)[-1].strip().lower()
                     if "crop" in f_choice:
                         framing = "crop"
                     elif "blur" in f_choice:
@@ -325,7 +325,7 @@ def transcribe_clip(clip_path, time_offset=HOOK_DURATION):
     idx = 1
     for i in range(0, len(words), 2):
         chunk = words[i : i + 2]
-        first_word = chunk
+        first_word = next(iter(chunk))
         last_word = chunk[-1]
         start_t = first_word + time_offset
         end_t = last_word + time_offset
@@ -405,11 +405,11 @@ HOOK: <your spoken hook here>"""
         hook = "Wait till you see how this ends!"
         for line in resp.text.strip().splitlines():
             if line.upper().startswith("TITLE:"):
-                candidate = line.partition(":").strip()
+                candidate = line.split(":", 1)[-1].strip()
                 if candidate:
                     title = candidate
             elif line.upper().startswith("HOOK:"):
-                candidate_hook = line.partition(":").strip()
+                candidate_hook = line.split(":", 1)[-1].strip()
                 if candidate_hook:
                     hook = candidate_hook
         print(f"Wild Gemini Title: {title}", flush=True)
