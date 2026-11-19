@@ -19,7 +19,7 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-CHANNEL_HANDLE = "@ViceCity_ClipsVault"
+CHANNEL_HANDLE = "@Vice-City_ClipsVault"
 
 CHUNK_SECONDS = 600         # Record 10-minute live stream buffer (unlimited on public repo)
 CLIP_DURATION = 40          # Core highlight length (seconds)
