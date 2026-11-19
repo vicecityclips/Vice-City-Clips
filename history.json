@@ -386,5 +386,17 @@
       }
     ],
     "last_clipped_at": 1795046855
+  },
+  "https://www.twitch.tv/timthetatman": {
+    "title": "KEY DROPS ON - GTA 6 IS FINALLY HERE",
+    "channel": "TimTheTatman",
+    "count": 1,
+    "clips": [
+      {
+        "utc_time": "2026-11-19 00:22:08 UTC",
+        "chunk_peak_sec": 244
+      }
+    ],
+    "last_clipped_at": 1795047728
   }
 }
