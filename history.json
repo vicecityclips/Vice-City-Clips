@@ -426,5 +426,17 @@
       }
     ],
     "last_clipped_at": 1795092521
+  },
+  "https://www.twitch.tv/cohhcarnage": {
+    "title": "[!SubGift] GTA 6 (First Look) - Let's see what this game has to offer! - PS5 Pro - !Emberville (Jan 7th!)",
+    "channel": "CohhCarnage",
+    "count": 1,
+    "clips": [
+      {
+        "utc_time": "2026-11-19 14:31:00 UTC",
+        "chunk_peak_sec": 181
+      }
+    ],
+    "last_clipped_at": 1795098660
   }
 }
