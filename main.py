@@ -23,11 +23,11 @@ from googleapiclient.http import MediaFileUpload
 CHANNEL_HANDLE = "@Vice-City_ClipsVault"
 
 # --- EASY CONTROL TOGGLES ---
-UPLOAD_TO_YOUTUBE = False       # True = upload/schedule to YouTube | False = skip YouTube & save local artifact
-YOUTUBE_PRIVACY = "private"     # "public" (uses exact scheduled slots) or "private" (immediate private test)
+UPLOAD_TO_YOUTUBE = True        # True = upload/schedule to YouTube | False = skip YouTube & save local artifact
+YOUTUBE_PRIVACY = "public"      # "public" (uses exact scheduled slots) or "private" (immediate private test)
 MAX_UPLOADS_PER_DAY = 4         # Strict cap: maximum 4 Shorts scheduled/uploaded per day
-MAX_STREAMS_TO_RECORD = 3       # Sweet spot: 6 simultaneous streams (avoids Twitch IP rate limits)
-CHUNK_SECONDS = 90             # 12 minutes (720s) per stream (72 total mins scanned per batch)
+MAX_STREAMS_TO_RECORD = 6       # Sweet spot: 6 simultaneous streams (avoids Twitch IP rate limits)
+CHUNK_SECONDS = 720             # 12 minutes (720s) per stream (72 total mins scanned per batch)
 # ----------------------------
 
 SINGLE_CLIP_DUR = 45
@@ -342,15 +342,6 @@ SHORT3: <SINGLE or MULTI> | <crop or blur> | <idx1>,<peak1>"""
                 return planned_shorts[:max_shorts]
         except Exception as e:
             print(f"Batch AI producer fallback: {e}", flush=True)
-
-    #temp
-    
-    if len(candidates) >= 2:
-        top_three = sorted(candidates, key=lambda x: x["jump_ratio"], reverse=True)[:3]
-        specs = [(c_item, max(0, c_item["audio_peak"] - 10), c_item["audio_peak"], MULTI_CLIP_DUR) for c_item in top_three]
-        return [("MULTI", "blur", specs)]
-
-    #temp
 
     sorted_c = sorted(candidates, key=lambda x: x["jump_ratio"], reverse=True)
     best_c = next(iter(sorted_c))
