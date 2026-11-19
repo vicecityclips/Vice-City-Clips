@@ -414,5 +414,17 @@
       }
     ],
     "last_clipped_at": 1795053751
+  },
+  "https://www.twitch.tv/yourragegaming": {
+    "title": "OG LEONIDAS NATIVE PLAYS GTA 6!! BASED ON HIS THUGGALICIOUS LOCO LIFE!!",
+    "channel": "yourragegaming",
+    "count": 1,
+    "clips": [
+      {
+        "utc_time": "2026-11-19 12:48:41 UTC",
+        "chunk_peak_sec": 0
+      }
+    ],
+    "last_clipped_at": 1795092521
   }
 }
