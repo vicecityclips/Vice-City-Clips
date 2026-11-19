@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import random
 import asyncio
 import subprocess
 import urllib.parse
@@ -20,10 +21,10 @@ from googleapiclient.http import MediaFileUpload
 
 CHANNEL_HANDLE = "@ViceCity_ClipsVault"
 
-CHUNK_SECONDS = 300         # 5-minute live recording buffer
+CHUNK_SECONDS = 600         # Record 10-minute live stream buffer (unlimited on public repo)
 CLIP_DURATION = 40          # Core highlight length (seconds)
 HOOK_DURATION = 2.5         # Cold-open climax preview length (seconds)
-MIN_SPIKE_RATIO = 1.65      # Sudden-jump reaction threshold (ignores steady loud engines)
+MIN_SPIKE_RATIO = 1.60      # Fallback audio reaction threshold
 MIN_WORD_COUNT = 12         # Requires active commentary/dialogue
 ENABLE_AI_VOICEOVER = True  # Energetic AI intro hook voiceover
 
@@ -31,7 +32,7 @@ HISTORY_FILE = "history.json"
 MAX_CLIPS_PER_STREAM = 6    # Up to 6 clips per multi-hour broadcast
 MIN_GAP_SECONDS = 1800      # 30-minute cooldown before clipping the same stream again
 
-# Top creators known to welcome community clip channels (checked first before general search)
+# Top creators known to welcome community clip channels (checked first)
 CLIP_FRIENDLY_CREATORS = [
     "kaicenat", "xqc", "shroud", "sykkuno", "valkyrae",
     "zerkaa", "summit1g", "lirik", "timthetatman", "nickmercs",
@@ -48,7 +49,7 @@ PROFANITY_WORDS = {
 def censor_word_text(word_upper):
     clean = "".join(c for c in word_upper if c.isalpha())
     if clean in PROFANITY_WORDS and len(clean) >= 2:
-        first_char = clean[0]
+        first_char = clean
         masked = first_char + "*" * (len(clean) - 1)
         return word_upper.replace(clean, masked)
     return word_upper
@@ -176,7 +177,7 @@ def search_twitch_gta6(history):
 
         # Pass 2: Fallback to highest-viewer eligible English GTA 6 stream
         if valid_streams:
-            login, live_url, title, channel_name = valid_streams[0]
+            login, live_url, title, channel_name = valid_streams
             print(f"[Top GTA 6 Hit] {channel_name}: {title}", flush=True)
             return live_url, title, channel_name
 
@@ -195,7 +196,7 @@ def find_live_stream():
     return search_twitch_gta6(history)
 
 def record_live_chunk(live_url):
-    print(f"Recording {CHUNK_SECONDS}s live GTA 6 chunk from Twitch...", flush=True)
+    print(f"Recording {CHUNK_SECONDS}s (10-min) live GTA 6 chunk from Twitch...", flush=True)
     cmd = [
         "yt-dlp",
         "-f", "best[height<=720]",
@@ -207,38 +208,88 @@ def record_live_chunk(live_url):
         "--no-warnings",
         live_url
     ]
-    subprocess.run(cmd, check=True, timeout=CHUNK_SECONDS + 180)
-    print("Finished recording live chunk!", flush=True)
+    subprocess.run(cmd, check=True, timeout=CHUNK_SECONDS + 240)
+    print("Finished recording 10-minute live chunk!", flush=True)
 
-def find_best_highlight(video_path):
+def find_best_highlight(video_path, stream_title):
     subprocess.run(["ffmpeg", "-y", "-i", video_path, "-vn", "-ac", "1", "-ar", "16000", "audio.wav"], check=True)
     rate, data = wavfile.read("audio.wav")
     data = np.abs(data.astype(np.float32))
 
     num_secs = len(data) // rate
-    if num_secs < 65:
-        return None, None
+    if num_secs < 90:
+        return None, None, "blur"
 
     energies = np.array([
         np.sqrt(np.mean(data[i * rate : (i + 1) * rate] ** 2))
         for i in range(num_secs)
     ])
-
     jump_scores = np.zeros(num_secs)
-    for s in range(28, num_secs - 22):
+    for s in range(28, num_secs - 25):
         action_avg = np.mean(energies[s - 1 : s + 3])
         before_avg = np.mean(energies[s - 14 : s - 2]) + 1e-6
         jump_scores[s] = action_avg / before_avg
 
-    peak_sec = int(np.argmax(jump_scores))
-    best_jump = jump_scores[peak_sec]
+    fallback_peak = int(np.argmax(jump_scores))
+    fallback_jump = jump_scores[fallback_peak]
 
-    print(f"Sharpest reaction jump at {peak_sec}s (Jump Ratio: {best_jump:.2f}x)", flush=True)
-    if best_jump < MIN_SPIKE_RATIO:
-        return None, None
+    print("Scanning full 10-minute transcript for funniest & wildest GTA 6 moments...", flush=True)
+    model = WhisperModel("tiny.en", device="cpu", compute_type="int8")
+    segments, _ = model.transcribe("audio.wav")
 
-    start_sec = max(0, peak_sec - 22)
-    return start_sec, peak_sec
+    timeline_lines = []
+    for seg in segments:
+        if 20 <= seg.start <= (num_secs - 25):
+            clean_txt = seg.text.strip()
+            if clean_txt:
+                timeline_lines.append(f"[{int(seg.start)}s] {clean_txt}")
+
+    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if api_key and len(timeline_lines) >= 15:
+        client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=35000))
+        full_transcript_log = "\n".join(timeline_lines[:240])
+        prompt = f"""You are a viral YouTube Shorts producer for a GTA 6 channel.
+Stream Title: {stream_title}
+Timestamped 10-Minute Stream Transcript:
+{full_transcript_log}
+
+Task:
+1. Find the SINGLE funniest, wildest, or most shocking 40-second moment in this 10-minute stream (jokes, crazy police chases, unexpected fails, NPC reactions, or pure chaos).
+2. Pick the exact CLIMAX second (between 30 and {num_secs - 25}) where the punchline or peak action hits.
+3. Choose the best framing style:
+   - "crop" if it is high-speed driving, shooting, or intense close-up action that looks awesome zoomed full-screen vertical (9:16).
+   - "blur" if it is dialogue, menus, map/HUD-heavy gameplay, or wide scenery that needs the full widescreen frame with blurred background.
+
+Reply in this exact 3-line format ONLY:
+PEAK_SEC: <integer second>
+FRAMING: <crop or blur>
+REASON: <short 1-sentence summary>"""
+
+        try:
+            resp = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+            ai_peak = None
+            framing = random.choice(["crop", "blur"])
+            for line in resp.text.strip().splitlines():
+                if line.upper().startswith("PEAK_SEC:"):
+                    raw_num = "".join(c for c in line.partition(":") if c.isdigit())
+                    if raw_num:
+                        ai_peak = int(raw_num)
+                elif line.upper().startswith("FRAMING:"):
+                    f_choice = line.partition(":").strip().lower()
+                    if "crop" in f_choice:
+                        framing = "crop"
+                    elif "blur" in f_choice:
+                        framing = "blur"
+            if ai_peak and 28 <= ai_peak <= (num_secs - 22):
+                print(f"[AI Highlight Pick] Climax at {ai_peak}s | Layout: {framing.upper()}", flush=True)
+                return max(0, ai_peak - 22), ai_peak, framing
+        except Exception as e:
+            print(f"AI highlight picker fallback: {e}", flush=True)
+
+    print(f"Audio jump fallback peak at {fallback_peak}s (Ratio: {fallback_jump:.2f}x)", flush=True)
+    if fallback_jump < MIN_SPIKE_RATIO:
+        return None, None, "blur"
+    return max(0, fallback_peak - 22), fallback_peak, random.choice(["crop", "blur"])
 
 def transcribe_clip(clip_path, time_offset=HOOK_DURATION):
     model = WhisperModel("tiny.en", device="cpu", compute_type="int8")
@@ -274,11 +325,11 @@ def transcribe_clip(clip_path, time_offset=HOOK_DURATION):
     idx = 1
     for i in range(0, len(words), 2):
         chunk = words[i : i + 2]
-        first_word = chunk[0]
+        first_word = chunk
         last_word = chunk[-1]
-        start_t = first_word[0] + time_offset
-        end_t = last_word[1] + time_offset
-        text = " ".join(w[2] for w in chunk)
+        start_t = first_word + time_offset
+        end_t = last_word + time_offset
+        text = " ".join(w for w in chunk)
         full_text.append(text)
 
         def fmt_time(t):
@@ -299,29 +350,51 @@ def transcribe_clip(clip_path, time_offset=HOOK_DURATION):
 
 def generate_viral_metadata_and_hook(transcript, climax_transcript, stream_title):
     api_key = os.environ.get("GEMINI_API_KEY", "").strip()
-    clean_stream = "".join(c for c in stream_title if c.isascii() and (c.isalnum() or c.isspace())).strip()
-    stream_topic = " ".join(clean_stream.split()[:4]).title() if clean_stream else "Vice City Chaos"
-    fallback_title = f"GTA 6: {stream_topic} 😱 #gta6 #shorts"
+    emoji_pool = ["💀", "🚨", "🤯", "🔥", "😭", "⚡", "👀", "💥", "🌴", "🚓"]
+    e1, e2 = random.sample(emoji_pool, 2)
+
+    wild_styles = [
+        "Plot-twist curiosity gap (e.g., 'Nobody Expected This Ending...')",
+        "Chaotic comedy reaction (e.g., 'Vice City Police Lost Their Minds...')",
+        "Unbelievable luck / 1-in-a-million timing",
+        "Instant karma / total disaster in 5 seconds",
+        "Pure GTA 6 NPC madness",
+        "Streamer completely broke character after this",
+        "How did he actually survive this?!",
+        "The most chaotic 40 seconds in Leonida"
+    ]
+    chosen_style = random.choice(wild_styles)
+
+    climax_bits = [w.capitalize() for w in (climax_transcript or transcript).split() if len(w) > 3 and "*" not in w]
+    snippet = " ".join(climax_bits[:4]) if climax_bits else "Pure Vice City Madness"
+    fallback_templates = [
+        f"GTA 6: {snippet} {e1}{e2} #gta6 #shorts",
+        f"Nobody Saw This Coming in GTA 6 {e1} #gta6 #shorts",
+        f"Vice City Is Completely Unhinged {e1}{e2} #gta6 #shorts",
+        f"1-in-a-Million Moment in GTA 6 {e1} #gta6 #shorts"
+    ]
+    fallback_title = random.choice(fallback_templates)
 
     if not api_key:
-        print("Warning: GEMINI_API_KEY is missing! Using English fallback title.", flush=True)
-        return fallback_title, "Watch what happens right here!"
+        print("Warning: GEMINI_API_KEY is missing! Using randomized fallback title.", flush=True)
+        return fallback_title, "Wait till you see how this ends!"
 
     client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=30000))
-    prompt = f"""You are a viral gaming YouTube Shorts editor for an English-speaking GTA 6 channel.
+    prompt = f"""You are a creative viral YouTube Shorts title writer for an English GTA 6 channel.
 Stream Title: {stream_title}
-Setup Dialogue (Beginning): {transcript[:250]}
-CLIMAX MOMENT DIALOGUE (Main Action): {climax_transcript or transcript[-250:]}
+Setup Dialogue: {transcript[:220]}
+CLIMAX DIALOGUE: {climax_transcript or transcript[-220:]}
+Required Title Vibe: {chosen_style}
 
 Rules:
-1. Write the title EXCLUSIVELY in English (never use Japanese, Chinese, or any non-English words or characters).
-2. Keep the title under 68 characters, family-friendly, and directly tied to the CLIMAX MOMENT.
-3. Include "GTA 6" and "#gta6 #shorts" in the title.
-4. Write a natural, exciting 5-to-7 word English spoken intro hook that teases the climax.
+1. Write a WILD, PUNCHY, completely UNIQUE English title (under 66 characters, NO profanity).
+2. NEVER use boring repetitive templates like "Gone Wrong" or repeat "GTA 6: Gta 6".
+3. Use 1 or 2 expressive emojis (like {e1} or {e2}) and include "#gta6 #shorts".
+4. Write a 5-to-7 word English spoken intro hook that builds hype without spoiling the punchline.
 
 Reply in this exact 2-line format ONLY:
-TITLE: <your English climax-focused title here>
-HOOK: <your English spoken hook here>"""
+TITLE: <your wild unique English title here>
+HOOK: <your spoken hook here>"""
 
     try:
         resp = client.models.generate_content(
@@ -329,21 +402,21 @@ HOOK: <your English spoken hook here>"""
             contents=prompt,
         )
         title = fallback_title
-        hook = "Watch what happens right here!"
+        hook = "Wait till you see how this ends!"
         for line in resp.text.strip().splitlines():
             if line.upper().startswith("TITLE:"):
-                candidate = line.partition(":")[2].strip()
+                candidate = line.partition(":").strip()
                 if candidate:
                     title = candidate
             elif line.upper().startswith("HOOK:"):
-                candidate_hook = line.partition(":")[2].strip()
+                candidate_hook = line.partition(":").strip()
                 if candidate_hook:
                     hook = candidate_hook
-        print(f"Gemini English Title: {title}", flush=True)
+        print(f"Wild Gemini Title: {title}", flush=True)
         return title, hook
     except Exception as e:
         print(f"Gemini API error: {e}", flush=True)
-        return fallback_title, "Watch what happens right here!"
+        return fallback_title, "Wait till you see how this ends!"
 
 async def create_voiceover_audio(text, filename="hook_vo.mp3"):
     for voice in ["en-US-GuyNeural", "en-US-ChristopherNeural"]:
@@ -358,7 +431,7 @@ async def create_voiceover_audio(text, filename="hook_vo.mp3"):
     tts.save(filename)
     return filename
 
-def render_viral_short(raw_path, start_sec, peak_sec, srt_path, voice_hook_text, meme_trigger_sec, bad_word_intervals):
+def render_viral_short(raw_path, start_sec, peak_sec, srt_path, voice_hook_text, meme_trigger_sec, bad_word_intervals, channel_name, framing_mode="blur"):
     subprocess.run([
         "ffmpeg", "-y", "-ss", str(start_sec), "-i", raw_path,
         "-t", str(CLIP_DURATION), "-r", "30", "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "-ar", "48000", "-ac", "2", "base_clip.mp4"
@@ -393,40 +466,58 @@ def render_viral_short(raw_path, start_sec, peak_sec, srt_path, voice_hook_text,
     has_meme_img = os.path.exists("assets/wasted.png")
     has_boom_sfx = os.path.exists("assets/boom.mp3")
 
-    if has_custom_bg:
-        inputs.extend(["-i", "assets/bg_neon.png"])
-        bg_filter = "[1:v]scale=1080:1920[bg];"
-    else:
-        bg_filter = "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=28:6,eq=brightness=-0.08:saturation=1.3[bg];"
-
     zoom_expr = f"if(between(in_time,{climax_rel-0.25},{climax_rel+0.6}),1.20,if(lt(mod(in_time,4),0.45),1.09,1.0))"
-    fg_filter = (
-        f"[0:v]fps=30,scale=1080:608,setsar=1,"
-        f"eq=contrast=1.18:saturation=1.30:brightness='if(between(t,{climax_rel-0.1},{climax_rel+0.15}),0.20,0)':eval=frame,"
-        f"zoompan=z='{zoom_expr}':"
-        f"x='iw/2-(iw/zoom/2)+if(between(in_time,{climax_rel-0.25},{climax_rel+0.6}),22*sin(in_time*75),0)':"
-        f"y='ih/2-(ih/zoom/2)+if(between(in_time,{climax_rel-0.25},{climax_rel+0.6}),22*cos(in_time*75),0)':"
-        f"d=1:s=1080x608:fps=30[fg];"
-        "[bg][fg]overlay=(W-w)/2:(H-h)/2[base_v];"
-    )
+
+    if framing_mode == "crop":
+        # Full-screen vertical 9:16 action crop (1080x1920) with dynamic zoom & shake
+        video_base_filter = (
+            f"[0:v]fps=30,scale=-2:1920,crop=1080:1920:(iw-1080)/2:0,setsar=1,"
+            f"eq=contrast=1.18:saturation=1.30:brightness='if(between(t,{climax_rel-0.1},{climax_rel+0.15}),0.20,0)':eval=frame,"
+            f"zoompan=z='{zoom_expr}':"
+            f"x='iw/2-(iw/zoom/2)+if(between(in_time,{climax_rel-0.25},{climax_rel+0.6}),24*sin(in_time*75),0)':"
+            f"y='ih/2-(ih/zoom/2)+if(between(in_time,{climax_rel-0.25},{climax_rel+0.6}),24*cos(in_time*75),0)':"
+            f"d=1:s=1080x1920:fps=30[base_v];"
+        )
+        next_idx = 1
+    else:
+        # Full widescreen gameplay centered over blurred vertical background
+        if has_custom_bg:
+            inputs.extend(["-i", "assets/bg_neon.png"])
+            bg_filter = "[1:v]scale=1080:1920[bg];"
+            next_idx = 2
+        else:
+            bg_filter = "[0:v]fps=30,scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=28:6,eq=brightness=-0.08:saturation=1.3[bg];"
+            next_idx = 1
+
+        fg_filter = (
+            f"[0:v]fps=30,scale=1080:608,setsar=1,"
+            f"eq=contrast=1.18:saturation=1.30:brightness='if(between(t,{climax_rel-0.1},{climax_rel+0.15}),0.20,0)':eval=frame,"
+            f"zoompan=z='{zoom_expr}':"
+            f"x='iw/2-(iw/zoom/2)+if(between(in_time,{climax_rel-0.25},{climax_rel+0.6}),22*sin(in_time*75),0)':"
+            f"y='ih/2-(ih/zoom/2)+if(between(in_time,{climax_rel-0.25},{climax_rel+0.6}),22*cos(in_time*75),0)':"
+            f"d=1:s=1080x608:fps=30[fg];"
+            "[bg][fg]overlay=(W-w)/2:(H-h)/2[base_v];"
+        )
+        video_base_filter = bg_filter + fg_filter
 
     current_v = "[base_v]"
-    next_idx = 2 if has_custom_bg else 1
 
     meme_filter = ""
     if has_meme_img:
         inputs.extend(["-i", "assets/wasted.png"])
         meme_filter = (
             f"[{next_idx}:v]scale=520:-1[meme];"
-            f"{current_v}[meme]overlay=(W-w)/2:280:enable='between(t,{meme_time:.2f},{meme_time+1.6:.2f})'[meme_v];"
+            f"{current_v}[meme]overlay=(W-w)/2:310:enable='between(t,{meme_time:.2f},{meme_time+1.6:.2f})'[meme_v];"
         )
         current_v = "[meme_v]"
         next_idx += 1
 
+    safe_creator = "".join(c for c in channel_name if c.isalnum() or c in {"_", "-", " "}).strip()
     polish_filter = (
         f"{current_v}drawbox=x=0:y=ih-14:w=iw*(t/{total_dur}):h=14:color=#FF00FF@0.85:t=fill,"
-        f"drawtext=text='{CHANNEL_HANDLE}':fontcolor=white@0.60:fontsize=28:x=(w-text_w)/2:y=225,"
-        f"subtitles={srt_path}:force_style='FontName=Arial,FontSize=20,Bold=1,PrimaryColour=&H0000FFFF,OutlineColour=&H00000000,Outline=2,Alignment=2,MarginV=48'[out_v]"
+        f"drawtext=text='{CHANNEL_HANDLE}':fontcolor=white@0.65:fontsize=28:x=(w-text_w)/2:y=200,"
+        f"drawtext=text='Credit\\: {safe_creator}':fontcolor=white@0.85:fontsize=24:x=(w-text_w)/2:y=240,"
+        f"subtitles={srt_path}:force_style='FontName=Arial,FontSize=20,Bold=1,PrimaryColour=&H0000FFFF,OutlineColour=&H00000000,Outline=2,Alignment=2,MarginV=55'[out_v]"
     )
 
     if bad_word_intervals:
@@ -446,7 +537,7 @@ def render_viral_short(raw_path, start_sec, peak_sec, srt_path, voice_hook_text,
     else:
         audio_filter = censor_chain.replace("[norm_a];", "[out_a]")
 
-    full_filter_complex = bg_filter + fg_filter + meme_filter + polish_filter + ";" + audio_filter
+    full_filter_complex = video_base_filter + meme_filter + polish_filter + ";" + audio_filter
 
     subprocess.run([
         "ffmpeg", "-y", *inputs,
@@ -468,7 +559,7 @@ def create_short_thumbnail(video_path, peak_rel_sec, title_text):
         "-vf", (
             "eq=contrast=1.22:saturation=1.35,"
             f"drawtext=text='{safe_txt}':fontcolor=#FFFF00:bordercolor=black:borderw=8:"
-            "fontsize=96:x=(w-text_w)/2:y=290"
+            "fontsize=96:x=(w-text_w)/2:y=310"
         ),
         "thumb.jpg"
     ]
@@ -523,17 +614,17 @@ def upload_to_youtube(video_path, title, stream_title, channel_name, live_url):
             print(f"Thumbnail upload skipped: {e}", flush=True)
 
 if __name__ == "__main__":
-    for attempt in range(1, 5):
-        print(f"\n--- Attempt {attempt}/4: Searching for high-energy English GTA 6 live stream ---", flush=True)
+    for attempt in range(1, 4):
+        print(f"\n--- Attempt {attempt}/3: Searching for funniest/wildest English GTA 6 live stream ---", flush=True)
         live_url, stream_title, channel_name = find_live_stream()
         if not live_url:
             print("No eligible GTA 6 live streams found right now. Exiting cleanly.", flush=True)
             break
 
         record_live_chunk(live_url)
-        start_sec, peak_sec = find_best_highlight("raw_chunk.ts")
+        start_sec, peak_sec, framing_mode = find_best_highlight("raw_chunk.ts", stream_title)
         if start_sec is None:
-            print("No sharp reaction jump in this stream. Moving on to next streamer...", flush=True)
+            print("No standout funny or action moment in this 10-min buffer. Moving on...", flush=True)
             record_clip_history(live_url, stream_title, channel_name, 0)
             continue
 
@@ -549,7 +640,7 @@ if __name__ == "__main__":
             continue
 
         viral_title, voice_hook = generate_viral_metadata_and_hook(transcript, climax_transcript, stream_title)
-        render_viral_short("raw_chunk.ts", start_sec, peak_sec, srt_path, voice_hook, meme_trigger_sec, bad_word_intervals)
+        render_viral_short("raw_chunk.ts", start_sec, peak_sec, srt_path, voice_hook, meme_trigger_sec, bad_word_intervals, channel_name, framing_mode)
 
         climax_rel = (peak_sec - start_sec) + HOOK_DURATION
         create_short_thumbnail("final_short.mp4", climax_rel, viral_title)
