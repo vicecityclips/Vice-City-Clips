@@ -31,6 +31,13 @@ HISTORY_FILE = "history.json"
 MAX_CLIPS_PER_STREAM = 6    # Up to 6 clips per multi-hour broadcast
 MIN_GAP_SECONDS = 1800      # 30-minute cooldown before clipping the same stream again
 
+# Top creators known to welcome community clip channels (checked first before general search)
+CLIP_FRIENDLY_CREATORS = [
+    "kaicenat", "xqc", "shroud", "sykkuno", "valkyrae",
+    "zerkaa", "summit1g", "lirik", "timthetatman", "nickmercs",
+    "caseoh_", "jynxzi", "agent00", "fanum", "duke"
+]
+
 PROFANITY_WORDS = {
     "FUCK", "FUCKING", "FUCKED", "FUCKS", "MOTHERFUCKER", "MOTHERFUCKING",
     "SHIT", "SHITTING", "BULLSHIT", "BITCH", "BITCHES", "BITCHING",
@@ -95,7 +102,7 @@ def search_twitch_gta6(history):
     query = """
     query($name: String!) {
       game(name: $name) {
-        streams(first: 25) {
+        streams(first: 50) {
           edges {
             node {
               title
@@ -137,10 +144,11 @@ def search_twitch_gta6(history):
         edges = game_obj["streams"]["edges"]
         print(f"[Twitch Search] Found {len(edges)} live '{game_name}' streams.", flush=True)
 
+        valid_streams = []
         for edge in edges:
             node = edge["node"]
             broadcaster = node["broadcaster"]
-            login = broadcaster["login"]
+            login = broadcaster["login"].lower()
             channel_name = broadcaster["displayName"]
             title = node.get("title", "")
 
@@ -158,8 +166,20 @@ def search_twitch_gta6(history):
 
             live_url = urllib.parse.urlunparse(("https", "www.twitch.tv", "/" + login, "", "", ""))
             if can_clip_stream(live_url, history):
-                print(f"[GTA 6 Live Match] {channel_name}: {title}", flush=True)
+                valid_streams.append((login, live_url, title, channel_name))
+
+        # Pass 1: Prioritize clip-friendly whitelisted creators first
+        for login, live_url, title, channel_name in valid_streams:
+            if login in CLIP_FRIENDLY_CREATORS:
+                print(f"[Whitelist GTA 6 Hit] {channel_name}: {title}", flush=True)
                 return live_url, title, channel_name
+
+        # Pass 2: Fallback to highest-viewer eligible English GTA 6 stream
+        if valid_streams:
+            login, live_url, title, channel_name = valid_streams[0]
+            print(f"[Top GTA 6 Hit] {channel_name}: {title}", flush=True)
+            return live_url, title, channel_name
+
     except Exception as e:
         print(f"Twitch search error: {e}", flush=True)
 
@@ -168,7 +188,6 @@ def search_twitch_gta6(history):
 def find_live_stream():
     history = load_history()
     now_utc = datetime.now(timezone.utc)
-    # Blocks all uploads until Thursday, November 19, 2026 at 00:00 UTC (5:30 AM IST)
     if now_utc < datetime(2026, 11, 19, 0, 0, tzinfo=timezone.utc):
         print("Waiting for GTA 6 official launch (Nov 19, 2026 00:00 UTC). Exiting cleanly.", flush=True)
         return None, None, None
@@ -380,7 +399,6 @@ def render_viral_short(raw_path, start_sec, peak_sec, srt_path, voice_hook_text,
     else:
         bg_filter = "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=28:6,eq=brightness=-0.08:saturation=1.3[bg];"
 
-    # Locking fps=30 before zoompan guarantees 1:1 real-time playback and full-length audio sync
     zoom_expr = f"if(between(in_time,{climax_rel-0.25},{climax_rel+0.6}),1.20,if(lt(mod(in_time,4),0.45),1.09,1.0))"
     fg_filter = (
         f"[0:v]fps=30,scale=1080:608,setsar=1,"
@@ -521,7 +539,7 @@ if __name__ == "__main__":
 
         subprocess.run([
             "ffmpeg", "-y", "-ss", str(start_sec), "-i", "raw_chunk.ts",
-            "-t", str(CLIP_DURATION), "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "-ar", "48000", "-ac", "2", "temp_transcribe.mp4"
+            "-t", str(CLIP_DURATION), "-r", "30", "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "-ar", "48000", "-ac", "2", "temp_transcribe.mp4"
         ], check=True)
 
         srt_path, transcript, climax_transcript, meme_trigger_sec, bad_word_intervals = transcribe_clip("temp_transcribe.mp4", time_offset=HOOK_DURATION)
