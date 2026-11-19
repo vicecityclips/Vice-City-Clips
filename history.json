@@ -27,14 +27,18 @@
     "https://www.twitch.tv/darkviperau": {
       "title": "GTA 5 100% Speedrun Practice | $6,767 USD !giveaway",
       "channel": "DarkViperAU",
-      "count": 1,
+      "count": 2,
       "clips": [
         {
           "utc_time": "2026-11-14 13:27:32 UTC",
           "chunk_peak_sec": 135
+        },
+        {
+          "scheduled_utc": "2026-11-20T00:00:00Z",
+          "chunk_peak_sec": 390
         }
       ],
-      "last_clipped_at": 1794662852
+      "last_clipped_at": 1795114321
     },
     "https://www.twitch.tv/welovegames": {
       "title": "[\u0414\u0435\u043d\u044c 12] !\u0434\u043e\u043d\u0430\u0442\u043e\u0444\u043e\u043d \u043f\u043e Grand Theft Auto | !\u0446\u0435\u043b\u0438 !\u043a\u0430\u0440\u0430\u043e\u043a\u0435 !gta !avito !ggsel !\u0432\u0442\u0431 !dodo",
@@ -446,6 +450,7 @@
     }
   },
   "scheduled_slots": [
-    "2026-11-19T18:00:00Z"
+    "2026-11-19T18:00:00Z",
+    "2026-11-20T00:00:00Z"
   ]
 }
