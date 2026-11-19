@@ -331,6 +331,7 @@ def transcribe_clip(clip_path, time_offset=HOOK_DURATION):
         _, w_end, _ = last_word
         start_t = w_start + time_offset
         end_t = w_end + time_offset
+        text = " ".join(word_str for _, _, word_str in chunk)
         full_text.append(text)
 
         def fmt_time(t):
