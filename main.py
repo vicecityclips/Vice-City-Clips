@@ -111,7 +111,7 @@ def get_available_publish_slots(history_data, max_needed=3):
     base_day = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
     candidate_slots = []
     for day_offset in range(0, 3):
-        for hr in:
+        for hr in (0, 6, 12, 18):
             slot_dt = base_day + timedelta(days=day_offset, hours=hr)
             if slot_dt >= (now_utc + timedelta(minutes=15)):
                 iso_str = slot_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
