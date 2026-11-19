@@ -30,8 +30,8 @@ MAX_STREAMS_TO_RECORD = 3       # Sweet spot: 6 simultaneous streams (avoids Twi
 CHUNK_SECONDS = 90             # 12 minutes (720s) per stream (72 total mins scanned per batch)
 # ----------------------------
 
-SINGLE_CLIP_DUR = 40
-MULTI_CLIP_DUR = 16
+SINGLE_CLIP_DUR = 45
+MULTI_CLIP_DUR = 19
 HOOK_DURATION = 2.5
 TRANSITION_DUR = 0.4
 ENABLE_AI_VOICEOVER = True
@@ -504,8 +504,8 @@ def build_and_render_short(mode, framing_mode, clip_specs, out_video_name="final
         if c_name not in creators_used:
             creators_used.append(c_name)
 
-        seg_start_t = 0.0 if (mode == "SINGLE" and idx == 0) else current_timeline_sec
-        seg_end_t = current_timeline_sec + seg_dur
+        seg_start_t = 0.0 if idx == 0 else current_timeline_sec
+        seg_end_t = current_timeline_sec + seg_dur - (TRANSITION_DUR if idx < len(clip_specs) - 1 else 0.0)
         credit_windows.append((seg_start_t, seg_end_t, c_name))
 
         rel_peak = current_timeline_sec + max(1.0, min(seg_dur - 1.5, peak_sec - start_sec))
@@ -621,7 +621,7 @@ def build_and_render_short(mode, framing_mode, clip_specs, out_video_name="final
         safe_c = "".join(c for c in c_name if c.isalnum() or c in {"_", "-", " "}).strip()
         end_bound = total_dur + 1.0 if win_idx == len(credit_windows) - 1 else w_end
         credit_filters.append(
-            f"drawtext=text='Credit\\: {safe_c}':fontcolor=white@0.92:fontsize=25:x=(w-text_w)/2:y=225:enable='between(t,{w_start:.2f},{end_bound:.2f})'"
+            f"drawtext=text='Credit\\: {safe_c}':fontcolor=white@0.92:fontsize=25:x=(w-text_w)/2:y=225:enable='gte(t,{w_start:.2f})*lt(t,{end_bound:.2f})'"
         )
     dynamic_credits_chain = ",".join(credit_filters)
 
