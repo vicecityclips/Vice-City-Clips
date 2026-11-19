@@ -402,13 +402,17 @@
   "https://www.twitch.tv/agent00": {
     "title": "GTA 6 MARATHON + MAKING EVERY WRONG DECISION + WORST RUN + NOT ENDING UNTIL I FINISH",
     "channel": "Agent00",
-    "count": 1,
+    "count": 2,
     "clips": [
       {
         "utc_time": "2026-11-19 01:11:55 UTC",
         "chunk_peak_sec": 189
+      },
+      {
+        "utc_time": "2026-11-19 02:02:31 UTC",
+        "chunk_peak_sec": 198
       }
     ],
-    "last_clipped_at": 1795050715
+    "last_clipped_at": 1795053751
   }
 }
