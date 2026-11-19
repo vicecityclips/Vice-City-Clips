@@ -374,5 +374,17 @@
       }
     ],
     "last_clipped_at": 1794964476
+  },
+  "https://www.twitch.tv/theburntpeanut": {
+    "title": "GTA 6 | BUNGULATION EDITION | IM IN NEW ZEALAND | #BUNGULATE",
+    "channel": "TheBurntPeanut",
+    "count": 1,
+    "clips": [
+      {
+        "utc_time": "2026-11-19 00:07:35 UTC",
+        "chunk_peak_sec": 110
+      }
+    ],
+    "last_clipped_at": 1795046855
   }
 }
