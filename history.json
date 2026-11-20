@@ -463,12 +463,26 @@
         }
       ],
       "last_clipped_at": 1795144298
+    },
+    "twitch_ohnepixel_318411910755": {
+      "title": "\ud83d\udd34[DROPS] GTA 6 FULL PLAYTHROUGH...\ud83d\udd34",
+      "channel": "ohnePixel",
+      "url": "https://www.twitch.tv/ohnepixel",
+      "count": 1,
+      "clips": [
+        {
+          "scheduled_utc": "2026-11-20T18:00:00Z",
+          "chunk_peak_sec": 321
+        }
+      ],
+      "last_clipped_at": 1795197000
     }
   },
   "scheduled_slots": [
     "2026-11-19T18:00:00Z",
     "2026-11-20T00:00:00Z",
     "2026-11-20T06:00:00Z",
-    "2026-11-20T12:00:00Z"
+    "2026-11-20T12:00:00Z",
+    "2026-11-20T18:00:00Z"
   ]
 }
