@@ -44,8 +44,8 @@ from googleapiclient.http import MediaFileUpload
 # --- 2.1 ChannelForge Channel Profile (Dashboard Toggle Schema) ---
 CHANNEL_CONFIG = {
     "channel_handle": "@Vice-City_ClipsVault",
-    "upload_to_youtube": True,              # True = upload/schedule | False = artifacts only
-    "youtube_privacy": "public",            # "public" (scheduled slots) or "private" (test)
+    "upload_to_youtube": False,              # True = upload/schedule | False = artifacts only
+    "youtube_privacy": "private",            # "public" (scheduled slots) or "private" (test)
     "max_uploads_per_day": 4,               # Daily Shorts cap (00:00, 06:00, 12:00, 18:00 UTC)
     "default_framing": "splitcam",          # "splitcam" (auto facecam), "crop", or "blur"
     "enable_jump_cuts": True,               # Auto-trim dead-air pauses > 0.70s
