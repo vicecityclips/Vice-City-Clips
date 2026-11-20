@@ -383,14 +383,18 @@
     "https://www.twitch.tv/theburntpeanut": {
       "title": "GTA 6 | BUNGULATION EDITION | IM IN NEW ZEALAND | #BUNGULATE",
       "channel": "TheBurntPeanut",
-      "count": 1,
+      "count": 2,
       "clips": [
         {
           "utc_time": "2026-11-19 00:07:35 UTC",
           "chunk_peak_sec": 110
+        },
+        {
+          "scheduled_utc": "2026-11-20T06:00:00Z",
+          "chunk_peak_sec": 471
         }
       ],
-      "last_clipped_at": 1795046855
+      "last_clipped_at": 1795137383
     },
     "https://www.twitch.tv/timthetatman": {
       "title": "KEY DROPS ON - GTA 6 IS FINALLY HERE",
@@ -451,6 +455,7 @@
   },
   "scheduled_slots": [
     "2026-11-19T18:00:00Z",
-    "2026-11-20T00:00:00Z"
+    "2026-11-20T00:00:00Z",
+    "2026-11-20T06:00:00Z"
   ]
 }
