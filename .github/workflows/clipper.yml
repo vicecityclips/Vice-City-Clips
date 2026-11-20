@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Run mode: auto, scout, or publish'
+        description: 'Run mode: auto, scout, publish, or weekly_recap'
         required: false
         default: 'auto'
 
@@ -30,7 +30,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg fonts-dejavu-core
-          pip install -U "yt-dlp[default]" curl_cffi streamlink requests scipy numpy google-genai faster-whisper edge-tts gTTS google-api-python-client google-auth
+          pip install -U "yt-dlp[default]" curl_cffi streamlink requests scipy numpy opencv-python-headless google-genai faster-whisper edge-tts gTTS google-api-python-client google-auth
 
       - name: Run Scout or Single-Slot Publisher
         env:
