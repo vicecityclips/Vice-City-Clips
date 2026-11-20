@@ -735,7 +735,7 @@ SHORT2: <SCORE 1-10> | <SINGLE or MULTI> | <splitcam, crop, or blur> | <idx1>,<p
 
         try:
             resp = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.0-flash",
                 contents=prompt,
                 config=types.GenerateContentConfig(temperature=0.65),
             )
@@ -975,7 +975,7 @@ COMMENTARY: <22-30 word original narrator script>"""
 
     try:
         resp = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.0-flash",
             contents=prompt,
             config=types.GenerateContentConfig(temperature=0.95),
         )
@@ -1011,6 +1011,273 @@ async def create_voiceover_audio(text, filename="narrator_vo.mp3"):
     tts = gTTS(text=text, lang="en", slow=False)
     tts.save(filename)
     return filename
+
+# ==============================================================================
+# PART 16B-1: TIMELINE ASSEMBLER & OPENCV FACECAM DETECTOR
+# Title: Multi-Clip Crossfade Timeline & Streamer Facecam Coordinate Locator
+# Subtitle: Mixes transformative AI commentary & detects corner facecams
+# ==============================================================================
+
+def get_media_duration(path):
+    res = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", path],
+        capture_output=True, text=True
+    )
+    try:
+        return float(res.stdout.strip())
+    except Exception:
+        return 15.0
+
+
+def assemble_base_timeline(mode, clip_specs):
+    segment_files = []
+    segment_durations = []
+    all_ass_events = []
+    all_bad_intervals = []
+    all_transcripts = []
+    creators_used = []
+    climax_markers = []
+    credit_windows = []
+
+    current_timeline_sec = (HOOK_DURATION - TRANSITION_DUR) if mode == "SINGLE" else 0.0
+
+    for idx, (cand, start_sec, peak_sec, seg_dur) in enumerate(clip_specs):
+        raw_seg_mp4 = f"raw_seg_{idx}.mp4"
+        seg_mp4 = f"seg_{idx}.mp4"
+        subprocess.run([
+            "ffmpeg", "-y", "-ss", str(start_sec), "-i", cand["video_path"],
+            "-t", str(seg_dur), "-r", "30", "-c:v", "libx264", "-preset", "ultrafast",
+            "-c:a", "aac", "-ar", "48000", "-ac", "2", raw_seg_mp4
+        ], check=True)
+
+        apply_auto_jump_cuts(raw_seg_mp4, seg_mp4)
+        actual_dur = get_media_duration(seg_mp4)
+
+        ass_events, seg_txt, bad_ints = transcribe_segment_ass(seg_mp4, time_offset=current_timeline_sec)
+        all_ass_events.extend(ass_events)
+        all_bad_intervals.extend(bad_ints)
+        all_transcripts.append(seg_txt)
+
+        c_name = cand["channel_name"]
+        if c_name not in creators_used:
+            creators_used.append(c_name)
+
+        seg_start_t = 0.0 if (mode == "SINGLE" and idx == 0) else current_timeline_sec
+        seg_end_t = current_timeline_sec + actual_dur
+        rank_label = f"#{len(clip_specs) - idx} — {c_name}" if mode == "MULTI" else c_name
+        credit_windows.append((seg_start_t, seg_end_t, rank_label))
+
+        rel_peak = current_timeline_sec + max(1.0, min(actual_dur - 1.5, actual_dur * 0.6))
+        climax_markers.append(rel_peak)
+        segment_files.append(seg_mp4)
+        segment_durations.append(actual_dur)
+        current_timeline_sec += (actual_dur - TRANSITION_DUR)
+
+    ass_path = write_ass_file(all_ass_events, "captions.ass")
+    viral_title, banner_hook, commentary_script = generate_viral_metadata(" ".join(all_transcripts), mode, creators_used)
+
+    if mode == "SINGLE":
+        cand0, _, peak0, _ = next(iter(clip_specs))
+        hook_start = max(0, peak0 - 2.5)
+        subprocess.run([
+            "ffmpeg", "-y", "-ss", str(hook_start), "-i", cand0["video_path"],
+            "-t", str(HOOK_DURATION), "-r", "30", "-c:v", "libx264", "-preset", "ultrafast",
+            "-c:a", "aac", "-ar", "48000", "-ac", "2", "hook_clip.mp4"
+        ], check=True)
+        concat_list = ["hook_clip.mp4"] + segment_files
+        concat_durs = [float(HOOK_DURATION)] + segment_durations
+    else:
+        concat_list = segment_files
+        concat_durs = segment_durations
+
+    if len(concat_list) == 1:
+        os.replace(next(iter(concat_list)), "combined_raw.mp4")
+        total_dur = next(iter(concat_durs))
+    else:
+        ffmpeg_in = []
+        for fn in concat_list:
+            ffmpeg_in.extend(["-i", fn])
+
+        v_filters, a_filters = [], []
+        prev_v, prev_a = "[0:v]", "[0:a]"
+        running_offset = 0.0
+        chosen_transitions = random.sample(XFADE_TRANSITIONS, k=min(len(XFADE_TRANSITIONS), len(concat_list) - 1))
+
+        for step_idx in range(1, len(concat_list)):
+            running_offset += concat_durs[step_idx - 1] - TRANSITION_DUR
+            t_style = chosen_transitions[step_idx - 1]
+            out_v_pad = "[vout]" if step_idx == len(concat_list) - 1 else f"[v{step_idx}]"
+            out_a_pad = "[aout]" if step_idx == len(concat_list) - 1 else f"[a{step_idx}]"
+
+            v_filters.append(f"{prev_v}[{step_idx}:v]xfade=transition={t_style}:duration={TRANSITION_DUR}:offset={running_offset:.2f}{out_v_pad}")
+            a_filters.append(f"{prev_a}[{step_idx}:a]acrossfade=d={TRANSITION_DUR}{out_a_pad}")
+            prev_v, prev_a = out_v_pad, out_a_pad
+
+        subprocess.run([
+            "ffmpeg", "-y", *ffmpeg_in,
+            "-filter_complex", ";".join(v_filters + a_filters),
+            "-map", "[vout]", "-map", "[aout]",
+            "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "-ar", "48000", "-ac", "2", "combined_raw.mp4"
+        ], check=True)
+        total_dur = sum(concat_durs) - TRANSITION_DUR * (len(concat_list) - 1)
+
+    if CHANNEL_CONFIG["enable_ai_voiceover"] and commentary_script:
+        asyncio.run(create_voiceover_audio(commentary_script, "narrator_vo.mp3"))
+        vo_dur = get_media_duration("narrator_vo.mp3")
+        subprocess.run([
+            "ffmpeg", "-y", "-i", "combined_raw.mp4", "-i", "narrator_vo.mp3",
+            "-filter_complex",
+            f"[0:a]volume='if(lt(t,{vo_dur + 0.3:.2f}),0.14,0.95)':eval=frame[game_a];"
+            "[1:a]aresample=48000,aformat=channel_layouts=stereo,volume=1.40[vo_a];"
+            "[game_a][vo_a]amix=inputs=2:duration=first[aout]",
+            "-map", "0:v", "-map", "[aout]",
+            "-c:v", "copy", "-c:a", "aac", "-ar", "48000", "-ac", "2", "combined.mp4"
+        ], check=True)
+    else:
+        os.replace("combined_raw.mp4", "combined.mp4")
+
+    return total_dur, ass_path, viral_title, banner_hook, climax_markers, credit_windows, all_bad_intervals
+
+
+def detect_facecam_crop(video_path):
+    try:
+        import cv2
+        cap = cv2.VideoCapture(video_path)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+        cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+
+        best_box = None
+        for frac in (0.2, 0.5, 0.8):
+            if total_frames > 0:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, int(total_frames * frac))
+            ok, frame = cap.read()
+            if not ok or frame is None:
+                continue
+            h, w = frame.shape[:2]
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faces = cascade.detectMultiScale(gray, scaleFactor=1.15, minNeighbors=5, minSize=(45, 45))
+            for (fx, fy, fw, fh) in faces:
+                cx, cy = fx + fw / 2.0, fy + fh / 2.0
+                if cx < w * 0.34 or cx > w * 0.66 or cy < h * 0.32 or cy > h * 0.68:
+                    crop_w = int(min(w * 0.34, max(fw * 3.4, w * 0.24)))
+                    crop_h = int(min(h * 0.42, crop_w * (680.0 / 1080.0)))
+                    x0 = int(max(0, min(w - crop_w, cx - crop_w / 2.0)))
+                    y0 = int(max(0, min(h - crop_h, cy - crop_h / 2.0)))
+                    best_box = (crop_w, crop_h, x0, y0)
+                    break
+            if best_box:
+                break
+        cap.release()
+        return best_box
+    except Exception:
+        return None
+
+# ==============================================================================
+# PART 16B-2: 9:16 VERTICAL SHORT COMPOSITOR & FX RENDERER
+# Title: FFmpeg Splitcam/Crop/Blur Builder with Climax Shake, Flash & Captions
+# Subtitle: Renders final 1080x1920 vertical Short with loudnorm & SFX
+# ==============================================================================
+
+def build_and_render_short(mode, framing_mode, clip_specs, out_video_name="final_short.mp4"):
+    (
+        total_dur, ass_path, viral_title, banner_hook,
+        climax_markers, credit_windows, all_bad_intervals
+    ) = assemble_base_timeline(mode, clip_specs)
+
+    primary_climax = next(iter(climax_markers)) if climax_markers else 18.0
+    inputs = ["-i", "combined.mp4"]
+    has_boom_sfx = os.path.exists("assets/boom.mp3")
+
+    climax_cond = "+".join([f"between(in_time,{cm-0.18:.2f},{cm+0.50:.2f})" for cm in climax_markers])
+    shake_x = "+".join([f"if(between(in_time,{cm-0.18:.2f},{cm+0.50:.2f}),16*sin(in_time*80),0)" for cm in climax_markers])
+    shake_y = "+".join([f"if(between(in_time,{cm-0.18:.2f},{cm+0.50:.2f}),16*cos(in_time*80),0)" for cm in climax_markers])
+    flash_cond = "+".join([f"between(t,{cm-0.07:.2f},{cm+0.10:.2f})" for cm in climax_markers])
+    zoom_expr = f"if({climax_cond},1.16,1.0+0.08*(mod(in_time,14)/14))"
+
+    face_box = detect_facecam_crop("combined.mp4") if framing_mode == "splitcam" else None
+    effective_framing = "splitcam" if face_box else ("crop" if framing_mode == "splitcam" else framing_mode)
+
+    if effective_framing == "splitcam" and face_box:
+        cw, ch, cx0, cy0 = face_box
+        print(f"[Framing] Locked onto streamer facecam at ({cx0},{cy0}) {cw}x{ch}!", flush=True)
+        video_base_filter = (
+            "[0:v]fps=30,split=2[raw_cam][raw_game];"
+            f"[raw_cam]crop={cw}:{ch}:{cx0}:{cy0},scale=1080:680:force_original_aspect_ratio=increase,crop=1080:680,setsar=1[cam_top];"
+            "[raw_game]scale=-2:1240,crop=1080:1240:(iw-1080)/2:0,setsar=1[game_bot];"
+            f"[cam_top][game_bot]vstack=inputs=2,"
+            f"drawbox=x=0:y=676:w=1080:h=8:color=#FF00FF@0.95:t=fill,"
+            f"eq=contrast=1.15:saturation=1.28:brightness='if({flash_cond},0.16,0)':eval=frame,"
+            f"zoompan=z='{zoom_expr}':x='iw/2-(iw/zoom/2)+{shake_x}':y='ih/2-(ih/zoom/2)+{shake_y}':d=1:s=1080x1920:fps=30[base_v];"
+        )
+        banner_y_box, banner_y_txt = 636, 658
+    elif effective_framing == "crop":
+        print("[Framing] Full-bleed vertical gameplay crop (no corner facecam).", flush=True)
+        video_base_filter = (
+            f"[0:v]fps=30,scale=-2:1920,crop=1080:1920:(iw-1080)/2:0,setsar=1,"
+            f"eq=contrast=1.15:saturation=1.28:brightness='if({flash_cond},0.16,0)':eval=frame,"
+            f"zoompan=z='{zoom_expr}':x='iw/2-(iw/zoom/2)+{shake_x}':y='ih/2-(ih/zoom/2)+{shake_y}':d=1:s=1080x1920:fps=30[base_v];"
+        )
+        banner_y_box, banner_y_txt = 230, 252
+    else:
+        bg_filter = "[0:v]fps=30,scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=28:6,eq=brightness=-0.04:saturation=1.35[bg];"
+        fg_filter = (
+            f"[0:v]fps=30,scale=1080:720,setsar=1,"
+            f"eq=contrast=1.15:saturation=1.28:brightness='if({flash_cond},0.16,0)':eval=frame,"
+            f"zoompan=z='{zoom_expr}':x='iw/2-(iw/zoom/2)+{shake_x}':y='ih/2-(ih/zoom/2)+{shake_y}':d=1:s=1080x720:fps=30[fg];"
+            "[bg][fg]overlay=(W-w)/2:(H-h)/2[base_v];"
+        )
+        video_base_filter = bg_filter + fg_filter
+        banner_y_box, banner_y_txt = 505, 527
+
+    credit_filters = []
+    for win_idx, (w_start, w_end, c_name) in enumerate(credit_windows):
+        safe_c = "".join(c for c in c_name if c.isalnum() or c in {"_", "-", " "}).strip()
+        end_bound = total_dur + 1.0 if win_idx == len(credit_windows) - 1 else w_end
+        credit_filters.append(
+            f"drawtext=text='Credit\\: {safe_c}':fontcolor=white@0.92:fontsize=24:x=(w-text_w)/2:y=115:enable='between(t,{w_start:.2f},{end_bound:.2f})'"
+        )
+    dynamic_credits_chain = ",".join(credit_filters)
+
+    safe_banner = banner_hook.replace("'", "").replace(":", "")
+    handle = CHANNEL_CONFIG["channel_handle"]
+    polish_filter = (
+        f"[base_v]drawbox=x=160:y={banner_y_box}:w=760:h=84:color=#111111@0.92:t=fill:enable='between(t,0,3.8)',"
+        f"drawtext=text='{safe_banner}':fontcolor=#FFFF00:fontsize=40:x=(w-text_w)/2:y={banner_y_txt}:enable='between(t,0,3.8)',"
+        f"drawbox=x=0:y=ih-12:w=iw*(t/{total_dur}):h=12:color=#FF00FF@0.95:t=fill,"
+        f"drawtext=text='{handle}':fontcolor=white@0.80:fontsize=26:x=(w-text_w)/2:y=80,"
+        f"{dynamic_credits_chain},"
+        f"ass={ass_path}[out_v]"
+    )
+
+    if all_bad_intervals:
+        enable_expr = "+".join([f"between(t,{s:.2f},{e:.2f})" for s, e in all_bad_intervals])
+        censor_chain = f"[0:a]aresample=async=1,loudnorm=I=-14:TP=-1.5:LRA=11,volume=0:enable='{enable_expr}'[norm_a];"
+    else:
+        censor_chain = "[0:a]aresample=async=1,loudnorm=I=-14:TP=-1.5:LRA=11[norm_a];"
+
+    if has_boom_sfx:
+        inputs.extend(["-i", "assets/boom.mp3"])
+        delay_ms = int(primary_climax * 1000)
+        audio_filter = (
+            censor_chain +
+            f"[1:a]aresample=48000,aformat=channel_layouts=stereo,adelay={delay_ms}|{delay_ms},volume=0.85[sfx_a];"
+            f"[norm_a][sfx_a]amix=inputs=2:duration=first[out_a]"
+        )
+    else:
+        audio_filter = censor_chain.replace("[norm_a];", "[out_a]")
+
+    full_filter_complex = video_base_filter + polish_filter + ";" + audio_filter
+
+    subprocess.run([
+        "ffmpeg", "-y", *inputs,
+        "-filter_complex", full_filter_complex,
+        "-map", "[out_v]", "-map", "[out_a]",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "21",
+        "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2",
+        out_video_name
+    ], check=True)
+
+    return viral_title, banner_hook, primary_climax, effective_framing
 
 # ==============================================================================
 # PART 17 OF 20: WEEKLY SUNDAY 16:9 LONG-FORM COMPILATION BUILDER
@@ -1139,7 +1406,7 @@ def post_engagement_comment(youtube, video_id, title):
         try:
             client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=15000))
             resp = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.0-flash",
                 contents=(
                     f"Write 1 short, fun, engaging pinned-comment question (under 14 words + 1-2 emojis) "
                     f"for a GTA 6 YouTube video titled '{title}'. Output ONLY the comment text."
