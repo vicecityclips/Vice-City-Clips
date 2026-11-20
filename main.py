@@ -230,11 +230,8 @@ def fetch_kick_gta_streams(limit=12):
     }
     for slug in ("grand-theft-auto-vi", "grand-theft-auto-v"):
         try:
-            r = requests.get(
-                f"https://kick.com{slug}/livestreams?page=1",
-                headers=headers,
-                timeout=12,
-            )
+            url = f"https://kick.com/api/v2/categories/{slug}/livestreams?page=1"
+            r = requests.get(url, headers=headers, timeout=12)
             if r.status_code == 200 and r.text.strip().startswith("{"):
                 for item in (r.json().get("data") or [])[:limit]:
                     chan = item.get("channel") or {}
@@ -373,7 +370,7 @@ def harvest_youtube_candidates(hist, max_items=4):
         if yt_key in seen_ids:
             continue
 
-        url = f"https://www.youtube.com/watch?v={vid_id}"
+        url = f"https://youtube.com{vid_id}"
         try:
             meta_res = subprocess.run(
                 ["yt-dlp", "--dump-json"] + yt_client_args + [url],
@@ -391,8 +388,6 @@ def harvest_youtube_candidates(hist, max_items=4):
         dur = float(info.get("duration") or 0)
         uploader = str(info.get("uploader") or info.get("channel") or "YouTuber").strip()
         title = str(info.get("title") or "GTA Gameplay").strip()
-        ts_path = f"raw_yt_{len(harvested)}.ts"
-        tmp_mp4 = f"raw_yt_tmp_{len(harvested)}.mp4"
 
         if not is_live and (dur < 65 or dur > 18000):
             continue
@@ -407,22 +402,22 @@ def harvest_youtube_candidates(hist, max_items=4):
         elif not is_live and dur > 120:
             start_sec = random.uniform(30.0, max(35.0, dur - 85.0))
 
+        ts_path = f"raw_yt_{len(harvested)}.mp4"
         grab_dur = 180 if is_live else 75
         try:
-            if os.path.exists(tmp_mp4):
-                os.remove(tmp_mp4)
+            if os.path.exists(ts_path):
+                os.remove(ts_path)
             dl_cmd = [
                 "yt-dlp", "-f", "best[height<=720][ext=mp4]/best[height<=720]/best",
                 "--download-sections", f"*{start_sec:.1f}-{start_sec + grab_dur:.1f}",
-                "-o", tmp_mp4,
+                "-o", ts_path,
             ] + yt_client_args + [url]
-            subprocess.run(dl_cmd, timeout=grab_dur + 45)
-            if os.path.exists(tmp_mp4) and os.path.getsize(tmp_mp4) > 300_000:
-                subprocess.run([
-                    "ffmpeg", "-y", "-loglevel", "error",
-                    "-i", tmp_mp4, "-c", "copy", ts_path
-                ], timeout=25)
-        except Exception:
+            dl_res = subprocess.run(dl_cmd, capture_output=True, text=True, timeout=grab_dur + 45)
+            if dl_res.returncode != 0:
+                err_line = next(iter(reversed(dl_res.stderr.splitlines())), "download error")
+                print(f"[Warn] yt-dlp skip ({uploader}): {err_line}", flush=True)
+        except Exception as e:
+            print(f"[Warn] yt-dlp timeout/err ({uploader}): {e}", flush=True)
             continue
 
         if os.path.exists(ts_path) and os.path.getsize(ts_path) > 300_000:
@@ -442,7 +437,6 @@ def harvest_youtube_candidates(hist, max_items=4):
             print(f"[YouTube-{tag}] Grabbed {uploader}: {title[:48]}", flush=True)
 
     return harvested
-
 
 # ==============================================================================
 # PART 5 OF 12: MULTI-WINDOW ACOUSTIC SCANNER & ENGLISH WHISPER TRANSLATOR
@@ -476,7 +470,7 @@ def find_top_peak_windows(energies, median_e, num_secs, max_peaks=3):
 
 
 def extract_acoustic_candidates(recorded_streams):
-    """Scans all Twitch & YouTube recordings, filters dead-air/stunts, and builds English transcripts."""
+    """Scans all Twitch, Kick & YouTube recordings, filters dead-air/stunts, and builds English transcripts."""
     if not recorded_streams:
         return []
 
@@ -486,7 +480,7 @@ def extract_acoustic_candidates(recorded_streams):
     for st in recorded_streams:
         ts_path = st["ts_path"]
         channel_name = st["creator"]
-        wav_path = ts_path.replace(".ts", ".wav")
+        wav_path = re.sub(r"\.[^.]+$", ".wav", ts_path)
 
         ext_res = subprocess.run([
             "ffmpeg", "-y", "-loglevel", "error", "-err_detect", "ignore_err",
@@ -526,7 +520,7 @@ def extract_acoustic_candidates(recorded_streams):
         for win_idx, (jump_score, best_sec) in enumerate(peak_windows):
             win_start = max(0, best_sec - 24)
             win_end = min(num_secs, best_sec + 21)
-            sub_wav = ts_path.replace(".ts", f"_w{win_idx}.wav")
+            sub_wav = re.sub(r"\.[^.]+$", f"_w{win_idx}.wav", ts_path)
             wavfile.write(sub_wav, rate, (data[win_start * rate : win_end * rate] * 32767).astype(np.int16))
 
             lines = []
