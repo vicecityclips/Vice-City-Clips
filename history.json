@@ -489,6 +489,19 @@
         }
       ],
       "last_clipped_at": 1795199941
+    },
+    "twitch_kaicenat_321494531040": {
+      "title": "\ud83c\udf34PLAYING GTA 6 FOR THE FIRST TIME\ud83c\udf34",
+      "channel": "KaiCenat",
+      "url": "https://www.twitch.tv/kaicenat",
+      "count": 1,
+      "clips": [
+        {
+          "scheduled_utc": "2026-11-21T06:00:00Z",
+          "chunk_peak_sec": 221
+        }
+      ],
+      "last_clipped_at": 1795204220
     }
   },
   "scheduled_slots": [
@@ -497,6 +510,21 @@
     "2026-11-20T06:00:00Z",
     "2026-11-20T12:00:00Z",
     "2026-11-20T18:00:00Z",
-    "2026-11-21T00:00:00Z"
-  ]
+    "2026-11-21T00:00:00Z",
+    "2026-11-21T06:00:00Z"
+  ],
+  "recent_uploads": [
+    {
+      "video_id": "tmtiE8AJ7CY",
+      "title": "Why Nobody Saw This Coming in GTA 6 \ud83d\ude93\ud83d\udea8 #gta6 #shorts",
+      "creators": [
+        "KaiCenat"
+      ],
+      "mode": "SINGLE",
+      "framing": "crop",
+      "views": 0,
+      "uploaded_at": 1795204220
+    }
+  ],
+  "last_weekly_recap_date": ""
 }
