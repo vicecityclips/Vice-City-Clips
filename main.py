@@ -1,170 +1,115 @@
 import os
+import io
+import re
 import json
 import time
+import shutil
 import random
-import asyncio
+import zipfile
 import subprocess
-import urllib.parse
-import urllib.request
-from datetime import datetime, timezone, timedelta
-from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta, timezone
+
 import numpy as np
+import requests
 from scipy.io import wavfile
 from faster_whisper import WhisperModel
-import edge_tts
-from gtts import gTTS
 from google import genai
-from google.genai import types
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-CHANNEL_HANDLE = "@Vice-City_ClipsVault"
-
 # --- EASY CONTROL TOGGLES ---
-UPLOAD_TO_YOUTUBE = True        # True = upload/schedule to YouTube | False = skip YouTube & save local artifact
-YOUTUBE_PRIVACY = "public"      # "public" (uses exact scheduled slots) or "private" (immediate private test)
+UPLOAD_TO_YOUTUBE = True        # True = upload/schedule to YouTube | False = local artifact test
+YOUTUBE_PRIVACY = "public"      # "public" (uses exact scheduled slots) or "private"
 MAX_UPLOADS_PER_DAY = 4         # Strict cap: maximum 4 Shorts scheduled/uploaded per day
-MAX_STREAMS_TO_RECORD = 6       # Sweet spot: 6 simultaneous streams (avoids Twitch IP rate limits)
-CHUNK_SECONDS = 720             # 12 minutes (720s) per stream (72 total mins scanned per batch)
-# ----------------------------
+MAX_STREAMS_TO_RECORD = 6       # Sweet spot: 6 simultaneous streams (avoids Twitch IP blocks)
+CHUNK_SECONDS = 360             # 6 mins/hr in scout mode (216 mins scanned per 6-hr window!)
 
+# --- CLIP & CHANNEL SETTINGS ---
+CHANNEL_HANDLE = "@Vice-City_ClipsVault"
 SINGLE_CLIP_DUR = 45
 MULTI_CLIP_DUR = 19
-HOOK_DURATION = 2.5
 TRANSITION_DUR = 0.4
-ENABLE_AI_VOICEOVER = True
-
 HISTORY_FILE = "history.json"
-MAX_CLIPS_PER_STREAM = 2        # Up to 2 clips per multi-hour stream (at least 2 hours apart)
-MIN_GAP_SECONDS = 7200          # 2-hour cooldown before revisiting a long stream
+SCHEDULE_HOURS_UTC = [0, 6, 12, 18]  # 5:30 AM, 11:30 AM, 5:30 PM, 11:30 PM IST
 
-CLIP_FRIENDLY_CREATORS = [
-    "kaicenat", "xqc", "shroud", "sykkuno", "valkyrae",
-    "zerkaa", "summit1g", "lirik", "timthetatman", "nickmercs",
-    "caseoh_", "jynxzi", "agent00", "fanum", "duke"
+PRIORITY_CREATORS = [
+    "xqc", "kaicenat", "timthetatman", "nickmercs", "tfue",
+    "summit1g", "shroud", "zerkaa", "joshzerker", "lirik",
+    "sykkuno", "valkyrae", "hasanabi", "jynxzi", "caseoh_"
 ]
 
-XFADE_TRANSITIONS = [
-    "smoothleft", "wipeleft", "slidedown", "slideup",
-    "circleopen", "radial", "pixelize", "fadeblack", "distance"
-]
-
-PROFANITY_WORDS = {
-    "FUCK", "FUCKING", "FUCKED", "FUCKS", "MOTHERFUCKER", "MOTHERFUCKING",
-    "SHIT", "SHITTING", "BULLSHIT", "BITCH", "BITCHES", "BITCHING",
-    "ASSHOLE", "DICK", "DICKS", "PUSSY", "CUNT", "BASTARD", "WHORE", "SLUT",
-    "NIGGA", "NIGGER", "FAGGOT", "RETARD", "RETARDED", "COCK", "TWAT"
-}
-
-def censor_word_text(word_upper):
-    clean = "".join(c for c in word_upper if c.isalpha())
-    if clean in PROFANITY_WORDS and len(clean) >= 2:
-        first_char = clean[:1]
-        masked = first_char + "*" * (len(clean) - 1)
-        return word_upper.replace(clean, masked)
-    return word_upper
-
+# ==========================================
+# PART 2: HISTORY & EXACT-HOUR SLOT SCHEDULER
+# ==========================================
 def load_history():
     if os.path.exists(HISTORY_FILE):
         try:
             with open(HISTORY_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                if "streams" not in data:
-                    return {"streams": data, "scheduled_slots": []}
+            if isinstance(data, dict):
+                data.setdefault("uploaded_ids", [])
+                data.setdefault("scheduled_slots", [])
                 return data
-        except Exception:
-            return {"streams": {}, "scheduled_slots": []}
-    return {"streams": {}, "scheduled_slots": []}
+        except Exception as e:
+            print(f"[Warn] Could not parse {HISTORY_FILE}, resetting: {e}", flush=True)
+    return {"uploaded_ids": [], "scheduled_slots": []}
 
-def save_history(history_data):
+
+def save_history(hist):
+    hist["uploaded_ids"] = hist.get("uploaded_ids", [])[-250:]
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    hist["scheduled_slots"] = [
+        s for s in hist.get("scheduled_slots", [])
+        if str(s) >= cutoff
+    ][-100:]
     with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-        json.dump(history_data, f, indent=2)
+        json.dump(hist, f, indent=2)
 
-def can_clip_stream(stream_url, history_data):
-    streams_map = history_data.get("streams", {})
-    entry = streams_map.get(stream_url)
-    if not entry:
-        return True
-    if entry.get("count", 0) >= MAX_CLIPS_PER_STREAM:
-        return False
-    elapsed = int(time.time() - entry.get("last_clipped_at", 0))
-    return elapsed >= MIN_GAP_SECONDS
 
-def get_available_publish_slots(history_data, max_needed=3):
+def get_next_available_slot(hist):
     now_utc = datetime.now(timezone.utc)
-    booked = set(history_data.get("scheduled_slots", []))
+    booked_slots = set(hist.get("scheduled_slots", []))
 
-    active_booked = [s for s in booked if s > now_utc.strftime("%Y-%m-%dT%H:%M:%SZ")]
-    history_data["scheduled_slots"] = active_booked
-    booked = set(active_booked)
+    for day_offset in range(0, 4):
+        base_day = (now_utc + timedelta(days=day_offset)).replace(
+            minute=0, second=0, microsecond=0
+        )
+        day_prefix = base_day.strftime("%Y-%m-%d")
+        day_count = sum(1 for s in booked_slots if str(s).startswith(day_prefix))
+        if day_count >= MAX_UPLOADS_PER_DAY:
+            continue
 
-    cutoff_24h = (now_utc + timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    booked_next_24h = [s for s in booked if s <= cutoff_24h]
-    remaining_daily_quota = max(0, MAX_UPLOADS_PER_DAY - len(booked_next_24h))
+        for hr in SCHEDULE_HOURS_UTC:
+            candidate_dt = base_day.replace(hour=hr)
+            if candidate_dt <= now_utc + timedelta(minutes=15):
+                continue
+            slot_iso = candidate_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+            if slot_iso not in booked_slots:
+                return slot_iso
+    return None
 
-    if remaining_daily_quota == 0:
-        print(f"Daily cap reached ({MAX_UPLOADS_PER_DAY}/{MAX_UPLOADS_PER_DAY} slots booked in next 24h).", flush=True)
-        return []
+# ==========================================
+# PART 3: LIVE STREAM DISCOVERY & PARALLEL RECORDING
+# ==========================================
+TWITCH_GQL_URL = "https://twitch.tv"
+TWITCH_CLIENT_ID = "kimne78kx3ncx6brgo4mv6wki5h1ko"
 
-    base_day = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
-    candidate_slots = []
-    for day_offset in range(0, 3):
-        for hr in (0, 6, 12, 18):
-            slot_dt = base_day + timedelta(days=day_offset, hours=hr)
-            if slot_dt >= (now_utc + timedelta(minutes=15)):
-                iso_str = slot_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
-                if iso_str not in booked:
-                    candidate_slots.append(iso_str)
 
-    return candidate_slots[:min(max_needed, remaining_daily_quota)]
-
-def record_scheduled_upload(stream_specs, slot_iso):
-    history_data = load_history()
-    streams_map = history_data.setdefault("streams", {})
-    for cand, _, peak_sec, _ in stream_specs:
-        url = cand["live_url"]
-        entry = streams_map.get(url, {
-            "title": cand["stream_title"],
-            "channel": cand["channel_name"],
-            "count": 0,
-            "clips": []
-        })
-        entry["count"] += 1
-        entry["last_clipped_at"] = int(time.time())
-        entry["clips"].append({
-            "scheduled_utc": slot_iso or "immediate",
-            "chunk_peak_sec": int(peak_sec)
-        })
-        streams_map[url] = entry
-
-    if slot_iso and slot_iso not in history_data["scheduled_slots"]:
-        history_data["scheduled_slots"].append(slot_iso)
-    save_history(history_data)
-
-def find_top_live_streams(max_streams=MAX_STREAMS_TO_RECORD):
-    history_data = load_history()
-    now_utc = datetime.now(timezone.utc)
-    if now_utc < datetime(2026, 11, 19, 0, 0, tzinfo=timezone.utc):
-        print("Waiting for GTA 6 official launch. Exiting cleanly.", flush=True)
-        return []
-
-    game_name = "Grand Theft Auto VI"
-    keywords = ["gta 6", "gta vi", "grand theft auto vi", "grand theft auto 6", "vice city", "leonida"]
+def fetch_twitch_directory_streams(game_name, limit=25):
     query = """
-    query($name: String!) {
-      game(name: $name) {
-        streams(first: 60) {
+    query($gameName: String!, $limit: Int!) {
+      game(name: $gameName) {
+        streams(first: $limit, options: {sort: VIEWER_COUNT}) {
           edges {
             node {
+              id
               title
+              viewersCount
               broadcaster {
                 login
                 displayName
-                broadcastSettings {
-                  language
-                }
               }
             }
           }
@@ -172,79 +117,155 @@ def find_top_live_streams(max_streams=MAX_STREAMS_TO_RECORD):
       }
     }
     """
-    gql_payload = json.dumps({"query": query, "variables": {"name": game_name}}).encode("utf-8")
-    gql_url = urllib.parse.urlunparse(("https", "gql.twitch.tv", "/gql", "", "", ""))
-    req = urllib.request.Request(
-        gql_url,
-        data=gql_payload,
-        headers={"Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko", "Content-Type": "application/json"}
-    )
-
+    headers = {
+        "Client-ID": TWITCH_CLIENT_ID,
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "query": query,
+        "variables": {"gameName": game_name, "limit": limit},
+    }
     try:
-        raw_resp = urllib.request.urlopen(req, timeout=15).read().decode("utf-8")
-        resp_data = json.loads(raw_resp)
-        edges = resp_data.get("data", {}).get("game", {}).get("streams", {}).get("edges", [])
-        whitelisted, others = [], []
-
+        resp = requests.post(TWITCH_GQL_URL, json=payload, headers=headers, timeout=15)
+        if resp.status_code != 200:
+            return []
+        data = resp.json()
+        edges = (((data.get("data") or {}).get("game") or {}).get("streams") or {}).get("edges") or []
+        results = []
         for edge in edges:
-            node = edge["node"]
-            broadcaster = node["broadcaster"]
-            login = broadcaster["login"].lower()
-            channel_name = broadcaster["displayName"]
-            title = node.get("title", "")
-
-            lang = (broadcaster.get("broadcastSettings") or {}).get("language", "en")
-            if (lang and lang.lower() != "en") or not title.isascii():
+            node = edge.get("node") or {}
+            bcast = node.get("broadcaster") or {}
+            login = str(bcast.get("login") or "").strip().lower()
+            display = str(bcast.get("displayName") or login).strip()
+            stream_id = str(node.get("id") or "").strip()
+            title = str(node.get("title") or "").strip()
+            viewers = int(node.get("viewersCount") or 0)
+            if not login or not stream_id:
                 continue
-            t_low = title.lower()
-            if any(bad in t_low for bad in ["rerun", "rebroadcast", "24/7", "fake"]):
-                continue
-            if not any(kw in t_low for kw in keywords):
-                continue
-
-            live_url = urllib.parse.urlunparse(("https", "www.twitch.tv", "/" + login, "", "", ""))
-            if can_clip_stream(live_url, history_data):
-                item = (live_url, title, channel_name)
-                if login in CLIP_FRIENDLY_CREATORS:
-                    whitelisted.append(item)
-                else:
-                    others.append(item)
-
-        selected = (whitelisted + others)[:max_streams]
-        print(f"[6-Stream Scout] Found {len(selected)} eligible GTA 6 streams to record simultaneously!", flush=True)
-        return selected
+            results.append({
+                "stream_id": f"twitch_{login}_{stream_id}",
+                "login": login,
+                "creator": display,
+                "title": title,
+                "viewers": viewers,
+                "game": game_name,
+                "url": f"https://twitch.tv{login}",
+            })
+        return results
     except Exception as e:
-        print(f"Twitch search error: {e}", flush=True)
+        print(f"[Warn] Twitch GQL error for {game_name}: {e}", flush=True)
         return []
 
-def record_single_stream(idx_and_stream):
-    idx, (live_url, title, channel_name) = idx_and_stream
-    out_file = f"raw_{idx}.ts"
-    print(f"[Stream {idx+1}] Recording {CHUNK_SECONDS}s (12 mins) from {channel_name}...", flush=True)
-    cmd = [
-        "yt-dlp", "-f", "best[height<=720]",
-        "--downloader", "ffmpeg", "--downloader-args", f"ffmpeg_i:-t {CHUNK_SECONDS}",
-        "--fixup", "never", "-o", out_file, "--no-part", "--no-warnings", live_url
-    ]
-    try:
-        subprocess.run(cmd, check=True, timeout=CHUNK_SECONDS + 240)
-        if os.path.exists(out_file) and os.path.getsize(out_file) > 1_000_000:
-            return (idx, out_file, live_url, title, channel_name)
-    except Exception as e:
-        print(f"[Stream {idx+1}] Skipped ({channel_name}): {e}", flush=True)
-    return None
 
-def analyze_batch_for_multiple_shorts(recorded_list, max_shorts=3):
+def discover_top_live_streams(hist, max_count=MAX_STREAMS_TO_RECORD):
+    seen_ids = set(hist.get("uploaded_ids", []))
+    raw_streams = fetch_twitch_directory_streams("Grand Theft Auto VI", limit=30)
+    if len(raw_streams) < max_count:
+        fallback_streams = fetch_twitch_directory_streams("Grand Theft Auto V", limit=25)
+        existing_logins = {s["login"] for s in raw_streams}
+        for s in fallback_streams:
+            if s["login"] not in existing_logins:
+                raw_streams.append(s)
+
+    priority_set = {p.lower() for p in PRIORITY_CREATORS}
+    filtered = []
+    for s in raw_streams:
+        if s["stream_id"] in seen_ids:
+            continue
+        is_prio = 1 if s["login"] in priority_set else 0
+        filtered.append((is_prio, s["viewers"], s))
+
+    filtered.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    chosen = [item[2] for item in filtered[:max_count]]
+    print(f"[Discovery] Selected {len(chosen)} live streams: {[c['creator'] for c in chosen]}", flush=True)
+    return chosen
+
+
+def record_streams_parallel(streams, duration_sec=CHUNK_SECONDS):
+    procs = []
+    recorded = []
+    for idx, st in enumerate(streams):
+        ts_path = f"raw_{idx}.ts"
+        if os.path.exists(ts_path):
+            os.remove(ts_path)
+        cmd = (
+            f"streamlink --twitch-disable-ads --twitch-low-latency -O "
+            f"'{st['url']}' 720p60,720p,best | "
+            f"ffmpeg -y -loglevel error -err_detect ignore_err -i pipe:0 "
+            f"-t {int(duration_sec)} -c copy '{ts_path}'"
+        )
+        p = subprocess.Popen(cmd, shell=True, preexec_fn=os.setsid)
+        procs.append((p, st, ts_path))
+        time.sleep(0.6)
+
+    for p, st, ts_path in procs:
+        try:
+            p.wait(timeout=duration_sec + 45)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(os.getpgid(p.pid), 15)
+            except Exception:
+                pass
+        if os.path.exists(ts_path) and os.path.getsize(ts_path) > 500_000:
+            st_copy = dict(st)
+            st_copy["ts_path"] = ts_path
+            recorded.append(st_copy)
+            print(f"[Recorded] {st['creator']} -> {ts_path} ({os.path.getsize(ts_path) // (1024*1024)} MB)", flush=True)
+        else:
+            print(f"[Skip] Failed or empty recording for {st['creator']}", flush=True)
+    return recorded
+
+# ==========================================
+# PART 4: CRASH-PROOF SCORING & HIGHLIGHT SELECTION
+# ==========================================
+def get_whisperm_model():
+    return WhisperModel("base.en", device="cpu", compute_type="int8")
+
+
+def analyze_batch_for_multiple_shorts(recorded_streams):
+    if not recorded_streams:
+        return []
+
+    model = get_whisperm_model()
     candidates = []
-    model = WhisperModel("tiny.en", device="cpu", compute_type="int8")
 
-    for idx, video_path, live_url, stream_title, channel_name in recorded_list:
-        wav_path = f"audio_{idx}.wav"
-        subprocess.run(["ffmpeg", "-y", "-i", video_path, "-vn", "-ac", "1", "-ar", "16000", wav_path], check=True)
-        rate, data = wavfile.read(wav_path)
-        data = np.abs(data.astype(np.float32))
+    for st in recorded_streams:
+        ts_path = st["ts_path"]
+        channel_name = st["creator"]
+        wav_path = ts_path.replace(".ts", ".wav")
+
+        ext_res = subprocess.run([
+            "ffmpeg", "-y", "-loglevel", "error", "-err_detect", "ignore_err",
+            "-i", ts_path, "-vn", "-ac", "1", "-ar", "16000", wav_path
+        ])
+        if ext_res.returncode != 0 or not os.path.exists(wav_path) or os.path.getsize(wav_path) < 32000:
+            print(f"[Skip] {channel_name}: audio extraction failed.", flush=True)
+            continue
+
+        try:
+            rate, data = wavfile.read(wav_path)
+            data = data.astype(np.float32) / 32768.0
+        except Exception as e:
+            print(f"[Skip] {channel_name}: wav read error {e}", flush=True)
+            continue
+
         num_secs = len(data) // rate
-        if num_secs < 90:
+        try:
+            probe_out = subprocess.check_output(
+                [
+                    "ffprobe", "-v", "error", "-select_streams", "v:0",
+                    "-show_entries", "format=duration",
+                    "-of", "default=noprint_wrappers=1:nokey=1", ts_path
+                ],
+                text=True
+            ).strip()
+            if probe_out and probe_out != "N/A":
+                num_secs = min(num_secs, max(0, int(float(probe_out)) - 3))
+        except Exception:
+            pass
+
+        if num_secs < 55:
+            print(f"[Skip] {channel_name}: valid video too short ({num_secs}s).", flush=True)
             continue
 
         energies = np.array([np.sqrt(np.mean(data[i * rate : (i + 1) * rate] ** 2)) for i in range(num_secs)])
@@ -262,546 +283,725 @@ def analyze_batch_for_multiple_shorts(recorded_list, max_shorts=3):
                 best_score, best_sec = score, s
 
         best_jump = best_score
+        if best_jump <= 0.0:
+            print(f"[Skip] {channel_name}: dead-air / muted stream rejected.", flush=True)
+            continue
 
-        segments, _ = model.transcribe(wav_path)
-        lines = [f"[{int(seg.start)}s] {seg.text.strip()}" for seg in segments if 20 <= seg.start <= (num_secs - 22) and seg.text.strip()]
+        win_start = max(0, best_sec - 25)
+        win_end = min(num_secs, best_sec + 22)
+        sub_wav = ts_path.replace(".ts", "_win.wav")
+        wavfile.write(sub_wav, rate, (data[win_start * rate : win_end * rate] * 32767).astype(np.int16))
 
-        spoken_words = sum(len(ln.split()) - 1 for ln in lines)
+        lines = []
+        try:
+            segments, _ = model.transcribe(sub_wav, beam_size=1)
+            for seg in segments:
+                txt = seg.text.strip()
+                if txt:
+                    lines.append(f"[{win_start + seg.start:.1f}s] {txt}")
+        except Exception as e:
+            print(f"[Warn] Whisper transcribe warning for {channel_name}: {e}", flush=True)
+
+        spoken_words = sum(max(0, len(ln.split()) - 1) for ln in lines)
         if spoken_words < 12 and best_jump < 2.1:
             print(f"[Skip] {channel_name}: low speech ({spoken_words}w) and no stunt spike ({best_jump:.2f}x).", flush=True)
             continue
 
+        combined_score = best_jump * (1.0 + min(spoken_words, 60) / 80.0)
         candidates.append({
-            "idx": idx, "video_path": video_path, "live_url": live_url,
-            "stream_title": stream_title, "channel_name": channel_name,
-            "num_secs": num_secs, "audio_peak": best_sec, "jump_ratio": best_jump,
-            "transcript": "\n".join(lines[:180])
+            "stream_id": st["stream_id"],
+            "creator": channel_name,
+            "title": st.get("title", ""),
+            "game": st.get("game", "Grand Theft Auto VI"),
+            "ts_path": ts_path,
+            "audio_peak": best_sec,
+            "jump_ratio": round(best_jump, 3),
+            "spoken_words": spoken_words,
+            "combined_score": round(combined_score, 3),
+            "transcript_snippet": " | ".join(lines[:14]),
         })
+        print(
+            f"[Candidate] {channel_name}: peak={best_sec}s, spike={best_jump:.2f}x, "
+            f"words={spoken_words}, total={combined_score:.2f}",
+            flush=True,
+        )
 
     if not candidates:
         return []
 
-    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
-    if api_key:
-        client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=45000))
-        blocks = []
-        for c in candidates:
-            blocks.append(
-                f"=== STREAM {c['idx']} ({c['channel_name']} | Spike: {c['jump_ratio']:.2f}x at {c['audio_peak']}s | MaxSec: {c['num_secs']-22}) ===\n"
-                f"Title: {c['stream_title']}\nTranscript:\n{c['transcript']}\n"
-            )
-
-        prompt = f"""You are the head producer for a viral GTA 6 YouTube Shorts channel.
-We recorded {len(candidates)} live streams (12 minutes each). Find up to {max_shorts} SEPARATE high-quality Shorts so zero viral moments are wasted!
-For each Short you design:
-- Use MODE SINGLE if one stream has a standout 40-second funny moment, police chase, stunt, or plot twist.
-- Use MODE MULTI if 3 quick 16-second moments from different streams work best together as a compilation.
-- NEVER reuse the same stream_idx across different Shorts.
-
-{''.join(blocks)}
-
-Reply with up to {max_shorts} Shorts using this exact format ONLY:
-SHORT1: <SINGLE or MULTI> | <crop or blur> | <idx1>,<peak1> ; <idx2>,<peak2> ; <idx3>,<peak3>
-SHORT2: <SINGLE or MULTI> | <crop or blur> | <idx1>,<peak1>
-SHORT3: <SINGLE or MULTI> | <crop or blur> | <idx1>,<peak1>"""
-
-        try:
-            resp = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-                config=types.GenerateContentConfig(temperature=0.75),
-            )
-            planned_shorts = []
-            used_stream_ids = set()
-
-            for line in resp.text.strip().splitlines():
-                up = line.upper()
-                if not up.startswith("SHORT") or ":" not in line:
-                    continue
-                body = line.split(":", 1)[-1].strip()
-                parts = [p.strip() for p in body.split("|")]
-                if len(parts) < 3:
-                    continue
-
-                m_raw, f_raw, picks_raw = parts[0].upper(), parts[1].lower(), parts[-1]
-                mode = "MULTI" if "MULTI" in m_raw else "SINGLE"
-                framing = "crop" if "crop" in f_raw else "blur"
-
-                parsed_specs = []
-                for pair in picks_raw.split(";"):
-                    if "," not in pair:
-                        continue
-                    left_s, _, right_s = pair.partition(",")
-                    s_dig = "".join(ch for ch in left_s if ch.isdigit())
-                    p_dig = "".join(ch for ch in right_s if ch.isdigit())
-                    if s_dig and p_dig:
-                        s_i, p_s = int(s_dig), int(p_dig)
-                        if s_i in used_stream_ids:
-                            continue
-                        for c in candidates:
-                            if c["idx"] == s_i and 22 <= p_s <= (c["num_secs"] - 22):
-                                dur = SINGLE_CLIP_DUR if mode == "SINGLE" else MULTI_CLIP_DUR
-                                pre = 22 if mode == "SINGLE" else 10
-                                parsed_specs.append((c, max(0, p_s - pre), p_s, dur))
-                                used_stream_ids.add(s_i)
-                                break
-
-                if mode == "SINGLE" and parsed_specs:
-                    planned_shorts.append(("SINGLE", framing, [next(iter(parsed_specs))]))
-                elif mode == "MULTI" and len(parsed_specs) >= 2:
-                    planned_shorts.append(("MULTI", framing, parsed_specs[:3]))
-
-            if planned_shorts:
-                print(f"[Batch AI Producer] Built {len(planned_shorts)} distinct Shorts from this 6-stream batch!", flush=True)
-                return planned_shorts[:max_shorts]
-        except Exception as e:
-            print(f"Batch AI producer fallback: {e}", flush=True)
-
-    sorted_c = sorted(candidates, key=lambda x: x["jump_ratio"], reverse=True)
-    if len(sorted_c) >= 3 and random.random() < 0.6:
+    sorted_c = sorted(candidates, key=lambda x: x["combined_score"], reverse=True)
+    if len(sorted_c) >= 3 and random.random() < 0.55:
         top_three = sorted_c[:3]
-        multi_specs = [(c_item, max(0, c_item["audio_peak"] - 9), c_item["audio_peak"], MULTI_CLIP_DUR) for c_item in top_three]
+        multi_specs = [
+            (c_item, max(0, c_item["audio_peak"] - 9), c_item["audio_peak"], MULTI_CLIP_DUR)
+            for c_item in top_three
+        ]
         return [("MULTI", "blur", multi_specs)]
+
     best_c = next(iter(sorted_c))
     return [("SINGLE", "blur", [(best_c, max(0, best_c["audio_peak"] - 22), best_c["audio_peak"], SINGLE_CLIP_DUR)])]
 
-def transcribe_segment(clip_path, time_offset=0.0):
-    model = WhisperModel("tiny.en", device="cpu", compute_type="int8")
-    segments, _ = model.transcribe(clip_path, word_timestamps=True)
+# ==========================================
+# PART 5: VIRAL ENGLISH TITLE & HOOK GENERATOR
+# ==========================================
+VIRAL_EMOJIS = ["😱", "🔥", "💀", "🤯", "🚨", "⚡", "😂", "👀", "💥", "🎮"]
 
-    words = []
-    bad_intervals = []
-    for seg in segments:
-        for w in seg.words:
-            raw_upper = w.word.strip().upper()
-            clean_alpha = "".join(c for c in raw_upper if c.isalpha())
-            if clean_alpha in PROFANITY_WORDS:
-                bad_intervals.append((max(0.0, w.start + time_offset - 0.05), w.end + time_offset + 0.05))
-            words.append((w.start + time_offset, w.end + time_offset, censor_word_text(raw_upper)))
+HOOK_BANNERS = [
+    "WAIT FOR THE END!",
+    "WATCH UNTIL THE LAST SECOND!",
+    "HOW DID THIS HAPPEN?!",
+    "1 IN A MILLION MOMENT!",
+    "NO WAY THAT JUST HAPPENED!",
+    "PURE VICE CITY CHAOS!",
+]
 
-    srt_entries = []
-    full_text = []
-    for i in range(0, len(words), 2):
-        chunk = words[i : i + 2]
-        first_w = next(iter(chunk))
-        last_w = chunk[-1]
-        s_t, _, _ = first_w
-        _, e_t, _ = last_w
-        txt = " ".join(w_str for _, _, w_str in chunk)
-        full_text.append(txt)
-        srt_entries.append((s_t, e_t, txt))
 
-    return srt_entries, " ".join(full_text), bad_intervals
+def clean_english_title(raw_text, fallback):
+    cleaned = re.sub(r"[^\x00-\x7F\U0001F300-\U0001FAFF\u2600-\u27BF]+", "", str(raw_text or "")).strip()
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    if len(cleaned) < 12:
+        return fallback
+    if "#shorts" not in cleaned.lower():
+        cleaned = f"{cleaned[:78].strip()} #gta6 #shorts"
+    return cleaned[:95]
 
-def write_srt_file(all_entries, out_path="captions.srt"):
-    def fmt_time(t):
-        h = int(t // 3600)
-        m = int((t % 3600) // 60)
-        s = int(t % 60)
-        ms = int((t - int(t)) * 1000)
-        return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
 
-    lines = []
-    for idx, (s_t, e_t, txt) in enumerate(all_entries, start=1):
-        lines.append(f"{idx}\n{fmt_time(s_t)} --> {fmt_time(e_t)}\n{txt}\n")
-    with open(out_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines))
-    return out_path
-
-def generate_viral_metadata(transcript, mode, creators_list):
-    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
-    emoji_pool = ["💀", "🚨", "🤯", "🔥", "😭", "⚡", "👀", "💥", "🌴", "🚓"]
-    e1, e2 = random.sample(emoji_pool, 2)
-
-    styles = [
-        "Shocking plot twist curiosity hook",
-        "Pure Vice City comedy / NPC chaos",
-        "1-in-a-million stunt or lucky escape",
-        "Instant karma in 5 seconds",
-        "Unbelievable police chase ending"
-    ]
-    chosen_style = random.choice(styles)
+def generate_viral_metadata(mode, creators_list, transcript_text, game_name="Grand Theft Auto VI"):
+    e1, e2 = random.sample(VIRAL_EMOJIS, 2)
     lead_creator = next(iter(creators_list), "This Streamer")
+
     single_templates = [
         f"{lead_creator} Just Broke GTA 6 Physics {e1}{e2} #gta6 #shorts",
         f"Vice City Cops Had NO Mercy on {lead_creator} {e1}{e2} #gta6 #shorts",
         f"1 in 1,000,000 GTA 6 Moment by {lead_creator} {e1}{e2} #gta6 #shorts",
         f"How Did {lead_creator} Survive This in Leonida?! {e1}{e2} #gta6 #shorts",
         f"{lead_creator}'s Reaction Says Everything in GTA 6 {e1}{e2} #gta6 #shorts",
+        f"Never Trust NPCs in Vice City ({lead_creator}) {e1}{e2} #gta6 #shorts",
     ]
     multi_templates = [
         f"3 Unhinged GTA 6 Live Moments Today {e1}{e2} #gta6 #shorts",
         f"Vice City Chaos Caught Live on Twitch {e1}{e2} #gta6 #shorts",
         f"GTA 6 Streamers Losing Their Minds {e1}{e2} #gta6 #shorts",
         f"Peak Leonida Madness in 55 Seconds {e1}{e2} #gta6 #shorts",
+        f"Best Live GTA 6 Moments You Missed {e1}{e2} #gta6 #shorts",
     ]
     fallback_title = random.choice(multi_templates if mode == "MULTI" else single_templates)
+    banner_hook = random.choice(HOOK_BANNERS)
 
-
+    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
     if not api_key:
-        return fallback_title, "WAIT FOR THE END!", "Watch what happens right here!"
+        return fallback_title, banner_hook
 
-    client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=30000))
-    prompt = f"""You are a top viral gaming YouTube Shorts editor for an English GTA 6 channel.
-Clip Mode: {"3-Clip Highlight Compilation" if mode == "MULTI" else "Single Viral Highlight"}
-Creators Featured: {", ".join(creators_list)}
-Spoken Dialogue: {transcript[:450]}
-Creative Angle: {chosen_style}
+    angles = [
+        "unbelievable timing or physics glitch",
+        "hilarious panic or instant karma",
+        "insane stunt or near-miss escape",
+        "unexpected NPC or police chaos",
+    ]
+    chosen_angle = random.choice(angles)
+    creators_str = ", ".join(creators_list[:3]) if creators_list else "top Twitch streamers"
 
-Rules:
-1. TITLE: Write a WILD, PUNCHY, completely UNIQUE English title (under 66 characters, NO profanity). Never repeat "GTA 6: Gta 6" or use generic "Gone Wrong" clichés. Include 1-2 emojis ({e1}, {e2}) and "#gta6 #shorts".
-2. BANNER: Write a 3-to-4 word ALL-CAPS on-screen hook headline.
-3. HOOK: Write a 5-to-6 word spoken intro voiceover line.
-
-Reply in this exact 3-line format ONLY:
-TITLE: <your unique title>
-BANNER: <3-4 word ALL CAPS hook>
-HOOK: <spoken intro line>"""
+    prompt = (
+        f"You write high-CTR YouTube Shorts titles in ENGLISH ONLY for '{CHANNEL_HANDLE}'.\n"
+        f"Mode: {mode} | Game: {game_name} | Streamer(s): {creators_str}\n"
+        f"Angle: {chosen_angle}\n"
+        f"Transcript context: {str(transcript_text)[:500]}\n"
+        f"Rules:\n"
+        f"- Output strictly 2 lines:\n"
+        f"  TITLE: <catchy English title under 75 chars + 2 emojis {e1}{e2} + #gta6 #shorts>\n"
+        f"  HOOK: <ALL CAPS 3-5 word on-screen banner hook>\n"
+        f"- Include the streamer name '{lead_creator}' if SINGLE mode.\n"
+        f"- NO profanity, NO swear words, NO generic 'Nobody Expected This' cliches.\n"
+    )
 
     try:
+        client = genai.Client(api_key=api_key)
         resp = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt,
-            config=types.GenerateContentConfig(temperature=1.1),
         )
-        title = fallback_title
-        banner = "WAIT FOR THE END!"
-        hook = "Wait till you see this!"
-        for line in resp.text.strip().splitlines():
-            up = line.upper()
-            val = line.split(":", 1)[-1].strip()
-            if up.startswith("TITLE:") and val:
-                title = val
-            elif up.startswith("BANNER:") and val:
-                banner = "".join(c for c in val.upper() if c.isalnum() or c in {" ", "!", "?"})[:26]
-            elif up.startswith("HOOK:") and val:
-                hook = val
-        print(f"Generated Title: {title} | Banner: {banner}", flush=True)
-        return title, banner, hook
+        out = (resp.text or "").strip()
+        title_line, hook_line = "", ""
+        for ln in out.splitlines():
+            if ln.upper().startswith("TITLE:"):
+                title_line = ln.split(":", 1)[1].strip()
+            elif ln.upper().startswith("HOOK:"):
+                hook_line = ln.split(":", 1)[1].strip().upper()
+
+        final_title = clean_english_title(title_line, fallback_title)
+        final_hook = re.sub(r"[^A-Z0-9 !?'-]", "", hook_line)[:32].strip() or banner_hook
+        return final_title, final_hook
     except Exception as e:
-        print(f"Gemini metadata error: {e}", flush=True)
-        return fallback_title, "WAIT FOR THE END!", "Wait till you see this!"
+        print(f"[Warn] Gemini metadata fallback used: {e}", flush=True)
+        return fallback_title, banner_hook
 
-async def create_voiceover_audio(text, filename="hook_vo.mp3"):
-    for voice in ["en-US-GuyNeural", "en-US-ChristopherNeural"]:
-        try:
-            comm = edge_tts.Communicate(text, voice, rate="+12%")
-            await comm.save(filename)
-            if os.path.exists(filename) and os.path.getsize(filename) > 0:
-                return filename
-        except Exception:
-            await asyncio.sleep(1)
-    tts = gTTS(text=text, lang="en", slow=False)
-    tts.save(filename)
-    return filename
+# ==========================================
+# PART 6: ANIMATED .ASS SUBTITLES GENERATOR
+# ==========================================
+PROFANITY_PATTERN = re.compile(
+    r"\b(fuck\w*|shit\w*|bitch\w*|asshole\w*|motherfuck\w*|nigga\w*|nigger\w*|cunt\w*|dick\w*|pussy\w*)\b",
+    re.IGNORECASE,
+)
 
-def build_and_render_short(mode, framing_mode, clip_specs, out_video_name="final_short.mp4"):
-    segment_files = []
-    segment_durations = []
-    all_srt_entries = []
-    all_bad_intervals = []
-    all_transcripts = []
-    creators_used = []
-    climax_markers = []
-    credit_windows = []
 
-    current_timeline_sec = (HOOK_DURATION - TRANSITION_DUR) if mode == "SINGLE" else 0.0
+def censor_caption_text(text):
+    return PROFANITY_PATTERN.sub(lambda m: m.group(0)[0] + "*" * (len(m.group(0)) - 1), text)
 
-    for idx, (cand, start_sec, peak_sec, seg_dur) in enumerate(clip_specs):
-        seg_mp4 = f"seg_{idx}.mp4"
-        subprocess.run([
-            "ffmpeg", "-y", "-ss", str(start_sec), "-i", cand["video_path"],
-            "-t", str(seg_dur), "-r", "30", "-c:v", "libx264", "-preset", "ultrafast",
-            "-c:a", "aac", "-ar", "48000", "-ac", "2", seg_mp4
-        ], check=True)
 
-        srt_entries, seg_txt, bad_ints = transcribe_segment(seg_mp4, time_offset=current_timeline_sec)
-        all_srt_entries.extend(srt_entries)
-        all_bad_intervals.extend(bad_ints)
-        all_transcripts.append(seg_txt)
+def format_ass_time(sec):
+    sec = max(0.0, float(sec))
+    hrs = int(sec // 3600)
+    mins = int((sec % 3600) // 60)
+    secs = sec % 60
+    return f"{hrs}:{mins:02d}:{secs:05.2f}"
 
-        c_name = cand["channel_name"]
-        if c_name not in creators_used:
-            creators_used.append(c_name)
 
-        seg_start_t = 0.0 if idx == 0 else current_timeline_sec
-        seg_end_t = current_timeline_sec + seg_dur - (TRANSITION_DUR if idx < len(clip_specs) - 1 else 0.0)
-        credit_windows.append((seg_start_t, seg_end_t, c_name))
-
-        rel_peak = current_timeline_sec + max(1.0, min(seg_dur - 1.5, peak_sec - start_sec))
-        climax_markers.append(rel_peak)
-        segment_files.append(seg_mp4)
-        segment_durations.append(float(seg_dur))
-
-        current_timeline_sec += (seg_dur - TRANSITION_DUR)
-
-    srt_path = write_srt_file(all_srt_entries, "captions.srt")
-    viral_title, banner_hook, voice_hook = generate_viral_metadata(" ".join(all_transcripts), mode, creators_used)
-
-    if mode == "SINGLE":
-        cand0, _, peak0, _ = next(iter(clip_specs))
-        hook_start = max(0, peak0 - 3.0)
-        subprocess.run([
-            "ffmpeg", "-y", "-ss", str(hook_start), "-i", cand0["video_path"],
-            "-t", str(HOOK_DURATION), "-r", "30", "-c:v", "libx264", "-preset", "ultrafast",
-            "-c:a", "aac", "-ar", "48000", "-ac", "2", "hook_clip.mp4"
-        ], check=True)
-
-        if ENABLE_AI_VOICEOVER and voice_hook:
-            asyncio.run(create_voiceover_audio(voice_hook, "hook_vo.mp3"))
-            subprocess.run([
-                "ffmpeg", "-y", "-i", "hook_clip.mp4", "-i", "hook_vo.mp3",
-                "-filter_complex", "[0:a]volume=0.25[bg_a];[1:a]aresample=48000,aformat=channel_layouts=stereo,volume=1.35[vo_a];[bg_a][vo_a]amix=inputs=2:duration=first[aout]",
-                "-map", "0:v", "-map", "[aout]",
-                "-c:v", "copy", "-c:a", "aac", "-ar", "48000", "-ac", "2", "hook_voiced.mp4"
-            ], check=True)
-            os.replace("hook_voiced.mp4", "hook_clip.mp4")
-
-        concat_list = ["hook_clip.mp4"] + segment_files
-        concat_durs = [float(HOOK_DURATION)] + segment_durations
-    else:
-        concat_list = segment_files
-        concat_durs = segment_durations
-
-    if len(concat_list) == 1:
-        os.replace(next(iter(concat_list)), "combined.mp4")
-        total_dur = next(iter(concat_durs))
-    else:
-        ffmpeg_in = []
-        for fn in concat_list:
-            ffmpeg_in.extend(["-i", fn])
-
-        v_filters, a_filters = [], []
-        prev_v, prev_a = "[0:v]", "[0:a]"
-        running_offset = 0.0
-        chosen_transitions = random.sample(XFADE_TRANSITIONS, k=min(len(XFADE_TRANSITIONS), len(concat_list) - 1))
-
-        for step_idx in range(1, len(concat_list)):
-            running_offset += concat_durs[step_idx - 1] - TRANSITION_DUR
-            t_style = chosen_transitions[step_idx - 1]
-            out_v_pad = "[vout]" if step_idx == len(concat_list) - 1 else f"[v{step_idx}]"
-            out_a_pad = "[aout]" if step_idx == len(concat_list) - 1 else f"[a{step_idx}]"
-
-            v_filters.append(f"{prev_v}[{step_idx}:v]xfade=transition={t_style}:duration={TRANSITION_DUR}:offset={running_offset:.2f}{out_v_pad}")
-            a_filters.append(f"{prev_a}[{step_idx}:a]acrossfade=d={TRANSITION_DUR}{out_a_pad}")
-            prev_v, prev_a = out_v_pad, out_a_pad
-
-        subprocess.run([
-            "ffmpeg", "-y", *ffmpeg_in,
-            "-filter_complex", ";".join(v_filters + a_filters),
-            "-map", "[vout]", "-map", "[aout]",
-            "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "-ar", "48000", "-ac", "2", "combined.mp4"
-        ], check=True)
-        total_dur = sum(concat_durs) - TRANSITION_DUR * (len(concat_list) - 1)
-
-    primary_climax = next(iter(climax_markers)) if climax_markers else 20.0
-
-    inputs = ["-i", "combined.mp4"]
-    has_custom_bg = os.path.exists("assets/bg_neon.png")
-    has_boom_sfx = os.path.exists("assets/boom.mp3")
-
-    climax_cond = "+".join([f"between(in_time,{cm-0.2:.2f},{cm+0.55:.2f})" for cm in climax_markers])
-    shake_x = "+".join([f"if(between(in_time,{cm-0.2:.2f},{cm+0.55:.2f}),18*sin(in_time*80),0)" for cm in climax_markers])
-    shake_y = "+".join([f"if(between(in_time,{cm-0.2:.2f},{cm+0.55:.2f}),18*cos(in_time*80),0)" for cm in climax_markers])
-    flash_cond = "+".join([f"between(t,{cm-0.08:.2f},{cm+0.12:.2f})" for cm in climax_markers])
-    zoom_expr = f"if({climax_cond},1.18,1.0+0.09*(mod(in_time,16)/16))"
-
-    if framing_mode == "crop":
-        video_base_filter = (
-            f"[0:v]fps=30,scale=-2:1920,crop=1080:1920:(iw-1080)/2:0,setsar=1,"
-            f"eq=contrast=1.16:saturation=1.28:brightness='if({flash_cond},0.18,0)':eval=frame,"
-            f"zoompan=z='{zoom_expr}':"
-            f"x='iw/2-(iw/zoom/2)+{shake_x}':"
-            f"y='ih/2-(ih/zoom/2)+{shake_y}':"
-            f"d=1:s=1080x1920:fps=30[base_v];"
-        )
-        next_idx = 1
-    else:
-        if has_custom_bg:
-            inputs.extend(["-i", "assets/bg_neon.png"])
-            bg_filter = "[1:v]scale=1080:1920[bg];"
-            next_idx = 2
-        else:
-            bg_filter = "[0:v]fps=30,scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=32:8,eq=brightness=-0.12:saturation=1.25[bg];"
-            next_idx = 1
-
-        fg_filter = (
-            f"[0:v]fps=30,scale=1080:608,setsar=1,"
-            f"eq=contrast=1.16:saturation=1.28:brightness='if({flash_cond},0.18,0)':eval=frame,"
-            f"zoompan=z='{zoom_expr}':"
-            f"x='iw/2-(iw/zoom/2)+{shake_x}':"
-            f"y='ih/2-(ih/zoom/2)+{shake_y}':"
-            f"d=1:s=1080x608:fps=30[fg];"
-            "[bg][fg]overlay=(W-w)/2:(H-h)/2[base_v];"
-        )
-        video_base_filter = bg_filter + fg_filter
-
-    credit_filters = []
-    for win_idx, (w_start, w_end, c_name) in enumerate(credit_windows):
-        safe_c = "".join(c for c in c_name if c.isalnum() or c in {"_", "-", " "}).strip()
-        end_bound = total_dur + 1.0 if win_idx == len(credit_windows) - 1 else w_end
-        credit_filters.append(
-            f"drawtext=text='Credit\\: {safe_c}':fontcolor=white@0.92:fontsize=25:x=(w-text_w)/2:y=225:enable='gte(t,{w_start:.2f})*lt(t,{end_bound:.2f})'"
-        )
-    dynamic_credits_chain = ",".join(credit_filters)
-
-    safe_banner = banner_hook.replace("'", "").replace(":", "")
-    polish_filter = (
-        f"[base_v]drawbox=x=110:y=290:w=860:h=96:color=#E50914@0.92:t=fill:enable='between(t,0,4.5)',"
-        f"drawtext=text='{safe_banner}':fontcolor=white:fontsize=44:x=(w-text_w)/2:y=316:enable='between(t,0,4.5)',"
-        f"drawbox=x=0:y=ih-14:w=iw*(t/{total_dur}):h=14:color=#FF00FF@0.90:t=fill,"
-        f"drawtext=text='{CHANNEL_HANDLE}':fontcolor=white@0.75:fontsize=28:x=(w-text_w)/2:y=185,"
-        f"{dynamic_credits_chain},"
-        f"subtitles={srt_path}:force_style='FontName=Arial,FontSize=23,Bold=1,PrimaryColour=&H0000FFFF,OutlineColour=&H00000000,BackColour=&H80000000,Outline=3,Shadow=2,Alignment=2,MarginV=68'[out_v]"
+def generate_animated_ass_captions(video_path, ass_path="captions.ass"):
+    wav_path = "final_cap_audio.wav"
+    header = (
+        "[Script Info]\n"
+        "ScriptType: v4.00+\n"
+        "PlayResX: 1080\n"
+        "PlayResY: 1920\n"
+        "WrapStyle: 2\n"
+        "ScaledBorderAndShadow: yes\n\n"
+        "[V4+ Styles]\n"
+        "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, "
+        "Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, "
+        "Alignment, MarginL, MarginR, MarginV, Encoding\n"
+        "Style: PopCap,Arial Black,68,&H00FFFFFF,&H0000D7FF,&H00000000,&H96000000,"
+        "-1,0,0,0,100,100,1.5,0,1,5,3,2,70,70,390,1\n\n"
+        "[Events]\n"
+        "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
     )
 
-    if all_bad_intervals:
-        enable_expr = "+".join([f"between(t,{s:.2f},{e:.2f})" for s, e in all_bad_intervals])
-        censor_chain = f"[0:a]aresample=async=1,loudnorm=I=-14:TP=-1.5:LRA=11,volume=0:enable='{enable_expr}'[norm_a];"
-    else:
-        censor_chain = "[0:a]aresample=async=1,loudnorm=I=-14:TP=-1.5:LRA=11[norm_a];"
+    ext = subprocess.run([
+        "ffmpeg", "-y", "-loglevel", "error", "-i", video_path,
+        "-vn", "-ac", "1", "-ar", "16000", wav_path
+    ])
+    events = []
+    if ext.returncode == 0 and os.path.exists(wav_path) and os.path.getsize(wav_path) > 16000:
+        try:
+            model = get_whisperm_model()
+            segments, _ = model.transcribe(wav_path, beam_size=1, word_timestamps=True)
+            words = []
+            for seg in segments:
+                if getattr(seg, "words", None):
+                    for w in seg.words:
+                        clean_w = censor_caption_text(w.word.strip())
+                        if clean_w:
+                            words.append((float(w.start), float(w.end), clean_w.upper()))
+                else:
+                    clean_s = censor_caption_text(seg.text.strip())
+                    if clean_s:
+                        words.append((float(seg.start), float(seg.end), clean_s.upper()))
 
-    if has_boom_sfx:
-        inputs.extend(["-i", "assets/boom.mp3"])
-        delay_ms = int(primary_climax * 1000)
-        audio_filter = (
-            censor_chain +
-            f"[{next_idx}:a]aresample=48000,aformat=channel_layouts=stereo,adelay={delay_ms}|{delay_ms},volume=0.85[sfx_a];"
-            f"[norm_a][sfx_a]amix=inputs=2:duration=first[out_a]"
+            chunk_size = 3
+            for i in range(0, len(words), chunk_size):
+                chunk = words[i : i + chunk_size]
+                if not chunk:
+                    continue
+                for active_idx, (w_start, w_end, _) in enumerate(chunk):
+                    next_start = chunk[active_idx + 1][0] if active_idx + 1 < len(chunk) else max(w_end + 0.12, w_start + 0.25)
+                    if next_start <= w_start:
+                        next_start = w_start + 0.22
+                    styled_parts = []
+                    for j, (_, _, w_txt) in enumerate(chunk):
+                        safe_w = w_txt.replace("{", "").replace("}", "").replace("\\", "")
+                        if j == active_idx:
+                            styled_parts.append(r"{\c&H0000D7FF&\fscx114\fscy114}" + safe_w + r"{\c&H00FFFFFF&\fscx100\fscy100}")
+                        else:
+                            styled_parts.append(safe_w)
+                    pop_anim = r"{\an2\fscx88\fscy88\t(0,75,\fscx100\fscy100)}"
+                    line_txt = pop_anim + " ".join(styled_parts)
+                    events.append(
+                        f"Dialogue: 0,{format_ass_time(w_start)},{format_ass_time(next_start)},PopCap,,0,0,0,,{line_txt}\n"
+                    )
+        except Exception as e:
+            print(f"[Warn] ASS caption generation skipped: {e}", flush=True)
+
+    with open(ass_path, "w", encoding="utf-8") as f:
+        f.write(header + "".join(events))
+    return ass_path
+
+# ==========================================
+# PART 7: PRO VIDEO EDITOR & RENDERER
+# ==========================================
+XFADE_TRANSITIONS = ["fade", "wipeleft", "wiperight", "slideleft", "slideright", "smoothleft", "circleopen"]
+
+
+def sanitize_ffmpeg_text(text):
+    clean = re.sub(r"[^\x20-\x7E]", "", str(text or ""))
+    clean = clean.replace("\\", "").replace("'", "").replace('"', "").replace(":", "\\:").replace("%", "\\%")
+    return clean.strip()
+
+
+def build_and_render_short(mode, framing_mode, clip_specs, out_video_name="final_short.mp4", out_thumb_name="final_thumb.jpg"):
+    seg_files = []
+    credit_windows = []
+    current_timeline_sec = 0.0
+
+    for idx, (cand_info, start_s, peak_s, dur_s) in enumerate(clip_specs):
+        seg_path = f"seg_{idx}.mp4"
+        src_video = cand_info.get("video_path") or cand_info["ts_path"]
+        actual_start = 0.0 if cand_info.get("video_path") else float(start_s)
+
+        res = subprocess.run([
+            "ffmpeg", "-y", "-loglevel", "error", "-err_detect", "ignore_err",
+            "-ss", f"{actual_start:.2f}", "-i", src_video, "-t", f"{float(dur_s):.2f}",
+            "-vf", "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,fps=30",
+            "-af", "loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+            "-c:a", "aac", "-b:a", "160k", "-ac", "2", seg_path
+        ])
+        if res.returncode != 0 or not os.path.exists(seg_path) or os.path.getsize(seg_path) < 50000:
+            print(f"[Warn] Segment {idx} skipped due to short/corrupt source.", flush=True)
+            continue
+
+        seg_files.append(seg_path)
+        c_name = cand_info.get("creator", "Streamer")
+        seg_start_t = 0.0 if len(seg_files) == 1 else current_timeline_sec
+        seg_end_t = current_timeline_sec + float(dur_s) - (TRANSITION_DUR if idx < len(clip_specs) - 1 else 0.0)
+        credit_windows.append((seg_start_t, seg_end_t, c_name))
+        current_timeline_sec += float(dur_s) - (TRANSITION_DUR if idx < len(clip_specs) - 1 else 0.0)
+
+    if not seg_files:
+        raise RuntimeError("No valid segments could be extracted for rendering.")
+
+    merged_raw = "merged_timeline.mp4"
+    if len(seg_files) == 1:
+        shutil.copy(seg_files, merged_raw)
+    else:
+        inputs = []
+        for sf in seg_files:
+            inputs.extend(["-i", sf])
+        v_chain = ""
+        a_chain = ""
+        prev_v = "[0:v]"
+        prev_a = "[0:a]"
+        offset_acc = 0.0
+        for i in range(1, len(seg_files)):
+            dur_prev = float(clip_specs[i - 1])
+            offset_acc += dur_prev - TRANSITION_DUR
+            trans = random.choice(XFADE_TRANSITIONS)
+            out_v = f"[v{i}]"
+            out_a = f"[a{i}]"
+            v_chain += f"{prev_v}[{i}:v]xfade=transition={trans}:duration={TRANSITION_DUR}:offset={offset_acc:.2f}{out_v};"
+            a_chain += f"{prev_a}[{i}:a]acrossfade=d={TRANSITION_DUR}:c1=tri:c2=tri{out_a};"
+            prev_v = out_v
+            prev_a = out_a
+
+        filter_complex = f"{v_chain}{a_chain}".rstrip(";")
+        subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error"] + inputs + [
+                "-filter_complex", filter_complex,
+                "-map", prev_v, "-map", prev_a,
+                "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+                "-c:a", "aac", "-b:a", "160k", merged_raw
+            ],
+            check=True,
         )
-    else:
-        audio_filter = censor_chain.replace("[norm_a];", "[out_a]")
 
-    full_filter_complex = video_base_filter + polish_filter + ";" + audio_filter
+    # Crash-proof 2.5s opening hook teaser from climax
+    first_cand, first_start, first_peak, first_dur = clip_specs
+    hook_src = first_cand.get("video_path") or first_cand["ts_path"]
+    hook_start = max(0.0, (float(first_dur) - 6.0) if first_cand.get("video_path") else (float(first_peak) - 3.0))
+    hook_res = subprocess.run([
+        "ffmpeg", "-y", "-loglevel", "error", "-err_detect", "ignore_err",
+        "-ss", f"{hook_start:.2f}", "-i", hook_src, "-t", "2.3",
+        "-vf", "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,fps=30",
+        "-af", "loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000",
+        "-c:v", "libx264", "-preset", "ultrafast",
+        "-c:a", "aac", "-b:a", "160k", "-ac", "2", "hook_clip.mp4"
+    ])
+    if hook_res.returncode != 0 or not os.path.exists("hook_clip.mp4") or os.path.getsize("hook_clip.mp4") < 50000:
+        shutil.copy(seg_files, "hook_clip.mp4")
+
+    combined_pre_fx = "combined_pre_fx.mp4"
+    subprocess.run([
+        "ffmpeg", "-y", "-loglevel", "error",
+        "-i", "hook_clip.mp4", "-i", merged_raw,
+        "-filter_complex", "[0:v][0:a][1:v][1:a]concat=n=2:v=1:a=1[outv][outa]",
+        "-map", "[outv]", "-map", "[outa]",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+        "-c:a", "aac", "-b:a", "160k", combined_pre_fx
+    ], check=True)
+
+    # Shift credit windows by +2.3s for the opening hook teaser
+    hook_offset = 2.3
+    shifted_windows = []
+    for idx_w, (w_s, w_e, c_nm) in enumerate(credit_windows):
+        start_b = 0.0 if idx_w == 0 else (w_s + hook_offset)
+        end_b = (w_e + hook_offset) if idx_w < len(credit_windows) - 1 else 999.0
+        shifted_windows.append((start_b, end_b, c_nm))
+
+    ass_file = generate_animated_ass_captions(combined_pre_fx, "captions.ass")
+    safe_handle = sanitize_ffmpeg_text(CHANNEL_HANDLE)
+
+    credit_filters = []
+    for w_start, w_end, c_name in shifted_windows:
+        safe_c = sanitize_ffmpeg_text(c_name)
+        credit_filters.append(
+            f"drawtext=text='Credit\\: {safe_c}':fontcolor=white@0.92:fontsize=26:"
+            f"x=(w-text_w)/2:y=220:enable='gte(t,{w_start:.2f})*lt(t,{w_end:.2f})'"
+        )
+    credits_chain = ",".join(credit_filters)
+
+    # Vertical 1080x1920 composite: blurred BG + color-graded slow-zoom gameplay + neon Vice City borders + ASS captions
+    vf_complex = (
+        "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,"
+        "boxblur=24:4,eq=brightness=-0.10:saturation=1.25[bg];"
+        "[0:v]eq=contrast=1.08:saturation=1.18:brightness=0.01,"
+        "scale='trunc(1080*(1+0.0012*t)/2)*2':'trunc(608*(1+0.0012*t)/2)*2',"
+        "crop=1080:608[fg];"
+        "[bg][fg]overlay=(W-w)/2:(H-h)/2[comp1];"
+        "[comp1]drawbox=x=0:y=650:w=1080:h=6:color=0x00F5FF@0.95:t=fill,"
+        "drawbox=x=0:y=1264:w=1080:h=6:color=0xFF2A85@0.95:t=fill,"
+        f"drawtext=text='{safe_handle}':fontcolor=white@0.96:fontsize=30:x=(w-text_w)/2:y=175,"
+        f"{credits_chain},"
+        f"ass={ass_file}[vout]"
+    )
 
     subprocess.run([
-        "ffmpeg", "-y", *inputs,
-        "-filter_complex", full_filter_complex,
-        "-map", "[out_v]", "-map", "[out_a]",
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "21",
-        "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2",
+        "ffmpeg", "-y", "-loglevel", "error",
+        "-i", combined_pre_fx,
+        "-filter_complex", vf_complex,
+        "-map", "[vout]", "-map", "0:a",
+        "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
         out_video_name
     ], check=True)
 
-    return viral_title, banner_hook, primary_climax
+    # Extract high-contrast thumbnail frame around 4.5s
+    subprocess.run([
+        "ffmpeg", "-y", "-loglevel", "error",
+        "-ss", "4.5", "-i", out_video_name,
+        "-vframes", "1", "-q:v", "2", out_thumb_name
+    ])
+    print(f"[Render] Built {out_video_name} ({os.path.getsize(out_video_name) // (1024*1024)} MB)", flush=True)
+    return out_video_name, out_thumb_name
 
-def create_short_thumbnail(video_path, peak_rel_sec, banner_text, out_thumb="thumb.jpg"):
-    safe_txt = banner_text.replace("'", "").replace(":", "")[:24] or "NO WAY!"
-    cmd = [
-        "ffmpeg", "-y", "-ss", f"{max(0.5, peak_rel_sec):.2f}", "-i", video_path,
-        "-vframes", "1",
-        "-vf", (
-            "eq=contrast=1.22:saturation=1.35,"
-            f"drawtext=text='{safe_txt}':fontcolor=#FFFF00:bordercolor=black:borderw=9:"
-            "fontsize=88:x=(w-text_w)/2:y=300"
-        ),
-        out_thumb
-    ]
-    subprocess.run(cmd, check=True)
-    return out_thumb
+# ==========================================
+# PART 8: HOURLY CANDIDATE POOL MANAGER
+# ==========================================
+def save_hourly_candidate(mode, framing_mode, clip_specs, out_dir="candidate_out"):
+    if os.path.exists(out_dir):
+        shutil.rmtree(out_dir)
+    os.makedirs(out_dir, exist_ok=True)
 
-def upload_to_youtube(video_path, thumb_path, title, clip_specs, publish_at_iso=None):
-    creds_data = json.loads(os.environ["YOUTUBE_TOKEN_JSON"])
-    creds = Credentials.from_authorized_user_info(creds_data)
+    saved_clips = []
+    total_score = 0.0
+    for idx, (cand_info, start_s, peak_s, dur_s) in enumerate(clip_specs):
+        raw_name = f"clip_{idx}.mp4"
+        raw_path = os.path.join(out_dir, raw_name)
+        res = subprocess.run([
+            "ffmpeg", "-y", "-loglevel", "error", "-err_detect", "ignore_err",
+            "-ss", f"{float(start_s):.2f}", "-i", cand_info["ts_path"],
+            "-t", f"{float(dur_s):.2f}",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+            "-c:a", "aac", "-ar", "48000", "-ac", "2", raw_path
+        ])
+        if res.returncode != 0 or not os.path.exists(raw_path) or os.path.getsize(raw_path) < 50000:
+            continue
+
+        score_val = float(cand_info.get("combined_score") or cand_info.get("jump_ratio") or 1.0)
+        total_score += score_val
+        saved_clips.append({
+            "file": raw_name,
+            "stream_id": cand_info.get("stream_id", ""),
+            "creator": cand_info.get("creator", "Streamer"),
+            "game": cand_info.get("game", "Grand Theft Auto VI"),
+            "duration": float(dur_s),
+            "score": score_val,
+            "transcript_snippet": cand_info.get("transcript_snippet", ""),
+        })
+
+    if not saved_clips:
+        print("[Scout] No valid raw clips saved this hour.", flush=True)
+        return False
+
+    avg_score = round(total_score / len(saved_clips), 3)
+    meta_payload = {
+        "mode": mode if len(saved_clips) > 1 else "SINGLE",
+        "framing_mode": framing_mode,
+        "score": avg_score,
+        "created_utc": datetime.now(timezone.utc).isoformat(),
+        "clips": saved_clips,
+    }
+    with open(os.path.join(out_dir, "candidate_meta.json"), "w", encoding="utf-8") as f:
+        json.dump(meta_payload, f, indent=2)
+    print(f"[Scout] Saved {meta_payload['mode']} candidate (score={avg_score}) to {out_dir}/", flush=True)
+    return True
+
+
+def fetch_and_pick_best_candidate(work_dir="pool_in"):
+    token = os.environ.get("GITHUB_TOKEN", "").strip()
+    repo = os.environ.get("GITHUB_REPOSITORY", "").strip()
+    if not token or not repo:
+        print("[Pool] Missing GITHUB_TOKEN or GITHUB_REPOSITORY; skipping artifact fetch.", flush=True)
+        return None
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+    }
+    try:
+        resp = requests.get(
+            f"https://github.com{repo}/actions/artifacts?per_page=30",
+            headers=headers,
+            timeout=20,
+        )
+        if resp.status_code != 200:
+            print(f"[Pool] Artifact list returned HTTP {resp.status_code}", flush=True)
+            return None
+    except Exception as e:
+        print(f"[Pool] Artifact list request failed: {e}", flush=True)
+        return None
+
+    if os.path.exists(work_dir):
+        shutil.rmtree(work_dir)
+    os.makedirs(work_dir, exist_ok=True)
+
+    pool = []
+    for art in resp.json().get("artifacts", []):
+        name = str(art.get("name", ""))
+        if art.get("expired") or not name.startswith("vault-candidate-"):
+            continue
+        art_id = art.get("id")
+        try:
+            dl = requests.get(
+                f"https://github.com{repo}/actions/artifacts/{art_id}/zip",
+                headers=headers,
+                timeout=60,
+            )
+            if dl.status_code == 200:
+                sub = os.path.join(work_dir, str(art_id))
+                with zipfile.ZipFile(io.BytesIO(dl.content)) as zf:
+                    zf.extractall(sub)
+                meta_p = os.path.join(sub, "candidate_meta.json")
+                if os.path.exists(meta_p):
+                    with open(meta_p, "r", encoding="utf-8") as f:
+                        meta = json.load(f)
+                    valid_clips = []
+                    for c_entry in meta.get("clips", []):
+                        vp = os.path.join(sub, c_entry.get("file", ""))
+                        if os.path.exists(vp) and os.path.getsize(vp) > 50000:
+                            c_copy = dict(c_entry)
+                            c_copy["video_path"] = vp
+                            valid_clips.append(c_copy)
+                    if valid_clips:
+                        meta["clips"] = valid_clips
+                        meta["artifact_id"] = art_id
+                        pool.append(meta)
+        except Exception as e:
+            print(f"[Pool] Error downloading artifact {art_id}: {e}", flush=True)
+        finally:
+            try:
+                requests.delete(
+                    f"https://github.com{repo}/actions/artifacts/{art_id}",
+                    headers=headers,
+                    timeout=15,
+                )
+            except Exception:
+                pass
+
+    if not pool:
+        print("[Pool] No candidate artifacts found in pool.", flush=True)
+        return None
+
+    sorted_pool = sorted(pool, key=lambda x: float(x.get("score", 0.0)), reverse=True)
+    winner, *_ = sorted_pool
+    print(
+        f"[Pool] Picked #1 winner from {len(pool)} hourly candidates "
+        f"(mode={winner.get('mode')}, score={winner.get('score')})",
+        flush=True,
+    )
+    return winner
+
+# ==========================================
+# PART 9: YOUTUBE OAUTH UPLOADER & SCHEDULER
+# ==========================================
+def get_youtube_client():
+    token_raw = os.environ.get("YOUTUBE_TOKEN_JSON", "").strip()
+    if not token_raw:
+        raise RuntimeError("YOUTUBE_TOKEN_JSON environment variable is missing.")
+    creds_info = json.loads(token_raw)
+    creds = Credentials.from_authorized_user_info(creds_info)
     if creds.expired and creds.refresh_token:
         creds.refresh(Request())
+    return build("youtube", "v3", credentials=creds)
 
-    credit_lines = []
-    creator_tags = []
-    seen = set()
-    for clip_num, (cand, _, _, _) in enumerate(clip_specs, start=1):
-        c_name = cand["channel_name"]
-        prefix = f"Clip #{clip_num} — " if len(clip_specs) > 1 else ""
-        credit_lines.append(f"🎮 {prefix}{c_name}: {cand['live_url']} ({cand['stream_title']})")
-        if c_name not in seen:
-            seen.add(c_name)
-            creator_tags.append(c_name)
 
-    status_obj = {"selfDeclaredMadeForKids": False}
+def upload_to_youtube(video_path, thumb_path, title, creators_list, publish_at_iso=None):
+    youtube = get_youtube_client()
+    unique_creators = list(dict.fromkeys([c for c in creators_list if c]))
+    credits_str = ", ".join(unique_creators) if unique_creators else "Twitch Streamers"
+
+    description = (
+        f"{title}\n\n"
+        f"Featured Streamer(s): {credits_str}\n"
+        f"Subscribe to {CHANNEL_HANDLE} for daily GTA 6 & Vice City live highlights!\n\n"
+        f"#gta6 #grandtheftauto6 #vicecity #gta6clips #twitchclips #gaming #shorts"
+    )
+
+    status_body = {
+        "selfDeclaredMadeForKids": False,
+    }
     if YOUTUBE_PRIVACY == "public" and publish_at_iso:
-        status_obj["privacyStatus"] = "private"
-        status_obj["publishAt"] = publish_at_iso
+        status_body["privacyStatus"] = "private"
+        status_body["publishAt"] = publish_at_iso
     else:
-        status_obj["privacyStatus"] = YOUTUBE_PRIVACY
+        status_body["privacyStatus"] = YOUTUBE_PRIVACY
 
-    youtube = build("youtube", "v3", credentials=creds)
     body = {
         "snippet": {
-            "title": title[:95],
-            "description": (
-                f"🔥 Insane Grand Theft Auto VI Live Highlights!\n\n"
-                f"Featured Twitch Streamers & Credits:\n" + "\n".join(credit_lines) + "\n\n"
-                f"Subscribe to {CHANNEL_HANDLE} for daily GTA 6 live highlights, Vice City moments, and viral gaming clips! 🌴🚗💨\n\n"
-                "#GTA6 #GrandTheftAuto6 #GrandTheftAutoVI #ViceCity #Leonida #GTA6Shorts #ViceCityClips #GamingShorts #Shorts"
-            ),
+            "title": title[:98],
+            "description": description[:4900],
             "tags": [
-                "GTA 6", "Grand Theft Auto 6", "Grand Theft Auto VI", "GTA VI",
-                "Vice City", "Leonida", "GTA 6 Gameplay", "GTA 6 Live", "GTA 6 Clips",
-                "Vice City Clips", "GTA 6 Shorts", "Gaming Shorts"
-            ] + creator_tags,
-            "categoryId": "20",
+                "GTA 6", "Grand Theft Auto VI", "GTA 6 Clips", "Vice City",
+                "GTA 6 Twitch", "GTA 6 Funny Moments", "Shorts", "Gaming Shorts"
+            ],
+            "categoryId": "20",  # Gaming
+            "defaultLanguage": "en",
+            "defaultAudioLanguage": "en",
         },
-        "status": status_obj,
+        "status": status_body,
     }
 
-    media = MediaFileUpload(video_path, chunksize=-1, resumable=True, mimetype="video/mp4")
+    media = MediaFileUpload(video_path, chunksize=4 * 1024 * 1024, resumable=True, mimetype="video/mp4")
     request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
-    response = request.execute()
-    video_id = response["id"]
-    sched_msg = f"SCHEDULED for {publish_at_iso}" if publish_at_iso and YOUTUBE_PRIVACY == "public" else f"uploaded as {YOUTUBE_PRIVACY.upper()}"
-    print(f"Success! Video ID {video_id} ({sched_msg}) on {CHANNEL_HANDLE}!", flush=True)
 
-    if os.path.exists(thumb_path):
+    response = None
+    while response is None:
+        status, response = request.next_chunk()
+        if status:
+            print(f"[Upload] Progress: {int(status.progress() * 100)}%", flush=True)
+
+    video_id = response.get("id", "")
+    print(f"[YouTube] Uploaded video ID={video_id} | Scheduled={publish_at_iso or YOUTUBE_PRIVACY}", flush=True)
+
+    if video_id and thumb_path and os.path.exists(thumb_path):
         try:
             youtube.thumbnails().set(
                 videoId=video_id,
                 media_body=MediaFileUpload(thumb_path, mimetype="image/jpeg")
             ).execute()
-            print(f"Custom thumbnail ({thumb_path}) attached!", flush=True)
+            print(f"[YouTube] Custom thumbnail set for {video_id}", flush=True)
         except Exception as e:
-            print(f"Thumbnail upload skipped: {e}", flush=True)
+            print(f"[Warn] Thumbnail set skipped (requires verified channel): {e}", flush=True)
+
+    return video_id
+
+# ==========================================
+# PART 10: MAIN ORCHESTRATOR (SCOUT VS PUBLISH)
+# ==========================================
+def run_scout_mode(hist):
+    streams = discover_top_live_streams(hist, max_count=MAX_STREAMS_TO_RECORD)
+    if not streams:
+        print("[Scout] No live streams discovered.", flush=True)
+        return
+
+    recorded = record_streams_parallel(streams, duration_sec=CHUNK_SECONDS)
+    if not recorded:
+        print("[Scout] No streams recorded successfully.", flush=True)
+        return
+
+    short_plans = analyze_batch_for_multiple_shorts(recorded)
+    if not short_plans:
+        print("[Scout] No viral highlights passed quality filters this hour.", flush=True)
+        return
+
+    top_plan = next(iter(short_plans))
+    mode, framing_mode, clip_specs = top_plan
+    save_hourly_candidate(mode, framing_mode, clip_specs, out_dir="candidate_out")
+
+
+def run_publish_mode(hist):
+    slot_iso = None
+    if UPLOAD_TO_YOUTUBE and YOUTUBE_PRIVACY == "public":
+        slot_iso = get_next_available_slot(hist)
+        if not slot_iso:
+            print("[Publish] All upcoming 24h schedule slots are already full. Skipping.", flush=True)
+            return
+
+    winner = fetch_and_pick_best_candidate(work_dir="pool_in")
+    mode = "SINGLE"
+    framing_mode = "blur"
+    clip_specs = []
+    creators_list = []
+    transcript_pieces = []
+    game_name = "Grand Theft Auto VI"
+    used_stream_ids = []
+
+    if winner:
+        mode = winner.get("mode", "SINGLE")
+        framing_mode = winner.get("framing_mode", "blur")
+        for c_entry in winner.get("clips", []):
+            dur_s = float(c_entry.get("duration", SINGLE_CLIP_DUR))
+            clip_specs.append((c_entry, 0.0, max(3.0, dur_s - 4.0), dur_s))
+            creators_list.append(c_entry.get("creator", "Streamer"))
+            transcript_pieces.append(c_entry.get("transcript_snippet", ""))
+            game_name = c_entry.get("game", game_name)
+            if c_entry.get("stream_id"):
+                used_stream_ids.append(c_entry.get("stream_id"))
+    else:
+        print("[Publish] Candidate pool empty; running live fallback scan now...", flush=True)
+        streams = discover_top_live_streams(hist, max_count=MAX_STREAMS_TO_RECORD)
+        recorded = record_streams_parallel(streams, duration_sec=CHUNK_SECONDS)
+        short_plans = analyze_batch_for_multiple_shorts(recorded)
+        if not short_plans:
+            print("[Publish] No valid clips found in fallback scan.", flush=True)
+            return
+        top_plan = next(iter(short_plans))
+        mode, framing_mode, clip_specs = top_plan
+        for cand_info, _, _, _ in clip_specs:
+            creators_list.append(cand_info.get("creator", "Streamer"))
+            transcript_pieces.append(cand_info.get("transcript_snippet", ""))
+            game_name = cand_info.get("game", game_name)
+            if cand_info.get("stream_id"):
+                used_stream_ids.append(cand_info.get("stream_id"))
+
+    if not clip_specs:
+        print("[Publish] No clip specs available to render.", flush=True)
+        return
+
+    transcript_text = " | ".join([t for t in transcript_pieces if t])
+    viral_title, _ = generate_viral_metadata(mode, creators_list, transcript_text, game_name=game_name)
+    out_mp4, out_jpg = build_and_render_short(
+        mode,
+        framing_mode,
+        clip_specs,
+        out_video_name="final_short.mp4",
+        out_thumb_name="final_thumb.jpg",
+    )
+
+    if UPLOAD_TO_YOUTUBE:
+        video_id = upload_to_youtube(
+            out_mp4,
+            out_jpg,
+            viral_title,
+            creators_list,
+            publish_at_iso=slot_iso,
+        )
+        if video_id:
+            hist["uploaded_ids"].extend(used_stream_ids)
+            if slot_iso:
+                hist["scheduled_slots"].append(slot_iso)
+            save_history(hist)
+    else:
+        print(f"[DryRun] Rendered {out_mp4} with title: {viral_title}", flush=True)
+
+
+def main():
+    run_mode = os.environ.get("RUN_MODE", "publish").strip().lower()
+    print(f"=== {CHANNEL_HANDLE} | Mode: {run_mode.upper()} ===", flush=True)
+    hist = load_history()
+
+    if run_mode == "scout":
+        run_scout_mode(hist)
+    else:
+        run_publish_mode(hist)
+
 
 if __name__ == "__main__":
-    history_data = load_history()
-
-    if UPLOAD_TO_YOUTUBE and YOUTUBE_PRIVACY == "public":
-        open_slots = get_available_publish_slots(history_data, max_needed=3)
-        if not open_slots:
-            print("All 4 daily slots for the next 24 hours are already scheduled! Skipping run cleanly.", flush=True)
-            exit(0)
-    else:
-        open_slots = [None, None, None]
-
-    streams = find_top_live_streams(max_streams=MAX_STREAMS_TO_RECORD)
-    if not streams:
-        print("No eligible fresh GTA 6 live streams found right now. Exiting cleanly.", flush=True)
-        exit(0)
-
-    with ThreadPoolExecutor(max_workers=MAX_STREAMS_TO_RECORD) as executor:
-        results = list(executor.map(record_single_stream, enumerate(streams)))
-
-    recorded = [r for r in results if r is not None]
-    if not recorded:
-        print("Failed to record any streams. Exiting cleanly.", flush=True)
-        exit(0)
-
-    planned_shorts = analyze_batch_for_multiple_shorts(recorded, max_shorts=len(open_slots))
-    if not planned_shorts:
-        print("No standout moments found across the recorded streams. Exiting cleanly.", flush=True)
-        exit(0)
-
-    os.makedirs("artifacts", exist_ok=True)
-    for idx, (mode, framing_mode, clip_specs) in enumerate(planned_shorts):
-        slot_iso = open_slots[idx] if idx < len(open_slots) else None
-        out_mp4 = f"artifacts/short_{idx+1}.mp4"
-        out_jpg = f"artifacts/thumb_{idx+1}.jpg"
-
-        print(f"\n=== Rendering Batch Short #{idx+1}/{len(planned_shorts)} ({mode} | {framing_mode.upper()}) ===", flush=True)
-        viral_title, banner_hook, primary_climax = build_and_render_short(mode, framing_mode, clip_specs, out_video_name=out_mp4)
-        create_short_thumbnail(out_mp4, primary_climax, banner_hook, out_thumb=out_jpg)
-
-        if UPLOAD_TO_YOUTUBE:
-            upload_to_youtube(out_mp4, out_jpg, viral_title, clip_specs, publish_at_iso=slot_iso)
-            record_scheduled_upload(clip_specs, slot_iso)
-        else:
-            print(f"Saved {out_mp4} and {out_jpg} locally (UPLOAD_TO_YOUTUBE=False).", flush=True)
+    main()
