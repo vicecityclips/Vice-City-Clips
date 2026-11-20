@@ -221,6 +221,41 @@ def fetch_twitch_directory_streams(game_name, limit=25):
                     break
     return results
 
+def fetch_kick_gta_streams(limit=12):
+    """Fetches live GTA streams from Kick.com (works reliably on GitHub Actions IPs)."""
+    results = []
+    headers = {
+        "Accept": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/131.0.0.0 Safari/537.36",
+    }
+    for slug in ("grand-theft-auto-vi", "grand-theft-auto-v"):
+        try:
+            r = requests.get(
+                f"https://kick.com{slug}/livestreams?page=1",
+                headers=headers,
+                timeout=12,
+            )
+            if r.status_code == 200 and r.text.strip().startswith("{"):
+                for item in (r.json().get("data") or [])[:limit]:
+                    chan = item.get("channel") or {}
+                    user_slug = str(chan.get("slug") or "").strip().lower()
+                    username = str((chan.get("user") or {}).get("username") or user_slug).strip()
+                    sid = str(item.get("id") or int(time.time() // 7200))
+                    if not user_slug:
+                        continue
+                    results.append({
+                        "stream_id": f"kick_{user_slug}_{sid}",
+                        "login": user_slug,
+                        "creator": username,
+                        "title": str(item.get("session_title") or "GTA Live").strip(),
+                        "viewers": int(item.get("viewer_count") or 0),
+                        "game": "Grand Theft Auto VI",
+                        "url": f"https://kick.com{user_slug}",
+                    })
+        except Exception as e:
+            print(f"[Warn] Kick {slug} check skipped: {e}", flush=True)
+    return results
+
 
 def discover_top_live_streams(hist, max_count=MAX_STREAMS_TO_RECORD):
     """Selects top unclipped Twitch GTA 6 / GTA 5 live streams prioritizing PRIORITY_CREATORS."""
@@ -232,6 +267,9 @@ def discover_top_live_streams(hist, max_count=MAX_STREAMS_TO_RECORD):
         for s in fallback_streams:
             if s["login"] not in existing_logins:
                 raw_streams.append(s)
+
+    raw_streams.extend(fetch_kick_gta_streams(limit=12))
+
 
     priority_set = {p.lower() for p in PRIORITY_CREATORS}
     filtered = []
@@ -287,118 +325,124 @@ def record_streams_parallel(streams, duration_sec=CHUNK_SECONDS):
 # ==============================================================================
 # PART 4 OF 12: YOUTUBE LIVE, FINISHED VOD & HEATMAP CLIP HARVESTER
 # ==============================================================================
-def harvest_youtube_candidates(hist, max_items=4):
-    """Finds YouTube Live streams, finished VODs & uploads (Global + India) using Most Replayed heatmaps."""
-    seen_ids = set(hist.get("uploaded_ids", []))
-    queries = random.sample(YOUTUBE_SEARCH_QUERIES, min(3, len(YOUTUBE_SEARCH_QUERIES)))
-    harvested = []
+GTA_YT_CHANNEL_IDS = [
+    "UC6VcWc1rAoWdBCM0JxrRQ3A",  # Rockstar Games
+    "UCl_vAxZpvbO-PFXdDu7EdHw",  # Ujjwal / Techno Gamerz
+    "UC7Q7pl0z0MrdayvmAnchlJQ",  # MortaL
+    "UCx6F-rETGiz7xf_vkMmX2yQ",  # Mythpat
+]
 
-    for q in queries:
-        if len(harvested) >= max_items:
-            break
+
+def harvest_youtube_candidates(hist, max_items=4):
+    """Finds YouTube Live streams & VODs using RSS feeds + ios/tv_embedded clients to bypass IP blocks."""
+    seen_ids = set(hist.get("uploaded_ids", []))
+    harvested = []
+    yt_client_args = ["--extractor-args", "youtube:player_client=ios,tv_embedded", "--no-warnings"]
+    candidate_ids = []
+
+    # 1. Pull latest uploads & finished streams from verified creator RSS feeds (never IP-blocked)
+    for cid in GTA_YT_CHANNEL_IDS:
+        try:
+            rss = requests.get(f"https://youtube.com{cid}", timeout=10)
+            if rss.status_code == 200:
+                found = re.findall(r"<yt:videoId>([^<]+)</yt:videoId>", rss.text)
+                candidate_ids.extend(found[:4])
+        except Exception:
+            pass
+
+    # 2. Also query ytsearch with ios/tv_embedded client
+    for q in random.sample(YOUTUBE_SEARCH_QUERIES, 2):
         try:
             res = subprocess.run(
-                [
-                    "yt-dlp", "--dump-json", "--flat-playlist",
-                    "--no-warnings", f"ytsearch8:{q}"
-                ],
+                ["yt-dlp", "--flat-playlist", "--print", "id"] + yt_client_args + [f"ytsearch6:{q}"],
+                capture_output=True,
+                text=True,
+                timeout=20,
+            )
+            candidate_ids.extend([ln.strip() for ln in res.stdout.splitlines() if ln.strip()])
+        except Exception as e:
+            print(f"[Warn] YouTube search '{q}' skipped: {e}", flush=True)
+
+    unique_ids = list(dict.fromkeys(candidate_ids))
+    random.shuffle(unique_ids)
+
+    for vid_id in unique_ids:
+        if len(harvested) >= max_items:
+            break
+        yt_key = f"yt_{vid_id}"
+        if yt_key in seen_ids:
+            continue
+
+        url = f"https://www.youtube.com/watch?v={vid_id}"
+        try:
+            meta_res = subprocess.run(
+                ["yt-dlp", "--dump-json"] + yt_client_args + [url],
                 capture_output=True,
                 text=True,
                 timeout=25,
             )
-            entries = [
-                json.loads(line) for line in res.stdout.splitlines()
-                if line.strip().startswith("{")
-            ]
-            random.shuffle(entries)
-        except Exception as e:
-            print(f"[Warn] YouTube search error for '{q}': {e}", flush=True)
+            if meta_res.returncode != 0 or not meta_res.stdout.strip().startswith("{"):
+                continue
+            info = json.loads(meta_res.stdout)
+        except Exception:
             continue
 
-        for entry in entries:
-            if len(harvested) >= max_items:
-                break
-            vid_id = str(entry.get("id") or "").strip()
-            yt_key = f"yt_{vid_id}"
-            if not vid_id or yt_key in seen_ids:
-                continue
+        is_live = bool(info.get("is_live"))
+        dur = float(info.get("duration") or 0)
+        uploader = str(info.get("uploader") or info.get("channel") or "YouTuber").strip()
+        title = str(info.get("title") or "GTA Gameplay").strip()
+        ts_path = f"raw_yt_{len(harvested)}.ts"
+        tmp_mp4 = f"raw_yt_tmp_{len(harvested)}.mp4"
 
-            url = f"https://youtube.com{vid_id}"
-            try:
-                meta_res = subprocess.run(
-                    ["yt-dlp", "--dump-json", "--no-warnings", url],
-                    capture_output=True,
-                    text=True,
-                    timeout=25,
-                )
-                if meta_res.returncode != 0 or not meta_res.stdout.strip().startswith("{"):
-                    continue
-                info = json.loads(meta_res.stdout)
-            except Exception:
-                continue
+        if not is_live and (dur < 65 or dur > 18000):
+            continue
 
-            is_live = bool(info.get("is_live"))
-            dur = float(info.get("duration") or 0)
-            uploader = str(info.get("uploader") or info.get("channel") or "YouTuber").strip()
-            title = str(info.get("title") or "GTA 6 Gameplay").strip()
-            ts_path = f"raw_yt_{len(harvested)}.ts"
+        # Pinpoint exact viral peak using YouTube's 'Most Replayed' viewer heatmap if available
+        start_sec = 30.0
+        heatmap = info.get("heatmap") or []
+        if heatmap and not is_live:
+            best_seg = max(heatmap, key=lambda h: float(h.get("value", 0.0)))
+            peak_t = float(best_seg.get("start_time", 30.0))
+            start_sec = max(0.0, min(peak_t - 22.0, max(0.0, dur - 80.0)))
+        elif not is_live and dur > 120:
+            start_sec = random.uniform(30.0, max(35.0, dur - 85.0))
 
-            if not is_live and (dur < 65 or dur > 18000):
-                continue
+        grab_dur = 180 if is_live else 75
+        try:
+            if os.path.exists(tmp_mp4):
+                os.remove(tmp_mp4)
+            dl_cmd = [
+                "yt-dlp", "-f", "best[height<=720][ext=mp4]/best[height<=720]/best",
+                "--download-sections", f"*{start_sec:.1f}-{start_sec + grab_dur:.1f}",
+                "-o", tmp_mp4,
+            ] + yt_client_args + [url]
+            subprocess.run(dl_cmd, timeout=grab_dur + 45)
+            if os.path.exists(tmp_mp4) and os.path.getsize(tmp_mp4) > 300_000:
+                subprocess.run([
+                    "ffmpeg", "-y", "-loglevel", "error",
+                    "-i", tmp_mp4, "-c", "copy", ts_path
+                ], timeout=25)
+        except Exception:
+            continue
 
-            # Use YouTube's 'Most Replayed' viewer heatmap to pinpoint the exact viral climax
-            start_sec = 30.0
-            heatmap = info.get("heatmap") or []
-            if heatmap and not is_live:
-                best_seg = max(heatmap, key=lambda h: float(h.get("value", 0.0)))
-                peak_t = float(best_seg.get("start_time", 30.0))
-                start_sec = max(0.0, min(peak_t - 22.0, max(0.0, dur - 80.0)))
-            elif not is_live and dur > 120:
-                start_sec = random.uniform(30.0, max(35.0, dur - 85.0))
-
-            grab_dur = 180 if is_live else 75
-            try:
-                stream_url = next(
-                    iter(
-                        subprocess.check_output(
-                            [
-                                "yt-dlp", "-f", "best[height<=720][ext=mp4]/best[height<=720]/best",
-                                "--no-warnings", "-g", url
-                            ],
-                            text=True,
-                            timeout=20,
-                        ).splitlines()
-                    ),
-                    "",
-                ).strip()
-                if not stream_url:
-                    continue
-
-                ff_cmd = ["ffmpeg", "-y", "-loglevel", "error", "-err_detect", "ignore_err"]
-                if not is_live:
-                    ff_cmd.extend(["-ss", f"{start_sec:.1f}"])
-                ff_cmd.extend(["-i", stream_url, "-t", str(grab_dur), "-c", "copy", ts_path])
-                subprocess.run(ff_cmd, timeout=grab_dur + 35)
-            except Exception:
-                continue
-
-            if os.path.exists(ts_path) and os.path.getsize(ts_path) > 500_000:
-                seen_ids.add(yt_key)
-                harvested.append({
-                    "stream_id": yt_key,
-                    "login": uploader.lower(),
-                    "creator": uploader,
-                    "title": title,
-                    "viewers": int(info.get("view_count") or 1000),
-                    "game": "Grand Theft Auto VI",
-                    "url": url,
-                    "ts_path": ts_path,
-                    "has_heatmap": bool(heatmap),
-                })
-                tag = "LIVE" if is_live else ("HEATMAP-VOD" if heatmap else "VOD")
-                print(f"[YouTube-{tag}] Grabbed {uploader}: {title[:48]}", flush=True)
+        if os.path.exists(ts_path) and os.path.getsize(ts_path) > 300_000:
+            seen_ids.add(yt_key)
+            harvested.append({
+                "stream_id": yt_key,
+                "login": uploader.lower(),
+                "creator": uploader,
+                "title": title,
+                "viewers": int(info.get("view_count") or 1000),
+                "game": "Grand Theft Auto VI",
+                "url": url,
+                "ts_path": ts_path,
+                "has_heatmap": bool(heatmap),
+            })
+            tag = "LIVE" if is_live else ("HEATMAP-VOD" if heatmap else "VOD")
+            print(f"[YouTube-{tag}] Grabbed {uploader}: {title[:48]}", flush=True)
 
     return harvested
+
 
 # ==============================================================================
 # PART 5 OF 12: MULTI-WINDOW ACOUSTIC SCANNER & ENGLISH WHISPER TRANSLATOR
