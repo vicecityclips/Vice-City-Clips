@@ -476,6 +476,19 @@
         }
       ],
       "last_clipped_at": 1795197000
+    },
+    "twitch_ishowspeed_321260089820": {
+      "title": "\ud83d\udd34 BEATING GTA 6 RIGHT NOW 100% (FINAL MISSION)",
+      "channel": "IShowSpeed",
+      "url": "https://www.twitch.tv/ishowspeed",
+      "count": 1,
+      "clips": [
+        {
+          "scheduled_utc": "2026-11-21T00:00:00Z",
+          "chunk_peak_sec": 105
+        }
+      ],
+      "last_clipped_at": 1795199941
     }
   },
   "scheduled_slots": [
@@ -483,6 +496,7 @@
     "2026-11-20T00:00:00Z",
     "2026-11-20T06:00:00Z",
     "2026-11-20T12:00:00Z",
-    "2026-11-20T18:00:00Z"
+    "2026-11-20T18:00:00Z",
+    "2026-11-21T00:00:00Z"
   ]
 }
