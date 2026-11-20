@@ -248,15 +248,29 @@ def analyze_batch_for_multiple_shorts(recorded_list, max_shorts=3):
             continue
 
         energies = np.array([np.sqrt(np.mean(data[i * rate : (i + 1) * rate] ** 2)) for i in range(num_secs)])
-        jump_scores = np.zeros(num_secs)
-        for s in range(25, num_secs - 22):
-            jump_scores[s] = np.mean(energies[s - 1 : s + 3]) / (np.mean(energies[s - 14 : s - 2]) + 1e-6)
+        median_e = float(np.median(energies)) + 1e-6
+        best_sec, best_score = 25, 0.0
 
-        best_sec = int(np.argmax(jump_scores))
-        best_jump = float(jump_scores[best_sec])
+        for s in range(25, num_secs - 25):
+            win = energies[s - 18 : s + 22]
+            active_ratio = float(np.mean(win > (median_e * 0.55)))
+            if active_ratio < 0.65:
+                continue
+            spike = float(np.mean(energies[s - 2 : s + 4])) / (float(np.mean(energies[s - 18 : s - 4])) + 1e-6)
+            score = spike * active_ratio
+            if score > best_score:
+                best_score, best_sec = score, s
+
+        best_jump = best_score
 
         segments, _ = model.transcribe(wav_path)
         lines = [f"[{int(seg.start)}s] {seg.text.strip()}" for seg in segments if 20 <= seg.start <= (num_secs - 22) and seg.text.strip()]
+
+        spoken_words = sum(len(ln.split()) - 1 for ln in lines)
+        if spoken_words < 12 and best_jump < 2.1:
+            print(f"[Skip] {channel_name}: low speech ({spoken_words}w) and no stunt spike ({best_jump:.2f}x).", flush=True)
+            continue
+
         candidates.append({
             "idx": idx, "video_path": video_path, "live_url": live_url,
             "stream_title": stream_title, "channel_name": channel_name,
@@ -344,6 +358,10 @@ SHORT3: <SINGLE or MULTI> | <crop or blur> | <idx1>,<peak1>"""
             print(f"Batch AI producer fallback: {e}", flush=True)
 
     sorted_c = sorted(candidates, key=lambda x: x["jump_ratio"], reverse=True)
+    if len(sorted_c) >= 3 and random.random() < 0.6:
+        top_three = sorted_c[:3]
+        multi_specs = [(c_item, max(0, c_item["audio_peak"] - 9), c_item["audio_peak"], MULTI_CLIP_DUR) for c_item in top_three]
+        return [("MULTI", "blur", multi_specs)]
     best_c = next(iter(sorted_c))
     return [("SINGLE", "blur", [(best_c, max(0, best_c["audio_peak"] - 22), best_c["audio_peak"], SINGLE_CLIP_DUR)])]
 
@@ -403,11 +421,22 @@ def generate_viral_metadata(transcript, mode, creators_list):
         "Unbelievable police chase ending"
     ]
     chosen_style = random.choice(styles)
-    fallback_title = (
-        f"GTA 6 Daily Chaos Compilation {e1}{e2} #gta6 #shorts"
-        if mode == "MULTI"
-        else f"Nobody Expected This in GTA 6 {e1}{e2} #gta6 #shorts"
-    )
+    lead_creator = next(iter(creators_list), "This Streamer")
+    single_templates = [
+        f"{lead_creator} Just Broke GTA 6 Physics {e1}{e2} #gta6 #shorts",
+        f"Vice City Cops Had NO Mercy on {lead_creator} {e1}{e2} #gta6 #shorts",
+        f"1 in 1,000,000 GTA 6 Moment by {lead_creator} {e1}{e2} #gta6 #shorts",
+        f"How Did {lead_creator} Survive This in Leonida?! {e1}{e2} #gta6 #shorts",
+        f"{lead_creator}'s Reaction Says Everything in GTA 6 {e1}{e2} #gta6 #shorts",
+    ]
+    multi_templates = [
+        f"3 Unhinged GTA 6 Live Moments Today {e1}{e2} #gta6 #shorts",
+        f"Vice City Chaos Caught Live on Twitch {e1}{e2} #gta6 #shorts",
+        f"GTA 6 Streamers Losing Their Minds {e1}{e2} #gta6 #shorts",
+        f"Peak Leonida Madness in 55 Seconds {e1}{e2} #gta6 #shorts",
+    ]
+    fallback_title = random.choice(multi_templates if mode == "MULTI" else single_templates)
+
 
     if not api_key:
         return fallback_title, "WAIT FOR THE END!", "Watch what happens right here!"
