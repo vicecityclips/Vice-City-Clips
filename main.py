@@ -497,7 +497,7 @@ def extract_audio_candidates(recorded_items):
                 "video_path": video_path,
                 "stream_id": item["stream_id"],
                 "live_url": item["live_url"],
-                "stream_title": item["title"],
+                "stream_title": item["stream_title"],
                 "channel_name": item["channel_name"],
                 "num_secs": num_secs,
                 "audio_peak": best_sec,
@@ -508,6 +508,7 @@ def extract_audio_candidates(recorded_items):
             print(f"[Analyze] Skipped item {idx}: {e}", flush=True)
 
     return candidates
+
 
 def plan_shorts_from_candidates(candidates, max_shorts=3):
     if not candidates:
@@ -725,39 +726,44 @@ def generate_viral_metadata(transcript, mode, creators_list):
     emoji_pool = ["💀", "🚨", "🤯", "🔥", "😭", "⚡", "👀", "💥", "🌴", "🚓"]
     e1, e2 = random.sample(emoji_pool, 2)
     fallback_title = (
-        f"GTA 6 Daily Chaos Compilation {e1}{e2} #gta6 #shorts"
+        f"Top 3 Wildest GTA 6 Moments Today {e1}{e2} #gta6 #shorts"
         if mode == "MULTI"
-        else f"He Instantly Regretted This in GTA 6 {e1}{e2} #gta6 #shorts"
+        else f"Why Nobody Saw This Coming in GTA 6 {e1}{e2} #gta6 #shorts"
+    )
+    fallback_commentary = (
+        "Watch closely what happens right here... Nobody expected that timing at the end!"
     )
 
     if not api_key:
-        return fallback_title, "INSTANT REGRET 💀", "Watch what happens right here!"
+        return fallback_title, "INSTANT REGRET 💀", fallback_commentary
 
     client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=30000))
-    prompt = f"""You are a viral gaming YouTube Shorts editor for an English GTA 6 channel.
-Clip Mode: {"3-Clip Highlight Compilation" if mode == "MULTI" else "Single Viral Highlight"}
+    prompt = f"""You are a transformative gaming commentator for a monetized English GTA 6 YouTube Shorts channel.
+To satisfy YouTube's Reused Content monetization rules, write original storytelling commentary that adds context and humor rather than just re-uploading gameplay.
+
+Clip Mode: {"Top 3 Ranked Countdown" if mode == "MULTI" else "Single Highlight Breakdown"}
 Creators Featured: {", ".join(creators_list)}
-Spoken Dialogue: {transcript[:450]}
+Spoken Dialogue: {transcript[:500]}
 
 Rules:
-1. TITLE: Write a PUNCHY, SPECIFIC English title tied to the dialogue (under 66 chars, NO profanity). Include 1-2 emojis ({e1}, {e2}) and "#gta6 #shorts".
-2. BANNER: Write a specific 3-to-4 word ALL-CAPS curiosity hook (NEVER write generic 'WAIT FOR THE END!').
-3. HOOK: Write a 5-word spoken intro voiceover line.
+1. TITLE: Write a PUNCHY, SPECIFIC English title tied to the story (under 66 chars, NO profanity). Include 1-2 emojis ({e1}, {e2}) and "#gta6 #shorts".
+2. BANNER: Write a specific 3-to-4 word ALL-CAPS curiosity hook.
+3. COMMENTARY: Write a lively 22-to-30 word narrator script (intro hook + mid-clip play-by-play + punchline reaction) that explains what is happening and why it's wild.
 
 Reply in this exact 3-line format ONLY:
 TITLE: <your unique title>
 BANNER: <3-4 word ALL CAPS specific hook>
-HOOK: <spoken intro line>"""
+COMMENTARY: <22-30 word original narrator script>"""
 
     try:
         resp = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt,
-            config=types.GenerateContentConfig(temperature=1.0),
+            config=types.GenerateContentConfig(temperature=0.95),
         )
         title = fallback_title
         banner = "INSTANT REGRET"
-        hook = "Watch what happens right here!"
+        commentary = fallback_commentary
         for line in resp.text.strip().splitlines():
             up = line.upper()
             val = line.split(":", 1)[-1].strip()
@@ -765,13 +771,26 @@ HOOK: <spoken intro line>"""
                 title = val
             elif up.startswith("BANNER:") and val:
                 banner = "".join(c for c in val.upper() if c.isalnum() or c in {" ", "!", "?"})[:24]
-            elif up.startswith("HOOK:") and val:
-                hook = val
-        print(f"Generated Title: {title} | Banner: {banner}", flush=True)
-        return title, banner, hook
+            elif up.startswith("COMMENTARY:") and val:
+                commentary = val
+        print(f"Generated Title: {title} | Commentary: {commentary[:65]}...", flush=True)
+        return title, banner, commentary
     except Exception as e:
         print(f"Gemini metadata error: {e}", flush=True)
-        return fallback_title, "INSTANT REGRET", "Watch what happens right here!"
+        return fallback_title, "INSTANT REGRET", fallback_commentary
+
+async def create_voiceover_audio(text, filename="hook_vo.mp3"):
+    for voice in ("en-US-GuyNeural", "en-US-ChristopherNeural"):
+        try:
+            comm = edge_tts.Communicate(text, voice, rate="+12%")
+            await comm.save(filename)
+            if os.path.exists(filename) and os.path.getsize(filename) > 0:
+                return filename
+        except Exception:
+            await asyncio.sleep(1)
+    tts = gTTS(text=text, lang="en", slow=False)
+    tts.save(filename)
+    return filename
 
 async def create_voiceover_audio(text, filename="hook_vo.mp3"):
     for voice in ("en-US-GuyNeural", "en-US-ChristopherNeural"):
@@ -831,7 +850,8 @@ def assemble_base_timeline(mode, clip_specs):
 
         seg_start_t = 0.0 if (mode == "SINGLE" and idx == 0) else current_timeline_sec
         seg_end_t = current_timeline_sec + actual_dur
-        credit_windows.append((seg_start_t, seg_end_t, c_name))
+        rank_label = f"#{len(clip_specs) - idx} — {c_name}" if mode == "MULTI" else c_name
+        credit_windows.append((seg_start_t, seg_end_t, rank_label))
 
         rel_peak = current_timeline_sec + max(1.0, min(actual_dur - 1.5, actual_dur * 0.6))
         climax_markers.append(rel_peak)
@@ -840,7 +860,7 @@ def assemble_base_timeline(mode, clip_specs):
         current_timeline_sec += (actual_dur - TRANSITION_DUR)
 
     ass_path = write_ass_file(all_ass_events, "captions.ass")
-    viral_title, banner_hook, voice_hook = generate_viral_metadata(" ".join(all_transcripts), mode, creators_used)
+    viral_title, banner_hook, commentary_script = generate_viral_metadata(" ".join(all_transcripts), mode, creators_used)
 
     if mode == "SINGLE":
         cand0, _, peak0, _ = next(iter(clip_specs))
@@ -850,18 +870,6 @@ def assemble_base_timeline(mode, clip_specs):
             "-t", str(HOOK_DURATION), "-r", "30", "-c:v", "libx264", "-preset", "ultrafast",
             "-c:a", "aac", "-ar", "48000", "-ac", "2", "hook_clip.mp4"
         ], check=True)
-
-        if CHANNEL_CONFIG["enable_ai_voiceover"] and voice_hook:
-            asyncio.run(create_voiceover_audio(voice_hook, "hook_vo.mp3"))
-            # Duck streamer audio to 6% during hook so voices never overlap
-            subprocess.run([
-                "ffmpeg", "-y", "-i", "hook_clip.mp4", "-i", "hook_vo.mp3",
-                "-filter_complex", "[0:a]volume=0.06[bg_a];[1:a]aresample=48000,aformat=channel_layouts=stereo,volume=1.45[vo_a];[bg_a][vo_a]amix=inputs=2:duration=first[aout]",
-                "-map", "0:v", "-map", "[aout]",
-                "-c:v", "copy", "-c:a", "aac", "-ar", "48000", "-ac", "2", "hook_voiced.mp4"
-            ], check=True)
-            os.replace("hook_voiced.mp4", "hook_clip.mp4")
-
         concat_list = ["hook_clip.mp4"] + segment_files
         concat_durs = [float(HOOK_DURATION)] + segment_durations
     else:
@@ -869,7 +877,7 @@ def assemble_base_timeline(mode, clip_specs):
         concat_durs = segment_durations
 
     if len(concat_list) == 1:
-        os.replace(next(iter(concat_list)), "combined.mp4")
+        os.replace(next(iter(concat_list)), "combined_raw.mp4")
         total_dur = next(iter(concat_durs))
     else:
         ffmpeg_in = []
@@ -895,9 +903,25 @@ def assemble_base_timeline(mode, clip_specs):
             "ffmpeg", "-y", *ffmpeg_in,
             "-filter_complex", ";".join(v_filters + a_filters),
             "-map", "[vout]", "-map", "[aout]",
-            "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "-ar", "48000", "-ac", "2", "combined.mp4"
+            "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "-ar", "48000", "-ac", "2", "combined_raw.mp4"
         ], check=True)
         total_dur = sum(concat_durs) - TRANSITION_DUR * (len(concat_list) - 1)
+
+    # Mix transformative AI narrator commentary across the timeline with auto-ducking
+    if CHANNEL_CONFIG["enable_ai_voiceover"] and commentary_script:
+        asyncio.run(create_voiceover_audio(commentary_script, "narrator_vo.mp3"))
+        vo_dur = get_media_duration("narrator_vo.mp3")
+        subprocess.run([
+            "ffmpeg", "-y", "-i", "combined_raw.mp4", "-i", "narrator_vo.mp3",
+            "-filter_complex",
+            f"[0:a]volume='if(lt(t,{vo_dur + 0.3:.2f}),0.14,0.95)':eval=frame[game_a];"
+            "[1:a]aresample=48000,aformat=channel_layouts=stereo,volume=1.40[vo_a];"
+            "[game_a][vo_a]amix=inputs=2:duration=first[aout]",
+            "-map", "0:v", "-map", "[aout]",
+            "-c:v", "copy", "-c:a", "aac", "-ar", "48000", "-ac", "2", "combined.mp4"
+        ], check=True)
+    else:
+        os.replace("combined_raw.mp4", "combined.mp4")
 
     return total_dur, ass_path, viral_title, banner_hook, climax_markers, credit_windows, all_bad_intervals
 
@@ -1012,6 +1036,21 @@ def create_short_thumbnail(video_path, peak_rel_sec, banner_text, out_thumb="thu
     subprocess.run(cmd, check=True)
     return out_thumb
 
+def create_short_thumbnail(video_path, peak_rel_sec, banner_text, out_thumb="thumb.jpg"):
+    safe_txt = banner_text.replace("'", "").replace(":", "")[:24] or "NO WAY!"
+    cmd = [
+        "ffmpeg", "-y", "-ss", f"{max(0.5, peak_rel_sec):.2f}", "-i", video_path,
+        "-vframes", "1", "-update", "1",
+        "-vf", (
+            "eq=contrast=1.22:saturation=1.35,"
+            f"drawtext=text='{safe_txt}':fontcolor=#FFFF00:bordercolor=black:borderw=9:"
+            "fontsize=84:x=(w-text_w)/2:y=650"
+        ),
+        out_thumb
+    ]
+    subprocess.run(cmd, check=True)
+    return out_thumb
+
 def upload_to_youtube(video_path, thumb_path, title, clip_specs, publish_at_iso=None):
     creds_data = json.loads(os.environ["YOUTUBE_TOKEN_JSON"])
     creds = Credentials.from_authorized_user_info(creds_data)
@@ -1023,7 +1062,7 @@ def upload_to_youtube(video_path, thumb_path, title, clip_specs, publish_at_iso=
     seen = set()
     for clip_num, (cand, _, _, _) in enumerate(clip_specs, start=1):
         c_name = cand["channel_name"]
-        prefix = f"Clip #{clip_num} — " if len(clip_specs) > 1 else ""
+        prefix = f"Highlight #{clip_num} — " if len(clip_specs) > 1 else ""
         credit_lines.append(f"🎮 {prefix}{c_name}: {cand['live_url']} ({cand['stream_title']})")
         if c_name not in seen:
             seen.add(c_name)
@@ -1031,7 +1070,10 @@ def upload_to_youtube(video_path, thumb_path, title, clip_specs, publish_at_iso=
 
     privacy = CHANNEL_CONFIG["youtube_privacy"]
     handle = CHANNEL_CONFIG["channel_handle"]
-    status_obj = {"selfDeclaredMadeForKids": False}
+    status_obj = {
+        "selfDeclaredMadeForKids": False,
+        "containsSyntheticMedia": bool(CHANNEL_CONFIG["enable_ai_voiceover"]),
+    }
     if privacy == "public" and publish_at_iso:
         status_obj["privacyStatus"] = "private"
         status_obj["publishAt"] = publish_at_iso
@@ -1043,14 +1085,14 @@ def upload_to_youtube(video_path, thumb_path, title, clip_specs, publish_at_iso=
         "snippet": {
             "title": title[:95],
             "description": (
-                f"🔥 Insane Grand Theft Auto VI Live Highlights!\n\n"
-                f"Featured Creators & Credits:\n" + "\n".join(credit_lines) + "\n\n"
-                f"Subscribe to {handle} for daily GTA 6 highlights, Vice City moments, and viral gaming clips! 🌴🚗💨\n\n"
+                f"🔥 Transformative GTA 6 Highlights & Commentary Breakdown!\n\n"
+                f"Original Stream Credits:\n" + "\n".join(credit_lines) + "\n\n"
+                f"Edited with original voiceover commentary, pacing cuts, and captions by {handle}. Subscribe for daily GTA 6 breakdowns! 🌴🚗💨\n\n"
                 "#GTA6 #GrandTheftAuto6 #GrandTheftAutoVI #ViceCity #Leonida #GTA6Shorts #ViceCityClips #GamingShorts #Shorts"
             ),
             "tags": [
                 "GTA 6", "Grand Theft Auto 6", "Grand Theft Auto VI", "GTA VI",
-                "Vice City", "Leonida", "GTA 6 Gameplay", "GTA 6 Live", "GTA 6 Clips",
+                "Vice City", "Leonida", "GTA 6 Gameplay", "GTA 6 Commentary", "GTA 6 Clips",
                 "Vice City Clips", "GTA 6 Shorts", "Gaming Shorts"
             ] + creator_tags,
             "categoryId": "20",
