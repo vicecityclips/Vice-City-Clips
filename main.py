@@ -753,8 +753,9 @@ def extract_motion_and_key_frames(video_path, center_sec):
         return False, 0.0, []
 
     mean_diff = float(np.mean(diffs))
-    if mean_diff < 1.8:
+    if mean_diff < 3.4:
         return False, 0.0, []
+
 
     motion_score = round(min(10.0, (mean_diff / 18.0) * 10.0), 2)
     return True, motion_score, pil_frames
@@ -1160,18 +1161,19 @@ def transcribe_window_to_english(video_path, start_sec, end_sec):
                 pass
 
 # ==============================================================================
-# PART 19 OF 30: GEMINI 2.5 SCENE-GROUNDED TITLE, BANNER & 3-ACT SCRIPT WRITER
-# Subheading: Inspects Climax Frames to Write Accurate English Hook & Punchline
+# PART 19 OF 30: GEMINI 2.5 SCENE-GROUNDED TITLE, BANNER & PER-CLIP SCRIPT WRITER
+# Subheading: Writes Accurate Title, Banner & Short Spoken Cues For Every Clip (#5 -> #1)
 # Code Title: generate_scene_grounded_script
 # ==============================================================================
 def generate_scene_grounded_script(short_plan, history_data):
     """
-    Uses Gemini 2.5 Flash vision on the actual winning GTA 6 frames to generate
-    a scene-grounded English title, top banner, Act 1 hook, and Act 3 punchline.
+    Uses Gemini vision on the winning GTA 6 frames to generate a scene-grounded
+    English title, top banner, a short 1-sentence commentary cue for EACH clip
+    (#5 down to #1), and a closing outro question.
     """
     segments = short_plan["segments"]
     creators = [s["channel_name"] for s in segments]
-    top_seg = segments[-1]  # #1 climax plays last
+    top_seg = segments[-1]
     recent_titles = [u.get("title", "") for u in history_data.get("uploads", [])[-12:]]
 
     frame_paths = []
@@ -1199,22 +1201,23 @@ def generate_scene_grounded_script(short_plan, history_data):
                 pass
 
         context_lines.append(
-            f"- Rank #{seg['rank']} | Creator: {seg['channel_name']} | "
+            f"- Clip #{seg['rank']} | Creator: {seg['channel_name']} | "
             f"Stream Title: {seg['source_title']} | "
             f"Translated Dialogue: '{seg['transcript_en'] or 'intense gameplay reaction'}'"
         )
 
+    rank_keys_desc = ", ".join(f'"{s["rank"]}"' for s in segments)
     prompt_text = (
-        f"You are writing metadata and voiceover lines for {CHANNEL_CONFIG['channel_name']} "
+        f"You are writing metadata and voiceover cues for {CHANNEL_CONFIG['channel_name']} "
         f"({CHANNEL_CONFIG['channel_handle']}), a Grand Theft Auto VI Shorts channel.\n"
         f"Inspect the attached gameplay frames and clip details:\n"
         + "\n".join(context_lines)
         + f"\nAvoid repeating any of these recent titles: {recent_titles}\n\n"
         f"Return STRICT valid JSON with these exact 5 keys:\n"
-        f'1. "title": Catchy, accurate English YouTube Shorts title describing what actually happens (max 68 chars, 1 emoji, no #Shorts tag yet).\n'
-        f'2. "banner": Short 3-to-5 word UPPERCASE hook banner for the top of the screen (e.g. "5 INSANE VICE CITY FAILS").\n'
-        f'3. "intro_vo": Energetic 1-sentence English spoken hook (10-14 words, ~3.5s) setting up the clips.\n'
-        f'4. "outro_vo": Punchy 1-sentence English closing reaction/question (9-13 words, ~3.2s) after the #1 climax.\n'
+        f'1. "title": Catchy English YouTube Shorts title describing the wildest moment (max 68 chars, 1 emoji, no #Shorts tag).\n'
+        f'2. "banner": Short 3-to-5 word UPPERCASE top banner (e.g. "TOP 5 VICE CITY CHAOS").\n'
+        f'3. "clip_vos": JSON object mapping each rank ({rank_keys_desc}) to a punchy 1-sentence English commentary hook (7-10 words, ~2.2s) introducing that clip (e.g. "At number 5, watch this bank shootout go sideways!").\n'
+        f'4. "outro_vo": Punchy 1-sentence English closing question (8-11 words, ~2.8s) after the #1 climax.\n'
         f'5. "tags": List of 8 relevant English tags including "GTA 6", "Grand Theft Auto 6", "Vice City", and creator names.\n'
     )
     prompt_parts.append(prompt_text)
@@ -1225,7 +1228,7 @@ def generate_scene_grounded_script(short_plan, history_data):
             api_key=api_key,
             http_options=types.HttpOptions(timeout=45000),
         )
-        for model_id in ("gemini-2.5-flash", "gemini-3.5-flash-lite"):
+        for model_id in ("gemini-3.5-flash-lite", "gemini-2.5-flash-lite"):
             try:
                 resp = client.models.generate_content(
                     model=model_id,
@@ -1236,7 +1239,7 @@ def generate_scene_grounded_script(short_plan, history_data):
                     ),
                 )
                 parsed = json.loads(resp.text.strip())
-                if parsed.get("title") and parsed.get("intro_vo") and parsed.get("outro_vo"):
+                if parsed.get("title") and parsed.get("clip_vos") and parsed.get("outro_vo"):
                     parsed["creators"] = creators
                     print(f"[Gemini Scene Writer] Generated via {model_id}: '{parsed['title']}'", flush=True)
                     for fp in frame_paths:
@@ -1255,20 +1258,21 @@ def generate_scene_grounded_script(short_plan, history_data):
 
     count = len(segments)
     top_creator = top_seg["channel_name"]
-    if count > 1:
-        fallback_title = f"Top {count} Craziest GTA 6 Moments Featuring {top_creator} 🔥"
-        fallback_banner = f"TOP {count} VICE CITY MOMENTS"
-        fallback_intro = f"Here are the top {count} wildest Vice City moments caught on stream today!"
-    else:
-        fallback_title = f"{top_creator} Had The Wildest Moment In Vice City 😱"
-        fallback_banner = "PURE VICE CITY CHAOS"
-        fallback_intro = f"Watch how fast things spiral out of control for {top_creator} in Vice City!"
+    fallback_vos = {}
+    for s in segments:
+        r = str(s["rank"])
+        if count == 1:
+            fallback_vos[r] = f"Watch how fast things spiral out of control for {s['channel_name']}!"
+        elif s["rank"] == 1:
+            fallback_vos[r] = f"And at number 1, {s['channel_name']} takes Vice City chaos to the limit!"
+        else:
+            fallback_vos[r] = f"At number {r}, check out this wild moment from {s['channel_name']}!"
 
     return {
-        "title": fallback_title[:75],
-        "banner": fallback_banner,
-        "intro_vo": fallback_intro,
-        "outro_vo": f"Rate {top_creator}'s Vice City moment from 1 to 10 in the comments!",
+        "title": (f"Top {count} Craziest GTA 6 Moments Featuring {top_creator} 🔥" if count > 1 else f"{top_creator} Had The Wildest Moment In Vice City 😱")[:75],
+        "banner": f"TOP {count} VICE CITY MOMENTS" if count > 1 else "PURE VICE CITY CHAOS",
+        "clip_vos": fallback_vos,
+        "outro_vo": f"Which Vice City clip was your #1 favorite? Comment below!",
         "tags": ["GTA 6", "Grand Theft Auto 6", "Vice City", "GTA VI", "Shorts"] + creators[:3],
         "creators": creators,
     }
@@ -1344,8 +1348,8 @@ def detect_verified_webcam_box(video_path, start_sec, end_sec):
         return None
 
 # ==============================================================================
-# PART 21 OF 30: 1080X1920 VERTICAL LAYOUT RENDERER
-# Subheading: Renders Verified Splitcam or Full 16:9 Cinema Center With Rank Badges
+# PART 21 OF 30: 1080X1920 VERTICAL LAYOUT & XFADE TRANSITION RENDERER
+# Subheading: Renders Each Clip & Joins Them With Smooth 0.35s Flash-Wipe Transitions
 # Code Title: render_vertical_segments_and_concat
 # ==============================================================================
 def _escape_drawtext(txt):
@@ -1360,17 +1364,17 @@ def _escape_drawtext(txt):
 
 def render_vertical_segments_and_concat(short_plan):
     """
-    Renders each chosen GTA 6 segment to 1080x1920 @ 30fps with dynamic creator
-    credit + rank badge, then concatenates all segments into 'stitched_video.mp4'.
-    Returns (stitched_path, timeline_segments_with_offsets).
+    Renders each chosen GTA 6 segment to 1080x1920 @ 30fps and joins multi-clip
+    Shorts using smooth 0.35s xfade video + acrossfade audio transitions.
+    Returns (stitched_path, timeline_segments_with_exact_offsets).
     """
     font_bold = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
     segments = short_plan["segments"]
     is_multi = len(segments) > 1
+    xfade_dur = 0.35
 
     rendered_files = []
-    timeline_meta = []
-    cursor_sec = 0.0
+    seg_durations = []
 
     for idx, seg in enumerate(segments):
         seg_out = f"seg_render_{idx}.mp4"
@@ -1406,7 +1410,6 @@ def render_vertical_segments_and_concat(short_plan):
                 f"drawbox=x=0:y=1265:w=1080:h=5:color=#FF2A85@0.90:t=fill[canvas]"
             )
 
-        # Top watermark + dynamic per-clip creator credit
         text_chain = (
             f"[canvas]drawtext=fontfile={font_bold}:text='{wm_label}':"
             f"fontsize=26:fontcolor=white@0.88:x=(w-text_w)/2:y=56:"
@@ -1416,7 +1419,6 @@ def render_vertical_segments_and_concat(short_plan):
             f"shadowcolor=black@0.90:shadowx=2:shadowy=2"
         )
 
-        # Add rank badge (#5 -> #1) when compiling 2-5 clips
         if is_multi:
             badge_color = "#FF1744" if rank_num == 1 else "#00E5FF"
             text_chain += (
@@ -1447,35 +1449,78 @@ def render_vertical_segments_and_concat(short_plan):
 
         actual_d = get_media_duration(seg_out)
         rendered_files.append(seg_out)
-        timeline_meta.append({
-            **seg,
-            "offset_start": round(cursor_sec, 3),
-            "offset_end": round(cursor_sec + actual_d, 3),
-            "rendered_dur": round(actual_d, 3),
-        })
-        cursor_sec += actual_d
+        seg_durations.append(actual_d)
         print(f"[Segment #{rank_num}] Rendered {seg['channel_name']} ({layout_mode}, {actual_d:.1f}s)", flush=True)
 
     stitched_out = "stitched_video.mp4"
     if os.path.exists(stitched_out):
         os.remove(stitched_out)
 
+    timeline_meta = []
     if len(rendered_files) == 1:
         shutil.copy2(rendered_files[0], stitched_out)
-    else:
-        concat_txt = "concat_list.txt"
-        with open(concat_txt, "w", encoding="utf-8") as cf:
-            for rf in rendered_files:
-                cf.write(f"file '{os.path.abspath(rf)}'\n")
-        run_cmd_safe(
-            [
-                "ffmpeg", "-y", "-f", "concat", "-safe", "0",
-                "-i", concat_txt, "-c", "copy", stitched_out,
-            ],
-            label="ConcatSegments",
-            timeout_sec=90,
+        timeline_meta.append({
+            **segments[0],
+            "offset_start": 0.0,
+            "offset_end": round(seg_durations[0], 3),
+            "rendered_dur": round(seg_durations[0], 3),
+        })
+        return stitched_out, timeline_meta
+
+    # Build chained xfade (video) + acrossfade (audio) graph across all segments
+    cmd = ["ffmpeg", "-y"]
+    for rf in rendered_files:
+        cmd.extend(["-i", rf])
+
+    transitions = ("fadewhite", "wipeleft", "slideright", "wipeup")
+    fc_parts = []
+    cum_dur = seg_durations[0]
+    prev_v = "[0:v]"
+    prev_a = "[0:a]"
+
+    timeline_meta.append({
+        **segments[0],
+        "offset_start": 0.0,
+        "offset_end": round(seg_durations[0], 3),
+        "rendered_dur": round(seg_durations[0], 3),
+    })
+
+    for i in range(1, len(rendered_files)):
+        offset_t = max(0.5, round(cum_dur - xfade_dur, 3))
+        t_style = transitions[(i - 1) % len(transitions)]
+        out_v = f"[vx{i}]" if i < len(rendered_files) - 1 else "[vfinal]"
+        out_a = f"[ax{i}]" if i < len(rendered_files) - 1 else "[afinal]"
+
+        fc_parts.append(
+            f"{prev_v}[{i}:v]xfade=transition={t_style}:duration={xfade_dur}:offset={offset_t}{out_v}"
+        )
+        fc_parts.append(
+            f"{prev_a}[{i}:a]acrossfade=d={xfade_dur}:c1=tri:c2=tri{out_a}"
         )
 
+        new_end = round(offset_t + seg_durations[i], 3)
+        timeline_meta.append({
+            **segments[i],
+            "offset_start": offset_t,
+            "offset_end": new_end,
+            "rendered_dur": round(seg_durations[i], 3),
+        })
+        cum_dur = new_end
+        prev_v = out_v
+        prev_a = out_a
+
+    run_cmd_safe(
+        cmd + [
+            "-filter_complex", ";".join(fc_parts),
+            "-map", "[vfinal]", "-map", "[afinal]",
+            "-r", "30",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+            "-c:a", "aac", "-b:a", "192k", "-ar", "44100",
+            stitched_out,
+        ],
+        label="XfadeStitchSegments",
+        timeout_sec=140,
+    )
     return stitched_out, timeline_meta
 
 # ==============================================================================
@@ -1534,33 +1579,57 @@ def synthesize_voiceover_mp3(text, out_path):
         return 0.0
 
 # ==============================================================================
-# PART 24 OF 30: 3-ACT AUDIO TIMELINE MIXER & COPYRIGHT AUDIO SHIELD
-# Subheading: Silent Narrator During Climaxes + Impact SFX + Loudness Normalization
+# PART 24 OF 30: PER-CLIP 3-ACT AUDIO MIXER & COPYRIGHT AUDIO SHIELD
+# Subheading: Plays Short Spoken Cue At Each Clip Entry (#5 -> #1) + Silent Climax
 # Code Title: mix_three_act_audio_master
 # ==============================================================================
 def mix_three_act_audio_master(stitched_video, timeline_meta, script_data):
     """
-    Builds the 3-Act audio master:
-    - Act 1 (0.0s -> ~3.4s): Intro hook voiceover (game audio gently ducked)
-    - Act 2 (Middle climaxes): Narrator 100% SILENT so streamer reactions shine;
-      sub-bass impact drops fire at each rank transition (#5 -> #1)
-    - Act 3 (Final ~3.3s): Outro punchline voiceover
+    Synthesizes a short ~2.2s commentary cue at the start of EACH clip (#5 -> #1),
+    keeps the remaining ~10s of every clip 100% silent for the streamer's reaction,
+    fires sub-bass impact drops on transitions, and adds the Act 3 outro punchline.
     """
     total_dur = get_media_duration(stitched_video)
     mixed_out = "audio_mixed_video.mp4"
     if os.path.exists(mixed_out):
         os.remove(mixed_out)
 
-    intro_mp3 = "vo_intro.mp3"
-    outro_mp3 = "vo_outro.mp3"
-    intro_dur = synthesize_voiceover_mp3(script_data.get("intro_vo", ""), intro_mp3) if CHANNEL_CONFIG["enable_ai_voiceover"] else 0.0
-    outro_dur = synthesize_voiceover_mp3(script_data.get("outro_vo", ""), outro_mp3) if CHANNEL_CONFIG["enable_ai_voiceover"] else 0.0
+    clip_vos_map = script_data.get("clip_vos") or {}
+    vo_tracks = []  # list of dict(path, start, end, text)
 
-    has_intro = intro_dur > 0.4 and os.path.exists(intro_mp3)
-    has_outro = outro_dur > 0.4 and os.path.exists(outro_mp3) and total_dur > (intro_dur + outro_dur + 4.0)
-    outro_start = max(intro_dur + 2.0, total_dur - outro_dur - 0.15) if has_outro else total_dur
+    if CHANNEL_CONFIG["enable_ai_voiceover"]:
+        for idx, seg in enumerate(timeline_meta):
+            r_key = str(seg["rank"])
+            vo_txt = str(clip_vos_map.get(r_key, "")).strip()
+            if not vo_txt:
+                continue
+            mp3_p = f"vo_seg_{idx}.mp3"
+            vdur = synthesize_voiceover_mp3(vo_txt, mp3_p)
+            if vdur > 0.4 and os.path.exists(mp3_p):
+                t_start = round(float(seg["offset_start"]) + (0.05 if idx == 0 else 0.25), 2)
+                t_end = round(min(float(seg["offset_end"]) - 1.5, t_start + vdur), 2)
+                if t_end > t_start + 0.4:
+                    vo_tracks.append({
+                        "path": mp3_p,
+                        "start": t_start,
+                        "end": t_end,
+                        "text": vo_txt,
+                    })
 
-    # Collect transition timestamps for multi-clip countdown impact drops
+        outro_txt = str(script_data.get("outro_vo", "")).strip()
+        outro_mp3 = "vo_outro.mp3"
+        outro_dur = synthesize_voiceover_mp3(outro_txt, outro_mp3) if outro_txt else 0.0
+        if outro_dur > 0.4 and os.path.exists(outro_mp3):
+            o_start = round(max(2.0, total_dur - outro_dur - 0.15), 2)
+            last_vo_end = vo_tracks[-1]["end"] if vo_tracks else 0.0
+            if o_start > last_vo_end + 1.5:
+                vo_tracks.append({
+                    "path": outro_mp3,
+                    "start": o_start,
+                    "end": round(min(total_dur, o_start + outro_dur), 2),
+                    "text": outro_txt,
+                })
+
     transition_times = [
         round(seg["offset_start"], 3)
         for seg in timeline_meta[1:]
@@ -1571,52 +1640,36 @@ def mix_three_act_audio_master(stitched_video, timeline_meta, script_data):
 
     cmd = ["ffmpeg", "-y", "-i", stitched_video]
     in_idx = 1
-    intro_idx = outro_idx = sfx_idx = None
+    for tr in vo_tracks:
+        cmd.extend(["-i", tr["path"]])
+        tr["in_idx"] = in_idx
+        in_idx += 1
 
-    if has_intro:
-        cmd.extend(["-i", intro_mp3])
-        intro_idx = in_idx
-        in_idx += 1
-    if has_outro:
-        cmd.extend(["-i", outro_mp3])
-        outro_idx = in_idx
-        in_idx += 1
+    sfx_idx = None
     if has_sfx and sfx_wav and os.path.exists(sfx_wav):
         cmd.extend(["-i", sfx_wav])
         sfx_idx = in_idx
-        in_idx += 1
 
-    # Duck game audio only during Act 1 intro and Act 3 outro; 100% full volume in Act 2
-    duck_conds = []
-    if has_intro:
-        duck_conds.append(f"between(t,0,{intro_dur + 0.15:.2f})")
-    if has_outro:
-        duck_conds.append(f"between(t,{outro_start:.2f},{total_dur:.2f})")
-
-    if duck_conds:
-        expr = "+".join(duck_conds)
-        game_filter = f"[0:a]highpass=f=45,volume='if(gt({expr},0),0.32,1.0)':eval=frame[agame]"
+    if vo_tracks:
+        duck_expr = "+".join(f"between(t,{tr['start']:.2f},{tr['end']:.2f})" for tr in vo_tracks)
+        game_filter = f"[0:a]highpass=f=45,volume='if(gt({duck_expr},0),0.30,1.0)':eval=frame[agame]"
     else:
         game_filter = "[0:a]highpass=f=45,volume=1.0[agame]"
 
     filter_parts = [game_filter]
     mix_inputs = ["[agame]"]
 
-    if has_intro:
-        filter_parts.append(f"[{intro_idx}:a]adelay=0|0,volume=1.25[aintro]")
-        mix_inputs.append("[aintro]")
-
-    if has_outro:
-        delay_ms = int(round(outro_start * 1000))
-        filter_parts.append(f"[{outro_idx}:a]adelay={delay_ms}|{delay_ms},volume=1.25[aoutro]")
-        mix_inputs.append("[aoutro]")
+    for i, tr in enumerate(vo_tracks):
+        d_ms = int(round(tr["start"] * 1000))
+        filter_parts.append(f"[{tr['in_idx']}:a]adelay={d_ms}|{d_ms},volume=1.28[avo{i}]")
+        mix_inputs.append(f"[avo{i}]")
 
     if sfx_idx is not None:
         splits = "".join(f"[sfx{i}]" for i in range(len(transition_times)))
         filter_parts.append(f"[{sfx_idx}:a]asplit={len(transition_times)}{splits}")
         for i, t_sec in enumerate(transition_times):
             t_ms = max(0, int(round((t_sec - 0.12) * 1000)))
-            filter_parts.append(f"[sfx{i}]adelay={t_ms}|{t_ms},volume=0.85[sfxd{i}]")
+            filter_parts.append(f"[sfx{i}]adelay={t_ms}|{t_ms},volume=0.88[sfxd{i}]")
             mix_inputs.append(f"[sfxd{i}]")
 
     if len(mix_inputs) == 1:
@@ -1639,17 +1692,15 @@ def mix_three_act_audio_master(stitched_video, timeline_meta, script_data):
         label="ThreeActAudioMix",
         timeout_sec=110,
     )
-
     print(
-        f"[3-Act Audio] Intro 0.0-{intro_dur:.1f}s | SILENT CLIMAX {intro_dur:.1f}-{outro_start:.1f}s | "
-        f"Outro {outro_start:.1f}-{total_dur:.1f}s | Transition SFX={len(transition_times)}",
+        f"[Per-Clip Audio] Mixed {len(vo_tracks)} commentary cues + {len(transition_times)} transition SFX.",
         flush=True,
     )
-    return mixed_out, round(intro_dur, 2), round(outro_start, 2)
+    return mixed_out, vo_tracks
 
 # ==============================================================================
 # PART 25 OF 30: TOP HOOK BANNER & SYNCED ENGLISH ASS SUBTITLE BURNER
-# Subheading: Burns Clean Top Hook Banner & Word-Synced English Captions
+# Subheading: Burns Clean Top Banner & Word-Synced Captions For All Commentary + Reactions
 # Code Title: burn_banner_and_english_captions
 # ==============================================================================
 def _fmt_ass_time(sec):
@@ -1661,7 +1712,6 @@ def _fmt_ass_time(sec):
 
 
 def _chunk_words_to_events(text_or_words, start_offset, max_dur, is_word_list=False):
-    """Groups words into crisp 3-word caption chunks with exact start/end timestamps."""
     events = []
     if is_word_list:
         buf = []
@@ -1690,36 +1740,31 @@ def _chunk_words_to_events(text_or_words, start_offset, max_dur, is_word_list=Fa
     return events
 
 
-def burn_banner_and_english_captions(audio_mixed_video, timeline_meta, script_data, intro_dur, outro_start):
+def burn_banner_and_english_captions(audio_mixed_video, timeline_meta, script_data, vo_tracks):
     """
-    Burns the top hook banner + bold yellow/white English captions onto the Short
-    and outputs 'final_short_<timestamp>.mp4'.
+    Burns the top hook banner + synced English captions for every clip's spoken
+    commentary cue AND the streamer's translated reaction during the silent climax.
     """
-    total_dur = get_media_duration(audio_mixed_video)
     ass_path = "captions_master.ass"
     if os.path.exists(ass_path):
         os.remove(ass_path)
 
     caption_events = []
-    # Act 1 exact English hook captions
-    if intro_dur > 0.4:
-        caption_events.extend(_chunk_words_to_events(script_data.get("intro_vo", ""), 0.05, intro_dur - 0.1))
+    for tr in vo_tracks:
+        caption_events.extend(
+            _chunk_words_to_events(tr["text"], tr["start"], max(0.4, tr["end"] - tr["start"]))
+        )
 
-    # Act 2 translated English captions from each streamer's climax window
     for seg in timeline_meta:
         seg_off = float(seg["offset_start"])
         seg_end = float(seg["offset_end"])
         w_events = seg.get("word_events") or []
         for (t0, t1, phrase) in _chunk_words_to_events(w_events, seg_off, seg_end - seg_off, is_word_list=True):
-            # Keep middle captions clear of Act 1 intro and Act 3 outro voiceovers
-            if t0 >= (intro_dur + 0.15) and t1 <= (outro_start - 0.15):
+            overlaps_vo = any(not (t1 <= tr["start"] or t0 >= tr["end"]) for tr in vo_tracks)
+            if not overlaps_vo:
                 caption_events.append((t0, t1, phrase))
 
-    # Act 3 exact English outro captions
-    if outro_start < total_dur - 0.4:
-        caption_events.extend(
-            _chunk_words_to_events(script_data.get("outro_vo", ""), outro_start, total_dur - outro_start - 0.1)
-        )
+    caption_events.sort(key=lambda e: e[0])
 
     ass_header = (
         "[Script Info]\n"
@@ -1965,7 +2010,7 @@ def finalize_vault_and_history_after_compile(history_data, timeline_meta, script
 # ==============================================================================
 def cleanup_temp_workspace():
     """Deletes temporary working files while keeping clip_vault/ and final_short_*.mp4."""
-    prefixes = ("raw_hm_", "raw_fresh_", "seg_render_", "probe_aud_", "whisper_win_", "gem_ctx_")
+    prefixes = ("raw_hm_", "raw_fresh_", "seg_render_", "gem_ctx_", "probe_aud_", "whisper_win_", "vo_seg_")
     exact_files = (
         "stitched_video.mp4",
         "audio_mixed_video.mp4",
@@ -2076,11 +2121,11 @@ def run_master_pipeline():
 
         script_data = generate_scene_grounded_script(short_plan, history_data)
         stitched_vid, timeline_meta = render_vertical_segments_and_concat(short_plan)
-        mixed_vid, intro_dur, outro_start = mix_three_act_audio_master(
+        mixed_vid, vo_tracks = mix_three_act_audio_master(
             stitched_vid, timeline_meta, script_data
         )
         final_mp4 = burn_banner_and_english_captions(
-            mixed_vid, timeline_meta, script_data, intro_dur, outro_start
+            mixed_vid, timeline_meta, script_data, vo_tracks
         )
         thumb_jpg = extract_short_thumbnail(final_mp4)
 
