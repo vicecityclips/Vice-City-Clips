@@ -19,6 +19,10 @@
     {
       "video_id": "6E2cBXFCDyQ",
       "timestamp": "2026-11-21T17:54:03.187399+00:00"
+    },
+    {
+      "video_id": "Zy7M_YcgaGU",
+      "timestamp": "2026-11-21T18:04:38.322031+00:00"
     }
   ],
   "vault_queue": [
@@ -3005,6 +3009,1694 @@
         }
       ],
       "harvested_at": "2026-11-21T17:53:56.975521+00:00"
+    },
+    {
+      "vault_path": "clip_vault/Zy7M_YcgaGU_p0_2820s.mp4",
+      "video_id": "Zy7M_YcgaGU",
+      "channel_name": "HasanAbi",
+      "source_title": "GTA 6 HOGWATCH",
+      "source_start_sec": 2820.0,
+      "duration_sec": 50.0,
+      "local_peak_sec": 23.0,
+      "viral_score": 8.53,
+      "transcript_en": "always been the point. It's super basic. It's not that confusing. The only element that is a little bit different in this one is that there is a romance component, a Bonnie and Clyde component to it. And it's not like the game did not market that aspect. They did. Excellent point. Do you wish Grant to have thought of six was more like Grant to have thought of one. The game nobody thinks about or talks about this whole thing. Smacks of gender. Katie Miller is this Steven Miller's wife posting this. First of all, these are legends. These men are legends as well. These are some of the coolest Scottish people out there. Okay. Let me just say this. As someone is one of the very few people that played Grant to have thought of two. It's one of the very few people on the planet that actually, because I'm old enough. Okay. I am very old. I am very very old. Grant to have thought of one. Grant to have thought of two. They were fun. They were fun games. But it was a dramatically different game.",
+      "word_events": [
+        {
+          "word": "always",
+          "start": 0.0,
+          "end": 0.26
+        },
+        {
+          "word": "been",
+          "start": 0.26,
+          "end": 0.48
+        },
+        {
+          "word": "the",
+          "start": 0.48,
+          "end": 0.68
+        },
+        {
+          "word": "point.",
+          "start": 0.68,
+          "end": 1.18
+        },
+        {
+          "word": "It's",
+          "start": 1.52,
+          "end": 1.8
+        },
+        {
+          "word": "super",
+          "start": 1.8,
+          "end": 2.06
+        },
+        {
+          "word": "basic.",
+          "start": 2.06,
+          "end": 2.52
+        },
+        {
+          "word": "It's",
+          "start": 2.82,
+          "end": 2.96
+        },
+        {
+          "word": "not",
+          "start": 2.96,
+          "end": 3.18
+        },
+        {
+          "word": "that",
+          "start": 3.18,
+          "end": 3.52
+        },
+        {
+          "word": "confusing.",
+          "start": 3.52,
+          "end": 3.96
+        },
+        {
+          "word": "The",
+          "start": 4.52,
+          "end": 4.62
+        },
+        {
+          "word": "only",
+          "start": 4.62,
+          "end": 4.92
+        },
+        {
+          "word": "element",
+          "start": 4.92,
+          "end": 5.32
+        },
+        {
+          "word": "that",
+          "start": 5.32,
+          "end": 5.48
+        },
+        {
+          "word": "is",
+          "start": 5.48,
+          "end": 5.72
+        },
+        {
+          "word": "a",
+          "start": 5.72,
+          "end": 5.88
+        },
+        {
+          "word": "little",
+          "start": 5.88,
+          "end": 6.04
+        },
+        {
+          "word": "bit",
+          "start": 6.04,
+          "end": 6.24
+        },
+        {
+          "word": "different",
+          "start": 6.24,
+          "end": 6.4
+        },
+        {
+          "word": "in",
+          "start": 6.4,
+          "end": 6.52
+        },
+        {
+          "word": "this",
+          "start": 6.52,
+          "end": 6.72
+        },
+        {
+          "word": "one",
+          "start": 6.72,
+          "end": 6.92
+        },
+        {
+          "word": "is",
+          "start": 6.92,
+          "end": 7.12
+        },
+        {
+          "word": "that",
+          "start": 7.12,
+          "end": 7.3
+        },
+        {
+          "word": "there",
+          "start": 7.3,
+          "end": 7.52
+        },
+        {
+          "word": "is",
+          "start": 7.52,
+          "end": 7.68
+        },
+        {
+          "word": "a",
+          "start": 7.68,
+          "end": 8.02
+        },
+        {
+          "word": "romance",
+          "start": 8.02,
+          "end": 8.38
+        },
+        {
+          "word": "component,",
+          "start": 8.38,
+          "end": 8.9
+        },
+        {
+          "word": "a",
+          "start": 9.22,
+          "end": 9.22
+        },
+        {
+          "word": "Bonnie",
+          "start": 9.22,
+          "end": 9.48
+        },
+        {
+          "word": "and",
+          "start": 9.48,
+          "end": 9.72
+        },
+        {
+          "word": "Clyde",
+          "start": 9.72,
+          "end": 10.04
+        },
+        {
+          "word": "component",
+          "start": 10.04,
+          "end": 10.48
+        },
+        {
+          "word": "to",
+          "start": 10.48,
+          "end": 10.78
+        },
+        {
+          "word": "it.",
+          "start": 10.78,
+          "end": 10.94
+        },
+        {
+          "word": "And",
+          "start": 10.94,
+          "end": 11.12
+        },
+        {
+          "word": "it's",
+          "start": 11.12,
+          "end": 11.3
+        },
+        {
+          "word": "not",
+          "start": 11.3,
+          "end": 11.5
+        },
+        {
+          "word": "like",
+          "start": 11.5,
+          "end": 11.68
+        },
+        {
+          "word": "the",
+          "start": 11.68,
+          "end": 11.82
+        },
+        {
+          "word": "game",
+          "start": 11.82,
+          "end": 12.12
+        },
+        {
+          "word": "did",
+          "start": 12.12,
+          "end": 12.36
+        },
+        {
+          "word": "not",
+          "start": 12.36,
+          "end": 13.02
+        },
+        {
+          "word": "market",
+          "start": 13.02,
+          "end": 13.58
+        },
+        {
+          "word": "that",
+          "start": 13.58,
+          "end": 14.1
+        },
+        {
+          "word": "aspect.",
+          "start": 14.1,
+          "end": 14.56
+        },
+        {
+          "word": "They",
+          "start": 14.74,
+          "end": 14.94
+        },
+        {
+          "word": "did.",
+          "start": 14.94,
+          "end": 15.38
+        },
+        {
+          "word": "Excellent",
+          "start": 15.6,
+          "end": 15.74
+        },
+        {
+          "word": "point.",
+          "start": 15.74,
+          "end": 16.06
+        },
+        {
+          "word": "Do",
+          "start": 16.14,
+          "end": 16.2
+        },
+        {
+          "word": "you",
+          "start": 16.2,
+          "end": 16.3
+        },
+        {
+          "word": "wish",
+          "start": 16.3,
+          "end": 16.5
+        },
+        {
+          "word": "Grant",
+          "start": 16.5,
+          "end": 16.72
+        },
+        {
+          "word": "to",
+          "start": 16.72,
+          "end": 16.82
+        },
+        {
+          "word": "have",
+          "start": 16.82,
+          "end": 16.98
+        },
+        {
+          "word": "thought",
+          "start": 16.98,
+          "end": 17.06
+        },
+        {
+          "word": "of",
+          "start": 17.06,
+          "end": 17.44
+        },
+        {
+          "word": "six",
+          "start": 17.44,
+          "end": 17.6
+        },
+        {
+          "word": "was",
+          "start": 17.6,
+          "end": 17.8
+        },
+        {
+          "word": "more",
+          "start": 17.8,
+          "end": 17.96
+        },
+        {
+          "word": "like",
+          "start": 17.96,
+          "end": 18.14
+        },
+        {
+          "word": "Grant",
+          "start": 18.14,
+          "end": 18.24
+        },
+        {
+          "word": "to",
+          "start": 18.24,
+          "end": 18.42
+        },
+        {
+          "word": "have",
+          "start": 18.42,
+          "end": 18.42
+        },
+        {
+          "word": "thought",
+          "start": 18.42,
+          "end": 18.52
+        },
+        {
+          "word": "of",
+          "start": 18.52,
+          "end": 18.64
+        },
+        {
+          "word": "one.",
+          "start": 18.64,
+          "end": 18.78
+        },
+        {
+          "word": "The",
+          "start": 18.78,
+          "end": 18.86
+        },
+        {
+          "word": "game",
+          "start": 18.86,
+          "end": 19.06
+        },
+        {
+          "word": "nobody",
+          "start": 19.06,
+          "end": 19.34
+        },
+        {
+          "word": "thinks",
+          "start": 19.34,
+          "end": 19.58
+        },
+        {
+          "word": "about",
+          "start": 19.58,
+          "end": 19.76
+        },
+        {
+          "word": "or",
+          "start": 19.76,
+          "end": 19.9
+        },
+        {
+          "word": "talks",
+          "start": 19.9,
+          "end": 20.1
+        },
+        {
+          "word": "about",
+          "start": 20.1,
+          "end": 20.22
+        },
+        {
+          "word": "this",
+          "start": 20.22,
+          "end": 20.4
+        },
+        {
+          "word": "whole",
+          "start": 20.4,
+          "end": 20.52
+        },
+        {
+          "word": "thing.",
+          "start": 20.52,
+          "end": 20.72
+        },
+        {
+          "word": "Smacks",
+          "start": 20.82,
+          "end": 21.02
+        },
+        {
+          "word": "of",
+          "start": 21.02,
+          "end": 21.2
+        },
+        {
+          "word": "gender.",
+          "start": 21.2,
+          "end": 21.66
+        },
+        {
+          "word": "Katie",
+          "start": 21.9,
+          "end": 22.22
+        },
+        {
+          "word": "Miller",
+          "start": 22.22,
+          "end": 22.74
+        },
+        {
+          "word": "is",
+          "start": 22.74,
+          "end": 23.18
+        },
+        {
+          "word": "this",
+          "start": 23.18,
+          "end": 23.4
+        },
+        {
+          "word": "Steven",
+          "start": 23.4,
+          "end": 23.68
+        },
+        {
+          "word": "Miller's",
+          "start": 23.68,
+          "end": 24.24
+        },
+        {
+          "word": "wife",
+          "start": 24.24,
+          "end": 24.66
+        },
+        {
+          "word": "posting",
+          "start": 24.66,
+          "end": 25.18
+        },
+        {
+          "word": "this.",
+          "start": 25.18,
+          "end": 25.76
+        },
+        {
+          "word": "First",
+          "start": 25.78,
+          "end": 26.02
+        },
+        {
+          "word": "of",
+          "start": 26.02,
+          "end": 26.22
+        },
+        {
+          "word": "all,",
+          "start": 26.22,
+          "end": 26.48
+        },
+        {
+          "word": "these",
+          "start": 26.76,
+          "end": 26.84
+        },
+        {
+          "word": "are",
+          "start": 26.84,
+          "end": 27.06
+        },
+        {
+          "word": "legends.",
+          "start": 27.06,
+          "end": 27.52
+        },
+        {
+          "word": "These",
+          "start": 27.86,
+          "end": 27.92
+        },
+        {
+          "word": "men",
+          "start": 27.92,
+          "end": 28.1
+        },
+        {
+          "word": "are",
+          "start": 28.1,
+          "end": 28.24
+        },
+        {
+          "word": "legends",
+          "start": 28.24,
+          "end": 28.62
+        },
+        {
+          "word": "as",
+          "start": 28.62,
+          "end": 28.96
+        },
+        {
+          "word": "well.",
+          "start": 28.96,
+          "end": 29.24
+        },
+        {
+          "word": "These",
+          "start": 29.24,
+          "end": 29.62
+        },
+        {
+          "word": "are",
+          "start": 29.62,
+          "end": 29.92
+        },
+        {
+          "word": "some",
+          "start": 29.92,
+          "end": 30.16
+        },
+        {
+          "word": "of",
+          "start": 30.16,
+          "end": 30.3
+        },
+        {
+          "word": "the",
+          "start": 30.3,
+          "end": 30.42
+        },
+        {
+          "word": "coolest",
+          "start": 30.42,
+          "end": 30.88
+        },
+        {
+          "word": "Scottish",
+          "start": 30.88,
+          "end": 31.46
+        },
+        {
+          "word": "people",
+          "start": 31.46,
+          "end": 31.84
+        },
+        {
+          "word": "out",
+          "start": 31.84,
+          "end": 32.14
+        },
+        {
+          "word": "there.",
+          "start": 32.14,
+          "end": 32.6
+        },
+        {
+          "word": "Okay.",
+          "start": 32.84,
+          "end": 32.88
+        },
+        {
+          "word": "Let",
+          "start": 32.9,
+          "end": 33.02
+        },
+        {
+          "word": "me",
+          "start": 33.02,
+          "end": 33.1
+        },
+        {
+          "word": "just",
+          "start": 33.1,
+          "end": 33.32
+        },
+        {
+          "word": "say",
+          "start": 33.32,
+          "end": 33.48
+        },
+        {
+          "word": "this.",
+          "start": 33.48,
+          "end": 33.88
+        },
+        {
+          "word": "As",
+          "start": 34.26,
+          "end": 34.34
+        },
+        {
+          "word": "someone",
+          "start": 34.34,
+          "end": 34.54
+        },
+        {
+          "word": "is",
+          "start": 34.54,
+          "end": 34.82
+        },
+        {
+          "word": "one",
+          "start": 34.82,
+          "end": 34.96
+        },
+        {
+          "word": "of",
+          "start": 34.96,
+          "end": 35.12
+        },
+        {
+          "word": "the",
+          "start": 35.12,
+          "end": 35.22
+        },
+        {
+          "word": "very",
+          "start": 35.22,
+          "end": 35.42
+        },
+        {
+          "word": "few",
+          "start": 35.42,
+          "end": 35.58
+        },
+        {
+          "word": "people",
+          "start": 35.58,
+          "end": 35.84
+        },
+        {
+          "word": "that",
+          "start": 35.84,
+          "end": 36.06
+        },
+        {
+          "word": "played",
+          "start": 36.06,
+          "end": 36.28
+        },
+        {
+          "word": "Grant",
+          "start": 36.28,
+          "end": 36.5
+        },
+        {
+          "word": "to",
+          "start": 36.5,
+          "end": 36.64
+        },
+        {
+          "word": "have",
+          "start": 36.64,
+          "end": 36.72
+        },
+        {
+          "word": "thought",
+          "start": 36.72,
+          "end": 36.84
+        },
+        {
+          "word": "of",
+          "start": 36.84,
+          "end": 37.0
+        },
+        {
+          "word": "two.",
+          "start": 37.0,
+          "end": 37.28
+        },
+        {
+          "word": "It's",
+          "start": 37.42,
+          "end": 37.58
+        },
+        {
+          "word": "one",
+          "start": 37.58,
+          "end": 37.72
+        },
+        {
+          "word": "of",
+          "start": 37.72,
+          "end": 37.88
+        },
+        {
+          "word": "the",
+          "start": 37.88,
+          "end": 38.06
+        },
+        {
+          "word": "very",
+          "start": 38.06,
+          "end": 38.3
+        },
+        {
+          "word": "few",
+          "start": 38.3,
+          "end": 38.5
+        },
+        {
+          "word": "people",
+          "start": 38.5,
+          "end": 38.78
+        },
+        {
+          "word": "on",
+          "start": 38.78,
+          "end": 38.94
+        },
+        {
+          "word": "the",
+          "start": 38.94,
+          "end": 39.04
+        },
+        {
+          "word": "planet",
+          "start": 39.04,
+          "end": 39.28
+        },
+        {
+          "word": "that",
+          "start": 39.28,
+          "end": 39.56
+        },
+        {
+          "word": "actually,",
+          "start": 39.56,
+          "end": 39.8
+        },
+        {
+          "word": "because",
+          "start": 39.84,
+          "end": 40.02
+        },
+        {
+          "word": "I'm",
+          "start": 40.02,
+          "end": 40.2
+        },
+        {
+          "word": "old",
+          "start": 40.2,
+          "end": 40.44
+        },
+        {
+          "word": "enough.",
+          "start": 40.44,
+          "end": 40.84
+        },
+        {
+          "word": "Okay.",
+          "start": 41.36,
+          "end": 41.36
+        },
+        {
+          "word": "I",
+          "start": 41.46,
+          "end": 41.46
+        },
+        {
+          "word": "am",
+          "start": 41.46,
+          "end": 41.7
+        },
+        {
+          "word": "very",
+          "start": 41.7,
+          "end": 42.0
+        },
+        {
+          "word": "old.",
+          "start": 42.0,
+          "end": 42.34
+        },
+        {
+          "word": "I",
+          "start": 42.56,
+          "end": 42.62
+        },
+        {
+          "word": "am",
+          "start": 42.62,
+          "end": 42.88
+        },
+        {
+          "word": "very",
+          "start": 42.88,
+          "end": 43.14
+        },
+        {
+          "word": "very",
+          "start": 43.14,
+          "end": 43.48
+        },
+        {
+          "word": "old.",
+          "start": 43.48,
+          "end": 43.88
+        },
+        {
+          "word": "Grant",
+          "start": 44.14,
+          "end": 44.32
+        },
+        {
+          "word": "to",
+          "start": 44.32,
+          "end": 44.5
+        },
+        {
+          "word": "have",
+          "start": 44.5,
+          "end": 44.6
+        },
+        {
+          "word": "thought",
+          "start": 44.6,
+          "end": 44.72
+        },
+        {
+          "word": "of",
+          "start": 44.72,
+          "end": 44.88
+        },
+        {
+          "word": "one.",
+          "start": 44.88,
+          "end": 45.06
+        },
+        {
+          "word": "Grant",
+          "start": 45.06,
+          "end": 45.24
+        },
+        {
+          "word": "to",
+          "start": 45.24,
+          "end": 45.42
+        },
+        {
+          "word": "have",
+          "start": 45.42,
+          "end": 45.44
+        },
+        {
+          "word": "thought",
+          "start": 45.44,
+          "end": 45.58
+        },
+        {
+          "word": "of",
+          "start": 45.58,
+          "end": 45.74
+        },
+        {
+          "word": "two.",
+          "start": 45.74,
+          "end": 46.08
+        },
+        {
+          "word": "They",
+          "start": 46.3,
+          "end": 46.36
+        },
+        {
+          "word": "were",
+          "start": 46.36,
+          "end": 46.54
+        },
+        {
+          "word": "fun.",
+          "start": 46.54,
+          "end": 46.86
+        },
+        {
+          "word": "They",
+          "start": 46.92,
+          "end": 47.02
+        },
+        {
+          "word": "were",
+          "start": 47.02,
+          "end": 47.22
+        },
+        {
+          "word": "fun",
+          "start": 47.22,
+          "end": 47.42
+        },
+        {
+          "word": "games.",
+          "start": 47.42,
+          "end": 47.96
+        },
+        {
+          "word": "But",
+          "start": 48.34,
+          "end": 48.52
+        },
+        {
+          "word": "it",
+          "start": 48.52,
+          "end": 48.72
+        },
+        {
+          "word": "was",
+          "start": 48.72,
+          "end": 48.94
+        },
+        {
+          "word": "a",
+          "start": 48.94,
+          "end": 49.04
+        },
+        {
+          "word": "dramatically",
+          "start": 49.04,
+          "end": 49.56
+        },
+        {
+          "word": "different",
+          "start": 49.56,
+          "end": 49.98
+        },
+        {
+          "word": "game.",
+          "start": 49.98,
+          "end": 49.98
+        }
+      ],
+      "harvested_at": "2026-11-21T18:04:30.793416+00:00"
+    },
+    {
+      "vault_path": "clip_vault/Zy7M_YcgaGU_p1_508s.mp4",
+      "video_id": "Zy7M_YcgaGU",
+      "channel_name": "HasanAbi",
+      "source_title": "GTA 6 HOGWATCH",
+      "source_start_sec": 508.0,
+      "duration_sec": 50.0,
+      "local_peak_sec": 23.0,
+      "viral_score": 7.77,
+      "transcript_en": "I hit cut, I picked up flowers. I've got grocery shopping. I wanna run over a hooker in a Lamborghini. No, no, no. It's like, bro, it's a video game. First of all, what's so funny about this is like, it's literally a video game dude. It's a fucking video game. Just do whatever you wanna do. No one is fucking stopping you at gunpoint. No one is stopping you from doing this shit. That's what's so frustrating to me about these guys who are like complaining about it because they want like, Saints row, you know? They want Saints row, they're mad. That Grante of Thado is not Saints row. No disrespect to the Saints row heads, but that's pretty much it where they're like, oh no good, why won't the game let me kill hookers? Like, it does. You go.",
+      "word_events": [
+        {
+          "word": "I",
+          "start": 0.98,
+          "end": 1.26
+        },
+        {
+          "word": "hit",
+          "start": 1.26,
+          "end": 1.58
+        },
+        {
+          "word": "cut,",
+          "start": 1.58,
+          "end": 1.94
+        },
+        {
+          "word": "I",
+          "start": 2.34,
+          "end": 2.36
+        },
+        {
+          "word": "picked",
+          "start": 2.36,
+          "end": 2.84
+        },
+        {
+          "word": "up",
+          "start": 2.84,
+          "end": 3.7
+        },
+        {
+          "word": "flowers.",
+          "start": 3.7,
+          "end": 4.16
+        },
+        {
+          "word": "I've",
+          "start": 4.62,
+          "end": 4.9
+        },
+        {
+          "word": "got",
+          "start": 4.9,
+          "end": 5.26
+        },
+        {
+          "word": "grocery",
+          "start": 5.26,
+          "end": 5.8
+        },
+        {
+          "word": "shopping.",
+          "start": 5.8,
+          "end": 6.34
+        },
+        {
+          "word": "I",
+          "start": 6.7,
+          "end": 6.74
+        },
+        {
+          "word": "wanna",
+          "start": 6.74,
+          "end": 7.0
+        },
+        {
+          "word": "run",
+          "start": 7.0,
+          "end": 7.4
+        },
+        {
+          "word": "over",
+          "start": 7.4,
+          "end": 7.72
+        },
+        {
+          "word": "a",
+          "start": 7.72,
+          "end": 7.94
+        },
+        {
+          "word": "hooker",
+          "start": 7.94,
+          "end": 8.58
+        },
+        {
+          "word": "in",
+          "start": 8.58,
+          "end": 8.82
+        },
+        {
+          "word": "a",
+          "start": 8.82,
+          "end": 9.04
+        },
+        {
+          "word": "Lamborghini.",
+          "start": 9.04,
+          "end": 9.96
+        },
+        {
+          "word": "No,",
+          "start": 10.44,
+          "end": 11.0
+        },
+        {
+          "word": "no,",
+          "start": 11.14,
+          "end": 11.92
+        },
+        {
+          "word": "no.",
+          "start": 11.92,
+          "end": 12.36
+        },
+        {
+          "word": "It's",
+          "start": 12.58,
+          "end": 13.0
+        },
+        {
+          "word": "like,",
+          "start": 13.0,
+          "end": 13.22
+        },
+        {
+          "word": "bro,",
+          "start": 13.3,
+          "end": 13.44
+        },
+        {
+          "word": "it's",
+          "start": 13.46,
+          "end": 13.76
+        },
+        {
+          "word": "a",
+          "start": 13.76,
+          "end": 14.0
+        },
+        {
+          "word": "video",
+          "start": 14.0,
+          "end": 14.28
+        },
+        {
+          "word": "game.",
+          "start": 14.28,
+          "end": 14.62
+        },
+        {
+          "word": "First",
+          "start": 14.82,
+          "end": 14.9
+        },
+        {
+          "word": "of",
+          "start": 14.9,
+          "end": 15.18
+        },
+        {
+          "word": "all,",
+          "start": 15.18,
+          "end": 15.44
+        },
+        {
+          "word": "what's",
+          "start": 15.72,
+          "end": 15.94
+        },
+        {
+          "word": "so",
+          "start": 15.94,
+          "end": 16.22
+        },
+        {
+          "word": "funny",
+          "start": 16.22,
+          "end": 16.48
+        },
+        {
+          "word": "about",
+          "start": 16.48,
+          "end": 16.78
+        },
+        {
+          "word": "this",
+          "start": 16.78,
+          "end": 16.96
+        },
+        {
+          "word": "is",
+          "start": 16.96,
+          "end": 17.2
+        },
+        {
+          "word": "like,",
+          "start": 17.2,
+          "end": 17.38
+        },
+        {
+          "word": "it's",
+          "start": 17.56,
+          "end": 17.82
+        },
+        {
+          "word": "literally",
+          "start": 17.82,
+          "end": 18.14
+        },
+        {
+          "word": "a",
+          "start": 18.14,
+          "end": 18.54
+        },
+        {
+          "word": "video",
+          "start": 18.54,
+          "end": 18.86
+        },
+        {
+          "word": "game",
+          "start": 18.86,
+          "end": 19.24
+        },
+        {
+          "word": "dude.",
+          "start": 19.24,
+          "end": 19.58
+        },
+        {
+          "word": "It's",
+          "start": 19.82,
+          "end": 19.98
+        },
+        {
+          "word": "a",
+          "start": 19.98,
+          "end": 20.22
+        },
+        {
+          "word": "fucking",
+          "start": 20.22,
+          "end": 20.62
+        },
+        {
+          "word": "video",
+          "start": 20.62,
+          "end": 21.12
+        },
+        {
+          "word": "game.",
+          "start": 21.12,
+          "end": 21.6
+        },
+        {
+          "word": "Just",
+          "start": 21.82,
+          "end": 21.98
+        },
+        {
+          "word": "do",
+          "start": 21.98,
+          "end": 22.32
+        },
+        {
+          "word": "whatever",
+          "start": 22.32,
+          "end": 22.58
+        },
+        {
+          "word": "you",
+          "start": 22.58,
+          "end": 22.94
+        },
+        {
+          "word": "wanna",
+          "start": 22.94,
+          "end": 23.14
+        },
+        {
+          "word": "do.",
+          "start": 23.14,
+          "end": 23.5
+        },
+        {
+          "word": "No",
+          "start": 23.66,
+          "end": 23.82
+        },
+        {
+          "word": "one",
+          "start": 23.82,
+          "end": 23.98
+        },
+        {
+          "word": "is",
+          "start": 23.98,
+          "end": 24.26
+        },
+        {
+          "word": "fucking",
+          "start": 24.26,
+          "end": 24.98
+        },
+        {
+          "word": "stopping",
+          "start": 24.98,
+          "end": 25.88
+        },
+        {
+          "word": "you",
+          "start": 25.88,
+          "end": 26.18
+        },
+        {
+          "word": "at",
+          "start": 26.18,
+          "end": 26.38
+        },
+        {
+          "word": "gunpoint.",
+          "start": 26.38,
+          "end": 27.12
+        },
+        {
+          "word": "No",
+          "start": 27.6,
+          "end": 27.76
+        },
+        {
+          "word": "one",
+          "start": 27.76,
+          "end": 27.88
+        },
+        {
+          "word": "is",
+          "start": 27.88,
+          "end": 28.14
+        },
+        {
+          "word": "stopping",
+          "start": 28.14,
+          "end": 28.44
+        },
+        {
+          "word": "you",
+          "start": 28.44,
+          "end": 28.62
+        },
+        {
+          "word": "from",
+          "start": 28.62,
+          "end": 28.8
+        },
+        {
+          "word": "doing",
+          "start": 28.8,
+          "end": 29.08
+        },
+        {
+          "word": "this",
+          "start": 29.08,
+          "end": 29.4
+        },
+        {
+          "word": "shit.",
+          "start": 29.4,
+          "end": 29.66
+        },
+        {
+          "word": "That's",
+          "start": 29.66,
+          "end": 30.2
+        },
+        {
+          "word": "what's",
+          "start": 30.2,
+          "end": 30.44
+        },
+        {
+          "word": "so",
+          "start": 30.44,
+          "end": 30.7
+        },
+        {
+          "word": "frustrating",
+          "start": 30.7,
+          "end": 31.12
+        },
+        {
+          "word": "to",
+          "start": 31.12,
+          "end": 31.5
+        },
+        {
+          "word": "me",
+          "start": 31.5,
+          "end": 31.72
+        },
+        {
+          "word": "about",
+          "start": 31.72,
+          "end": 32.0
+        },
+        {
+          "word": "these",
+          "start": 32.0,
+          "end": 32.24
+        },
+        {
+          "word": "guys",
+          "start": 32.24,
+          "end": 32.52
+        },
+        {
+          "word": "who",
+          "start": 32.52,
+          "end": 32.68
+        },
+        {
+          "word": "are",
+          "start": 32.68,
+          "end": 33.0
+        },
+        {
+          "word": "like",
+          "start": 33.0,
+          "end": 33.04
+        },
+        {
+          "word": "complaining",
+          "start": 33.04,
+          "end": 33.6
+        },
+        {
+          "word": "about",
+          "start": 33.6,
+          "end": 34.04
+        },
+        {
+          "word": "it",
+          "start": 34.04,
+          "end": 34.28
+        },
+        {
+          "word": "because",
+          "start": 34.28,
+          "end": 34.6
+        },
+        {
+          "word": "they",
+          "start": 34.6,
+          "end": 34.94
+        },
+        {
+          "word": "want",
+          "start": 34.94,
+          "end": 35.18
+        },
+        {
+          "word": "like,",
+          "start": 35.18,
+          "end": 35.62
+        },
+        {
+          "word": "Saints",
+          "start": 35.64,
+          "end": 35.88
+        },
+        {
+          "word": "row,",
+          "start": 35.88,
+          "end": 36.4
+        },
+        {
+          "word": "you",
+          "start": 36.7,
+          "end": 36.72
+        },
+        {
+          "word": "know?",
+          "start": 36.72,
+          "end": 36.96
+        },
+        {
+          "word": "They",
+          "start": 37.24,
+          "end": 37.34
+        },
+        {
+          "word": "want",
+          "start": 37.34,
+          "end": 37.62
+        },
+        {
+          "word": "Saints",
+          "start": 37.62,
+          "end": 37.98
+        },
+        {
+          "word": "row,",
+          "start": 37.98,
+          "end": 38.32
+        },
+        {
+          "word": "they're",
+          "start": 38.46,
+          "end": 38.72
+        },
+        {
+          "word": "mad.",
+          "start": 38.72,
+          "end": 39.1
+        },
+        {
+          "word": "That",
+          "start": 39.5,
+          "end": 39.5
+        },
+        {
+          "word": "Grante",
+          "start": 39.5,
+          "end": 39.78
+        },
+        {
+          "word": "of",
+          "start": 39.78,
+          "end": 40.02
+        },
+        {
+          "word": "Thado",
+          "start": 40.02,
+          "end": 40.34
+        },
+        {
+          "word": "is",
+          "start": 40.34,
+          "end": 40.68
+        },
+        {
+          "word": "not",
+          "start": 40.68,
+          "end": 41.08
+        },
+        {
+          "word": "Saints",
+          "start": 41.08,
+          "end": 41.4
+        },
+        {
+          "word": "row.",
+          "start": 41.4,
+          "end": 41.7
+        },
+        {
+          "word": "No",
+          "start": 41.9,
+          "end": 42.08
+        },
+        {
+          "word": "disrespect",
+          "start": 42.08,
+          "end": 42.6
+        },
+        {
+          "word": "to",
+          "start": 42.6,
+          "end": 42.94
+        },
+        {
+          "word": "the",
+          "start": 42.94,
+          "end": 43.06
+        },
+        {
+          "word": "Saints",
+          "start": 43.06,
+          "end": 43.24
+        },
+        {
+          "word": "row",
+          "start": 43.24,
+          "end": 43.5
+        },
+        {
+          "word": "heads,",
+          "start": 43.5,
+          "end": 43.7
+        },
+        {
+          "word": "but",
+          "start": 43.84,
+          "end": 43.86
+        },
+        {
+          "word": "that's",
+          "start": 43.86,
+          "end": 44.16
+        },
+        {
+          "word": "pretty",
+          "start": 44.16,
+          "end": 44.38
+        },
+        {
+          "word": "much",
+          "start": 44.38,
+          "end": 44.66
+        },
+        {
+          "word": "it",
+          "start": 44.66,
+          "end": 44.88
+        },
+        {
+          "word": "where",
+          "start": 44.88,
+          "end": 45.04
+        },
+        {
+          "word": "they're",
+          "start": 45.04,
+          "end": 45.28
+        },
+        {
+          "word": "like,",
+          "start": 45.28,
+          "end": 45.46
+        },
+        {
+          "word": "oh",
+          "start": 45.56,
+          "end": 45.66
+        },
+        {
+          "word": "no",
+          "start": 45.66,
+          "end": 45.88
+        },
+        {
+          "word": "good,",
+          "start": 45.88,
+          "end": 46.2
+        },
+        {
+          "word": "why",
+          "start": 46.48,
+          "end": 46.78
+        },
+        {
+          "word": "won't",
+          "start": 46.78,
+          "end": 47.12
+        },
+        {
+          "word": "the",
+          "start": 47.12,
+          "end": 47.3
+        },
+        {
+          "word": "game",
+          "start": 47.3,
+          "end": 47.52
+        },
+        {
+          "word": "let",
+          "start": 47.52,
+          "end": 47.78
+        },
+        {
+          "word": "me",
+          "start": 47.78,
+          "end": 48.02
+        },
+        {
+          "word": "kill",
+          "start": 48.02,
+          "end": 48.28
+        },
+        {
+          "word": "hookers?",
+          "start": 48.28,
+          "end": 48.54
+        },
+        {
+          "word": "Like,",
+          "start": 48.78,
+          "end": 48.78
+        },
+        {
+          "word": "it",
+          "start": 48.88,
+          "end": 49.04
+        },
+        {
+          "word": "does.",
+          "start": 49.04,
+          "end": 49.5
+        },
+        {
+          "word": "You",
+          "start": 49.68,
+          "end": 49.8
+        },
+        {
+          "word": "go.",
+          "start": 49.8,
+          "end": 49.98
+        }
+      ],
+      "harvested_at": "2026-11-21T18:04:32.644474+00:00"
     }
   ],
   "scheduled_slots": [],
