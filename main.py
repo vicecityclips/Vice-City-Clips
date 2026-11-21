@@ -800,7 +800,12 @@ def build_top5_plan_from_vault(history_data):
     if not vault:
         return None
 
-    vault.sort(key=lambda x: float(x.get("viral_score", 0.0)), reverse=True)
+    vault.sort(
+        key=lambda x: (
+            int(x.get("test_rendered_count", 0)),
+            -float(x.get("viral_score", 0.0)),
+        )
+    )
 
     distinct_best = []
     seen_creators = set()
@@ -1703,7 +1708,12 @@ def main():
         save_history(history_data)
         print(f"[Live Success] Uploaded & scheduled: {video_url}", flush=True)
     else:
-        print("[Test Mode] upload_to_youtube=False — keeping vault clips intact for inspection.", flush=True)
+        used_paths = {seg["video_path"] for seg in timeline_meta}
+        for v in history_data.get("vault_queue", []):
+            if v.get("vault_path") in used_paths:
+                v["test_rendered_count"] = int(v.get("test_rendered_count", 0)) + 1
+        save_history(history_data)
+        print("[Test Mode] upload_to_youtube=False — rotated rendered clip(s) so next test picks a fresh clip.", flush=True)
 
     cleanup_scratch_render_files()
 
