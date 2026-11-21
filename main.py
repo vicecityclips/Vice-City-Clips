@@ -1,31 +1,37 @@
 # ==============================================================================
-# PART 1 OF 25: CORE & AI LIBRARY IMPORTS
-# Title: Standard Utilities, Video/Vision Engines & YouTube API Clients
-# Subtitle: Foundation imports for ViceCityClipsVault Auto-Clipper
+# PART 1 OF 30: CORE IMPORTS & ENVIRONMENT GUARDRAILS
+# Subheading: Standard Library, Vision, Audio, Whisper & YouTube/Gemini Clients
+# Code Title: Module Loader & Clean Runtime Environment Initializer
 # ==============================================================================
 import os
 import re
 import sys
 import json
-import time
 import math
+import time
 import wave
 import shutil
 import random
 import asyncio
+import warnings
 import subprocess
 from datetime import datetime, timedelta, timezone
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+os.environ["OPENCV_LOG_LEVEL"] = "ERROR"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+warnings.filterwarnings("ignore")
 
 import cv2
-import numpy as np
-import requests
 import torch
 import open_clip
+import numpy as np
 from PIL import Image
 import yt_dlp
 import edge_tts
 from gtts import gTTS
 from faster_whisper import WhisperModel
+
 from google import genai
 from google.genai import types
 from google.oauth2.credentials import Credentials
@@ -34,251 +40,190 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
 # ==============================================================================
-# PART 2 OF 25: MASTER CHANNEL CONFIG & CREATOR ROSTER
-# Title: Upload/Privacy/Schedule Controls & Indian + Global Priority Channels
-# Subtitle: Edit these toggles to switch between local testing and live publishing
+# PART 2 OF 30: MASTER CHANNEL CONFIGURATION & 6-HOUR SLOT CONTROLS
+# Subheading: Upload Safety Switches, 6-Hour Publishing Cadence & Quality Bar
+# Code Title: CHANNEL_CONFIG Master Control Dictionary
 # ==============================================================================
+def _resolve_upload_flag(default_val=False):
+    raw = os.environ.get("FORCE_UPLOAD_OVERRIDE", "").strip().lower()
+    if raw in ("true", "1", "yes"):
+        return True
+    if raw in ("false", "0", "no"):
+        return False
+    return bool(default_val)
+
+
 CHANNEL_CONFIG = {
+    # Channel Identity
     "channel_name": "Vice City Clips Vault",
     "channel_handle": "@Vice-City_ClipsVault",
     "game_title": "Grand Theft Auto VI",
-    "niche_keywords": ["GTA 6", "Grand Theft Auto 6", "Vice City", "GTA VI"],
-
-    # --- 3 EXPLICIT UPLOAD, PRIVACY & SCHEDULING CONTROLS ---
-    "upload_to_youtube": False,      # True = upload to YouTube | False = render & save artifact only
-    "youtube_privacy": "private",    # "public" | "private" | "unlisted" (used when enable_scheduling=False)
-    "enable_scheduling": False,      # True = schedule into 1 upcoming peak slot | False = immediate upload
-    "max_videos_per_run": 1,         # Hard lock: never create/schedule more than 1 Short per run
-    "max_daily_uploads": 5,          # Protects free 10,000-unit YouTube Data API daily quota
-
-    # --- QUALITY & FRAMING SETTINGS ---
-    "min_heatmap_score": 0.76,       # Minimum YouTube 'Most Replayed' spike (0.0 - 1.0)
-    "min_visual_viral_score": 7.2,   # Minimum local OpenCLIP + OpenCV action score (0.0 - 10.0)
-    "enable_ai_voiceover": True,     # 3-Act English narrator (Intro Hook -> Silent Climax -> Outro)
-    "voice_name": "en-US-AndrewNeural",
-    "default_framing": "cinema_blur", # "cinema_blur" (16:9 sharp center + blur bg) or "splitcam" (when webcam found)
     "watermark_text": "@Vice-City_ClipsVault",
 
-    # --- PEAK PUBLISHING SLOTS (IST Hours converted cleanly in Part 5) ---
-    "peak_hours_utc": (14, 16, 18, 20, 22, 0),
-    "history_file": "history.json",
+    # Upload & Scheduling Master Controls (Keep upload_to_youtube=False during artifact tests)
+    "upload_to_youtube": _resolve_upload_flag(False),
+    "youtube_privacy": "public",         # "public" | "private" | "unlisted"
+    "enable_scheduling": True,           # Schedules 1 Short for the upcoming 6-hour slot
+    "max_daily_uploads": 4,              # Matches 4 slots/day (every 6 hours)
+
+    # 6-Hour Slot Schedule (UTC): 02:00, 08:00, 14:00, 20:00 UTC
+    # Compiler runs 1 hour earlier at: 01:00, 07:00, 13:00, 19:00 UTC
+    "slot_hours_utc": (2, 8, 14, 20),
+    "compile_offset_hours": 1,
+
+    # Vault & Compilation Quality Rules
+    "slice_duration_sec": 26.0,          # Raw 26s buffer harvested per heatmap peak
+    "max_clips_per_short": 5,            # Compiles up to 5 top distinct clips into 1 Short
+    "min_heatmap_score": 0.68,           # Crowd replay proof threshold (0.0 - 1.0)
+    "min_viral_score": 7.6,              # Strict quality gate (0.0 - 10.0)
+    "max_vault_age_hours": 18,           # Expires stale uncompiled clips older than 18h
+
+    # Audio & Narration Settings
+    "enable_ai_voiceover": True,
+    "voice_name": "en-US-AndrewNeural",
 }
 
-# Apply optional manual workflow_dispatch override ONLY if explicitly entered
-_force_override = os.environ.get("FORCE_UPLOAD_OVERRIDE", "").strip().lower()
-if _force_override in ("true", "1", "yes"):
-    CHANNEL_CONFIG["upload_to_youtube"] = True
-elif _force_override in ("false", "0", "no"):
-    CHANNEL_CONFIG["upload_to_youtube"] = False
+# ==============================================================================
+# PART 3 OF 30: VERIFIED STRIKE-SAFE ORIGINAL CREATOR DIRECTORY
+# Subheading: 100% Equal-Weight Random Pool of Official Streamers (Zero Re-Uploaders)
+# Code Title: VERIFIED_ORIGINAL_CREATORS Registry
+# ==============================================================================
+VERIFIED_ORIGINAL_CREATORS = (
+    # Global Strike-Safe Original Streamers & Creators (Equal Weight = 1.0)
+    {"name": "IShowSpeed", "handle": "@IShowSpeed"},
+    {"name": "Kai Cenat", "handle": "@KaiCenatLive"},
+    {"name": "xQc", "handle": "@xQcOW"},
+    {"name": "Valkyrae", "handle": "@Valkyrae"},
+    {"name": "Typical Gamer", "handle": "@TypicalGamer"},
+    {"name": "Sykkuno", "handle": "@Sykkuno"},
+    {"name": "Ludwig", "handle": "@ludwig"},
+    {"name": "MoistCr1TiKaL", "handle": "@penguinz0"},
+    {"name": "DarkViperAU", "handle": "@DarkViperAU"},
+    {"name": "Tarik", "handle": "@tarik"},
+    {"name": "CaseOh", "handle": "@caseoh_"},
+    {"name": "Jynxzi", "handle": "@Jynxzi"},
+    {"name": "GTA Series Videos", "handle": "@GTASeriesVideos"},
 
-# Priority Indian + Global YouTube Creators (checked alongside wide YouTube search)
-PRIORITY_YT_CREATORS = [
-    {"name": "CarryIsLive", "handle": "@CarryisLive", "region": "IN"},
-    {"name": "Triggered Insaan", "handle": "@triggeredinsaan", "region": "IN"},
-    {"name": "The RawKnee Show", "handle": "@TheRawKneeShow", "region": "IN"},
-    {"name": "Techno Gamerz", "handle": "@TechnoGamerzOfficial", "region": "IN"},
-    {"name": "Mythpat", "handle": "@Mythpat", "region": "IN"},
-    {"name": "Live Insaan", "handle": "@LiveInsaan", "region": "IN"},
-    {"name": "IShowSpeed", "handle": "@IShowSpeed", "region": "GLOBAL"},
-    {"name": "xQc", "handle": "@xQcOW", "region": "GLOBAL"},
-    {"name": "ElRubius", "handle": "@elrubiusOMG", "region": "GLOBAL"},
-    {"name": "IlloJuan", "handle": "@IlloJuan", "region": "GLOBAL"},
-]
-
-# Rotating Wide YouTube Search Queries (3 run per hour to cover all ended lives & uploads with 0 throttling)
-WIDE_YT_SEARCH_QUERIES = [
-    "GTA 6 live stream India CarryIsLive Triggered Insaan RawKnee",
-    "GTA 6 funny moments rage crash Hindi gameplay",
-    "Grand Theft Auto 6 livestream highlights Vice City",
-    "GTA 6 crazy moments fails stunts live",
-    "GTA VI gameplay full stream India Hindi",
-    "GTA 6 viral clips moments stream",
-]
+    # Indian Strike-Safe Original Streamers & Creators (Equal Weight = 1.0)
+    {"name": "CarryIsLive", "handle": "@CarryIsLive"},
+    {"name": "Live Insaan", "handle": "@LiveInsaan"},
+    {"name": "The RawKnee Games", "handle": "@TheRawKneeGames"},
+    {"name": "BeastBoyShub", "handle": "@BeastBoyShub"},
+    {"name": "Techno Gamerz", "handle": "@TechnoGamerzOfficial"},
+    {"name": "Mythpat", "handle": "@Mythpat"},
+)
 
 # ==============================================================================
-# PART 3 OF 25: HISTORY & DEDUPLICATION MANAGER
-# Title: Persistent JSON Tracker for Used Clips, Titles & Daily Quota Guard
-# Subtitle: Prevents duplicate timestamps, repeated titles & API quota overruns
+# PART 4 OF 30: PERSISTENT HISTORY, VAULT QUEUE & FINGERPRINT MANAGER
+# Subheading: Cross-Run Memory for Used Timestamps, Banked Clips & Published Titles
+# Code Title: State Persistence & Duplicate Timestamp Guard
 # ==============================================================================
+HISTORY_FILE = "history.json"
+VAULT_DIR = "clip_vault"
+
+
+def ensure_vault_dir():
+    os.makedirs(VAULT_DIR, exist_ok=True)
+
+
 def load_history():
-    """Loads history.json safely with default schema if missing or corrupted."""
-    path = CHANNEL_CONFIG["history_file"]
-    default_data = {"used_clips": [], "uploads": [], "scheduled_slots": []}
-    if not os.path.exists(path):
-        return default_data
+    ensure_vault_dir()
+    default_state = {
+        "used_clips": [],
+        "vault_queue": [],
+        "scheduled_slots": [],
+        "uploads": [],
+    }
+    if not os.path.exists(HISTORY_FILE):
+        return default_state
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-        for key, val in default_data.items():
-            if key not in data or not isinstance(data[key], list):
-                data[key] = val
+        for k, v in default_state.items():
+            if k not in data or not isinstance(data[k], list):
+                data[k] = v
         return data
-    except Exception as e:
-        print(f"[History Warning] Resetting unreadable history.json: {e}", flush=True)
-        return default_data
+    except Exception:
+        return default_state
 
 
 def save_history(history_data):
-    """Writes trimmed history.json atomically so git commits stay clean."""
-    history_data["used_clips"] = history_data["used_clips"][-400:]
-    history_data["uploads"] = history_data["uploads"][-150:]
-    history_data["scheduled_slots"] = history_data["scheduled_slots"][-60:]
-    path = CHANNEL_CONFIG["history_file"]
-    tmp_path = f"{path}.tmp"
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        json.dump(history_data, f, indent=2, ensure_ascii=False)
-    os.replace(tmp_path, path)
+    history_data["used_clips"] = history_data.get("used_clips", [])[-600:]
+    history_data["scheduled_slots"] = history_data.get("scheduled_slots", [])[-120:]
+    history_data["uploads"] = history_data.get("uploads", [])[-150:]
+    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(history_data, f, indent=2)
 
 
 def build_clip_fingerprint(video_id, peak_sec):
-    """Buckets timestamps into 30-second windows so near-identical peaks aren't re-clipped."""
-    bucket = int(float(peak_sec) // 30)
-    return f"{video_id}::{bucket}"
+    bucket = int(round(float(peak_sec) / 35.0))
+    return f"{video_id}:{bucket}"
 
 
-def is_clip_already_used(history_data, video_id, peak_sec):
-    """Returns True if this video + 30s window was already processed."""
-    fp = build_clip_fingerprint(video_id, peak_sec)
-    return fp in set(history_data.get("used_clips", []))
-
-
-def count_todays_uploads(history_data):
-    """Counts how many Shorts were uploaded/scheduled in the current UTC date."""
-    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    count = 0
-    for item in history_data.get("uploads", []):
-        if str(item.get("created_at", "")).startswith(today_str):
-            count += 1
-    return count
+def is_clip_already_used_or_banked(history_data, video_id, peak_sec):
+    target_sec = float(peak_sec)
+    for fp in history_data.get("used_clips", []):
+        if ":" not in fp:
+            continue
+        vid, b_str = fp.split(":", 1)
+        if vid == video_id:
+            try:
+                if abs((int(b_str) * 35.0) - target_sec) <= 35.0:
+                    return True
+            except ValueError:
+                pass
+    for item in history_data.get("vault_queue", []):
+        if item.get("video_id") == video_id:
+            if abs(float(item.get("origin_peak_sec", 0.0)) - target_sec) <= 35.0:
+                return True
+    return False
 
 # ==============================================================================
-# PART 4 OF 25: MEDIA PROBE & CRASH-SAFE FFMPEG HELPERS
-# Title: Stream Validator, Duration Reader & Safe Subprocess Runner
-# Subtitle: Eliminates broken downloads, missing audio tracks & FFmpeg exit 234 errors
+# PART 5 OF 30: SAFE SUBPROCESS RUNNER & MEDIA DURATION PROBE
+# Subheading: Timeout-Protected FFmpeg Executor & Exact Stream Length Inspector
+# Code Title: run_cmd_safe & get_media_duration Helpers
 # ==============================================================================
-def run_cmd_safe(cmd, label="FFmpeg", timeout_sec=180):
-    """Runs a subprocess cleanly and prints readable stderr tail on failure."""
-    res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_sec)
-    if res.returncode != 0:
-        err_tail = (res.stderr or "")[-450:].strip()
-        raise RuntimeError(f"[{label} Failed | code={res.returncode}] {err_tail}")
-    return res
+def run_cmd_safe(cmd, label="CMD", timeout_sec=120):
+    """Runs FFmpeg/system commands with strict timeout & clear error reporting."""
+    proc = subprocess.run(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        timeout=timeout_sec,
+    )
+    if proc.returncode != 0:
+        tail = (proc.stderr or "")[-450:].strip()
+        raise RuntimeError(f"[{label}] failed (code {proc.returncode}): {tail}")
+    return proc.stdout
 
 
 def get_media_duration(media_path):
-    """Returns exact media duration in seconds via ffprobe (0.0 if invalid)."""
+    """Returns exact media duration in seconds via ffprobe, or 0.0 on failure."""
     if not media_path or not os.path.exists(media_path):
         return 0.0
     try:
-        res = subprocess.run(
+        out = subprocess.check_output(
             [
                 "ffprobe", "-v", "error",
                 "-show_entries", "format=duration",
                 "-of", "default=noprint_wrappers=1:nokey=1",
                 media_path,
             ],
-            capture_output=True,
             text=True,
             timeout=20,
-        )
-        val = float(res.stdout.strip())
-        return val if math.isfinite(val) and val > 0 else 0.0
+        ).strip()
+        return max(0.0, float(out))
     except Exception:
         return 0.0
 
-
-def has_audio_stream(video_path):
-    """Checks whether a downloaded video file actually contains an audio track."""
-    try:
-        res = subprocess.run(
-            [
-                "ffprobe", "-v", "error",
-                "-select_streams", "a:0",
-                "-show_entries", "stream=codec_type",
-                "-of", "default=noprint_wrappers=1:nokey=1",
-                video_path,
-            ],
-            capture_output=True,
-            text=True,
-            timeout=15,
-        )
-        return "audio" in res.stdout.lower()
-    except Exception:
-        return False
-
-
-def ensure_valid_clip_with_audio(raw_path, clean_path):
-    """Normalizes a raw slice to 30fps H.264 + 48kHz stereo AAC (adds silent audio if missing)."""
-    dur = get_media_duration(raw_path)
-    if dur < 6.0:
-        return False
-    if has_audio_stream(raw_path):
-        cmd = [
-            "ffmpeg", "-y", "-i", raw_path,
-            "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2,fps=30",
-            "-c:v", "libx264", "-preset", "veryfast", "-crf", "21",
-            "-c:a", "aac", "-ar", "48000", "-ac", "2",
-            clean_path,
-        ]
-    else:
-        cmd = [
-            "ffmpeg", "-y", "-i", raw_path,
-            "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000",
-            "-shortest",
-            "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2,fps=30",
-            "-c:v", "libx264", "-preset", "veryfast", "-crf", "21",
-            "-c:a", "aac", "-ar", "48000", "-ac", "2",
-            clean_path,
-        ]
-    try:
-        run_cmd_safe(cmd, label="NormalizeClip", timeout_sec=120)
-        return get_media_duration(clean_path) >= 6.0
-    except Exception as e:
-        print(f"[Normalize Warning] {e}", flush=True)
-        return False
-
 # ==============================================================================
-# PART 5 OF 25: SINGLE-SLOT PEAK SCHEDULER
-# Title: Next-Upcoming Peak Slot Finder & Daily Quota Guard
-# Subtitle: Locks scheduling to at most 1 upcoming slot so queue never overflows
-# ==============================================================================
-def get_next_single_peak_slot(history_data):
-    """
-    Finds the single next upcoming peak UTC timestamp (>= 35 mins from now).
-    Returns None if the immediate next upcoming slot is already occupied.
-    """
-    now_utc = datetime.now(timezone.utc)
-    min_publish_dt = now_utc + timedelta(minutes=35)
-
-    candidate_slots = []
-    for day_offset in (0, 1):
-        base_day = (now_utc + timedelta(days=day_offset)).replace(
-            minute=0, second=0, microsecond=0
-        )
-        for hr in sorted(CHANNEL_CONFIG["peak_hours_utc"]):
-            slot_dt = base_day.replace(hour=int(hr))
-            if slot_dt >= min_publish_dt:
-                candidate_slots.append(slot_dt)
-
-    if not candidate_slots:
-        return None
-
-    next_slot_dt = next(iter(sorted(candidate_slots)))
-    next_slot_iso = next_slot_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    # If this exact upcoming slot is already scheduled in history.json, do not stack more
-    booked_slots = set(history_data.get("scheduled_slots", []))
-    if next_slot_iso in booked_slots:
-        return None
-
-    return next_slot_iso
-
-# ==============================================================================
-# PART 6 OF 25: WIDE YOUTUBE + INDIAN CREATOR DISCOVERY ENGINE
-# Title: Strict GTA 6 Zero-Bandwidth Scanner for Ended Lives & Uploads
-# Subtitle: Blocks non-GTA 6 games & scans 60+ GTA 6 videos across Indian + Global channels
+# PART 6 OF 30: YT-DLP COOKIE & DENO EJS CHALLENGE CONFIGURATION
+# Subheading: Authenticated Session Loader & Remote YouTube Player JS Solver
+# Code Title: _yt_dlp_base_opts Session Builder
 # ==============================================================================
 def _yt_dlp_base_opts():
+    """Builds clean yt-dlp options with Deno EJS solver & optional cookie auth."""
     opts = {
         "quiet": True,
         "no_warnings": True,
@@ -293,523 +238,453 @@ def _yt_dlp_base_opts():
         opts["cookiefile"] = "yt_cookies.txt"
     return opts
 
-
-def _is_strictly_gta6_title(raw_title):
-    """Enforces strictly GTA 6 / Vice City / Leonida titles and blocks all other games."""
+# ==============================================================================
+# PART 7 OF 30: STRICT GTA 6 GAME GATE & 2ND-PARTY CLIPPER BLOCKER
+# Subheading: Enforces Pure GTA 6 Streams & Rejects Other Games or Compilations
+# Code Title: is_strictly_original_gta6_stream Validator
+# ==============================================================================
+def is_strictly_original_gta6_stream(raw_title):
+    """
+    Returns True ONLY if the title confirms Grand Theft Auto VI / Vice City / Leonida
+    and does NOT belong to another game or a 2nd-party compilation/re-upload.
+    """
     t = str(raw_title or "").lower()
     has_gta6 = any(
-        k in t for k in ("gta 6", "gta vi", "grand theft auto 6", "grand theft auto vi", "vice city", "leonida")
+        k in t
+        for k in (
+            "gta 6",
+            "gta vi",
+            "grand theft auto 6",
+            "grand theft auto vi",
+            "vice city",
+            "leonida",
+        )
     )
-    is_blocked_game = any(
-        b in t for b in ("gta 5", "gta v", "gta5", "gtav", "san andreas", "minecraft", "valorant", "free fire", "bgmi", "donut")
+    blocked_terms = (
+        "gta 5",
+        "gta v",
+        "gta5",
+        "gtav",
+        "san andreas",
+        "gta 4",
+        "gta iv",
+        "minecraft",
+        "valorant",
+        "free fire",
+        "bgmi",
+        "fortnite",
+        "roblox",
+        "donut",
+        "compilation",
+        "reupload",
+        "re-upload",
+        "fan channel",
+        "best moments of",
     )
-    return has_gta6 and not is_blocked_game
+    has_blocked = any(b in t for b in blocked_terms)
+    return has_gta6 and not has_blocked
 
-
-def discover_wide_youtube_videos():
+# ==============================================================================
+# PART 8 OF 30: EQUAL-WEIGHT RANDOM ORIGINAL CREATOR DISCOVERY ENGINE
+# Subheading: Zero-Bias Random Rotation Across Official Creator Channels Only
+# Code Title: discover_equal_weight_original_streams
+# ==============================================================================
+def discover_equal_weight_original_streams():
     """
-    Discovers strictly GTA 6 YouTube ended lives & uploads across:
-    1) Priority Indian + Global creators (/streams and /videos tabs)
-    2) Wide YouTube searches (4 rotating queries x 18 results = ~70 candidates)
+    Randomly shuffles all verified strike-safe original creators with 100% equal priority (1.0)
+    and inspects their official /streams and /videos tabs for GTA 6 broadcasts/VODs.
     """
     discovered = {}
     flat_opts = _yt_dlp_base_opts()
     flat_opts["extract_flat"] = "in_playlist"
-    flat_opts["playlistend"] = 8
+    flat_opts["playlistend"] = 10
 
-    hour_seed = datetime.now(timezone.utc).hour
-    shuffled_creators = list(PRIORITY_YT_CREATORS)
-    random.Random(hour_seed).shuffle(shuffled_creators)
-    selected_creators = shuffled_creators[:6]
+    pool = list(VERIFIED_ORIGINAL_CREATORS)
+    random.shuffle(pool)
 
-    for creator in selected_creators:
+    for creator in pool:
         handle = creator["handle"]
+        official_name = creator["name"]
         for tab in ("streams", "videos"):
-            url = f"https://youtube.com{handle}/{tab}"
+            tab_url = f"https://youtube.com{handle}/{tab}"
             try:
                 with yt_dlp.YoutubeDL(flat_opts) as ydl:
-                    info = ydl.extract_info(url, download=False)
+                    info = ydl.extract_info(tab_url, download=False)
                 entries = (info or {}).get("entries") or []
                 for entry in entries:
                     if not entry or not entry.get("id"):
                         continue
-                    vid_id = entry["id"]
+                    vid_id = str(entry["id"])
                     dur = float(entry.get("duration") or 0)
-                    if dur and dur < 90:
+                    if dur and dur < 120:
                         continue
-                    if not _is_strictly_gta6_title(entry.get("title")):
+                    title_str = str(entry.get("title") or "").strip()
+                    if not is_strictly_original_gta6_stream(title_str):
                         continue
-                    discovered[vid_id] = {
-                        "video_id": vid_id,
-                        "url": "https://youtube.com" + "/watch?v=" + str(vid_id),
-                        "title": entry.get("title") or "GTA 6 Stream",
-                        "channel_name": creator["name"],
-                        "region": creator["region"],
-                        "platform": "YouTube",
-                        "priority_boost": 1.15 if creator["region"] == "IN" else 1.05,
-                    }
+                    if vid_id not in discovered:
+                        discovered[vid_id] = {
+                            "video_id": vid_id,
+                            "url": "https://youtube.com" + "/watch?v=" + vid_id,
+                            "title": title_str,
+                            "channel_name": official_name,
+                            "weight": 1.0,
+                        }
             except Exception:
                 pass
-            time.sleep(0.3)
-
-    # Wide YouTube Search (4 rotating queries x 18 results each)
-    q_idx = hour_seed % len(WIDE_YT_SEARCH_QUERIES)
-    queries_this_hour = [
-        WIDE_YT_SEARCH_QUERIES[(q_idx + offset) % len(WIDE_YT_SEARCH_QUERIES)]
-        for offset in range(4)
-    ]
-
-    for query in queries_this_hour:
-        try:
-            with yt_dlp.YoutubeDL(flat_opts) as ydl:
-                res = ydl.extract_info(f"ytsearch18:{query}", download=False)
-            for entry in (res or {}).get("entries") or []:
-                if not entry or not entry.get("id"):
-                    continue
-                vid_id = entry["id"]
-                dur = float(entry.get("duration") or 0)
-                if dur and dur < 90:
-                    continue
-                if not _is_strictly_gta6_title(entry.get("title")):
-                    continue
-                if vid_id not in discovered:
-                    is_indian = any(
-                        w in str(entry.get("title") or "").lower()
-                        for w in ("hindi", "india", "carry", "insaan", "rawknee", "techno", "mythpat")
-                    )
-                    discovered[vid_id] = {
-                        "video_id": vid_id,
-                        "url": "https://youtube.com" + "/watch?v=" + str(vid_id),
-                        "title": entry.get("title") or "GTA 6 Gameplay",
-                        "channel_name": entry.get("uploader") or entry.get("channel") or "YouTube Creator",
-                        "region": "IN" if is_indian else "GLOBAL",
-                        "platform": "YouTube",
-                        "priority_boost": 1.12 if is_indian else 1.0,
-                    }
-        except Exception as e:
-            print(f"[YT Discovery Warning] Query '{query}': {e}", flush=True)
-        time.sleep(0.4)
+            time.sleep(0.2)
 
     items = list(discovered.values())
-    print(f"[YT Discovery] Found {len(items)} strictly GTA 6 videos/ended lives to inspect.", flush=True)
+    random.shuffle(items)
+    print(
+        f"[Original Discovery] Found {len(items)} official GTA 6 streams/VODs across {len(pool)} creators (equal 1.0 weight).",
+        flush=True,
+    )
     return items
 
 # ==============================================================================
-# PART 7 OF 25: PARALLEL PRE-DOWNLOAD "MOST REPLAYED" HEATMAP EXTRACTOR
-# Title: 6-Worker Concurrent Heatmap Scanner Before Any Video Download
-# Subtitle: Inspects up to 60 GTA 6 videos in ~12 seconds instead of 1-by-1
+# PART 9 OF 30: PARALLEL 6-WORKER MOST REPLAYED HEATMAP SCANNER
+# Subheading: Concurrent Crowd-Replay Inspector Before Any Video Download
+# Code Title: scan_heatmaps_in_parallel
 # ==============================================================================
-def inspect_videos_for_heatmap_peaks(discovered_items, history_data, max_inspect=60):
+def scan_heatmaps_in_parallel(discovered_items, history_data, max_inspect=60):
     """
-    Concurrently inspects up to 60 GTA 6 videos using 6 parallel workers
-    to read YouTube's 'Most Replayed' heatmap markers before downloading anything.
+    Inspects up to 60 official GTA 6 streams concurrently (6 workers) to find
+    authentic 'Most Replayed' crowd heatmap spikes (>= min_heatmap_score).
     """
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    batch = list(discovered_items)[:max_inspect]
+    heatmap_peaks = []
+    fresh_vods = []
 
-    ordered = sorted(
-        discovered_items, key=lambda x: x.get("priority_boost", 1.0), reverse=True
-    )[:max_inspect]
-    heatmap_targets = []
-    no_heatmap_pool = []
-
-    def _inspect_single_video(meta):
-        inspect_opts = _yt_dlp_base_opts()
-        inspect_opts["skip_download"] = True
+    def _inspect_worker(meta):
+        opts = _yt_dlp_base_opts()
+        opts["skip_download"] = True
         try:
-            with yt_dlp.YoutubeDL(inspect_opts) as ydl:
+            with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(meta["url"], download=False)
             if not info:
                 return None
-            full_title = info.get("title") or meta["title"]
-            if not _is_strictly_gta6_title(full_title):
+            full_title = str(info.get("title") or meta["title"])
+            if not is_strictly_original_gta6_stream(full_title):
                 return None
             return (meta, info)
         except Exception:
             return None
 
     with ThreadPoolExecutor(max_workers=6) as executor:
-        futures = [executor.submit(_inspect_single_video, m) for m in ordered]
+        futures = [executor.submit(_inspect_worker, item) for item in batch]
         for fut in as_completed(futures):
-            pair = fut.result()
-            if not pair:
+            res = fut.result()
+            if not res:
                 continue
-            meta, info = pair
+            meta, info = res
             vid_id = meta["video_id"]
             is_live = bool(info.get("is_live"))
             duration = float(info.get("duration") or 0)
-            channel_name = info.get("uploader") or info.get("channel") or meta["channel_name"]
             heatmap = info.get("heatmap") or []
 
             if heatmap and not is_live:
                 valid_bins = [
-                    b for b in heatmap
-                    if float(b.get("start_time", 0)) >= 20.0
-                    and float(b.get("value", 0)) >= CHANNEL_CONFIG["min_heatmap_score"]
+                    b
+                    for b in heatmap
+                    if float(b.get("start_time", 0)) >= 25.0
+                    and float(b.get("value", 0)) >= float(CHANNEL_CONFIG["min_heatmap_score"])
                 ]
                 valid_bins.sort(key=lambda b: float(b.get("value", 0)), reverse=True)
 
-                picked_for_vid = 0
+                added_for_vid = 0
                 for b in valid_bins:
                     peak_mid = (float(b["start_time"]) + float(b["end_time"])) / 2.0
-                    if is_clip_already_used(history_data, vid_id, peak_mid):
+                    if is_clip_already_used_or_banked(history_data, vid_id, peak_mid):
                         continue
-                    raw_heat = float(b["value"])
-                    weighted_score = raw_heat * meta.get("priority_boost", 1.0)
-                    heatmap_targets.append({
+                    heatmap_peaks.append({
                         "video_id": vid_id,
                         "url": meta["url"],
-                        "video_title": info.get("title") or meta["title"],
-                        "channel_name": channel_name,
-                        "region": meta["region"],
-                        "platform": "YouTube-Heatmap",
+                        "video_title": str(info.get("title") or meta["title"]),
+                        "channel_name": meta["channel_name"],
                         "peak_sec": peak_mid,
-                        "heatmap_score": raw_heat,
-                        "weighted_score": weighted_score,
+                        "heatmap_score": float(b["value"]),
                         "duration": duration,
+                        "source_type": "YouTube-Heatmap",
                     })
-                    picked_for_vid += 1
-                    if picked_for_vid >= 2:
+                    added_for_vid += 1
+                    if added_for_vid >= 2:
                         break
-            elif not is_clip_already_used(history_data, vid_id, 0):
-                no_heatmap_pool.append({
+            elif not is_live and duration >= 180 and not is_clip_already_used_or_banked(history_data, vid_id, 0):
+                fresh_vods.append({
                     "video_id": vid_id,
                     "url": meta["url"],
-                    "video_title": info.get("title") or meta["title"],
-                    "channel_name": channel_name,
-                    "region": meta["region"],
-                    "platform": "YouTube-Live" if is_live else "YouTube-Fresh",
-                    "is_live": is_live,
+                    "video_title": str(info.get("title") or meta["title"]),
+                    "channel_name": meta["channel_name"],
                     "duration": duration,
-                    "priority_boost": meta.get("priority_boost", 1.0),
+                    "source_type": "YouTube-FreshVOD",
                 })
 
-    heatmap_targets.sort(key=lambda x: x["weighted_score"], reverse=True)
+    heatmap_peaks.sort(key=lambda x: x["heatmap_score"], reverse=True)
+    random.shuffle(fresh_vods)
     print(
-        f"[Parallel Heatmap Check] Scanned {len(ordered)} GTA 6 videos -> "
-        f"{len(heatmap_targets)} Most-Replayed spikes + {len(no_heatmap_pool)} fresh/live streams.",
+        f"[Parallel Heatmap Scan] Inspected {len(batch)} official GTA 6 videos -> "
+        f"{len(heatmap_peaks)} Most-Replayed spikes + {len(fresh_vods)} fresh VODs.",
         flush=True,
     )
-    return heatmap_targets, no_heatmap_pool
+    return heatmap_peaks, fresh_vods
 
 # ==============================================================================
-# PART 8 OF 25: SURGICAL 25-SECOND SECTION DOWNLOADER
-# Title: High-Speed Climax Slice Downloader via yt-dlp --download-sections
-# Subtitle: Downloads only the 26s window around verified Most-Replayed peaks
+# PART 10 OF 30: SURGICAL 26-SECOND CLIMAX DOWNLOADER
+# Subheading: Byte-Range Window Extractor for High-Heatmap Peaks
+# Code Title: harvest_26s_climax_slices
 # ==============================================================================
-def download_surgical_heatmap_slices(heatmap_targets, max_slices=8):
+def harvest_26s_climax_slices(heatmap_peaks, max_slices=8):
     """
-    Downloads ONLY the 26-second climax window around the highest-ranked heatmap spikes.
-    Returns normalized candidate dicts ready for local OpenCLIP visual judging.
+    Downloads only the 26-second climax window around the top Most-Replayed spikes
+    (19s buildup before peak + 7s aftermath) without downloading full multi-hour VODs.
     """
-    candidates = []
-    for idx, target in enumerate(heatmap_targets[:max_slices]):
+    slice_len = float(CHANNEL_CONFIG["slice_duration_sec"])
+    harvested = []
+
+    for idx, target in enumerate(heatmap_peaks[:max_slices]):
+        vid_id = target["video_id"]
         peak = float(target["peak_sec"])
         total_dur = float(target.get("duration") or 0)
-        start_s = max(0.0, peak - 17.0)
-        end_s = min(total_dur - 1.0, peak + 9.0) if total_dur > 0 else (peak + 9.0)
-        if (end_s - start_s) < 12.0:
-            continue
 
-        raw_out = f"raw_hm_{idx}_{target['video_id']}.mp4"
-        clean_out = f"clip_hm_{idx}_{target['video_id']}.mp4"
+        start_s = max(0.0, peak - (slice_len * 0.72))
+        end_s = start_s + slice_len
+        if total_dur > 0 and end_s > total_dur:
+            end_s = total_dur
+            start_s = max(0.0, end_s - slice_len)
 
-        ydl_opts = _yt_dlp_base_opts()
-        ydl_opts.update({
+        raw_out = f"raw_hm_{idx}_{vid_id}.mp4"
+        if os.path.exists(raw_out):
+            os.remove(raw_out)
+
+        dl_opts = _yt_dlp_base_opts()
+        dl_opts.update({
             "format": "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best",
-            "outtmpl": raw_out,
             "merge_output_format": "mp4",
+            "outtmpl": raw_out,
             "download_ranges": yt_dlp.utils.download_range_func(None, [(start_s, end_s)]),
             "force_keyframes_at_cuts": True,
         })
 
         try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            with yt_dlp.YoutubeDL(dl_opts) as ydl:
                 ydl.download([target["url"]])
-
-            if ensure_valid_clip_with_audio(raw_out, clean_out):
-                clip_dur = get_media_duration(clean_out)
-                # Climax peak sits ~17s into this 26s slice
-                local_peak = min(clip_dur - 2.0, max(8.0, peak - start_s))
-                candidates.append({
-                    "video_id": target["video_id"],
-                    "video_path": clean_out,
+            dur = get_media_duration(raw_out)
+            if dur >= 12.0:
+                harvested.append({
+                    "video_path": raw_out,
+                    "video_id": vid_id,
                     "channel_name": target["channel_name"],
-                    "region": target["region"],
-                    "platform": target["platform"],
                     "source_title": target["video_title"],
-                    "origin_peak_sec": peak,
-                    "audio_peak": local_peak,
+                    "source_type": target["source_type"],
                     "heatmap_score": target["heatmap_score"],
-                    "jump_ratio": round(target["heatmap_score"] * 5.0, 2),
+                    "origin_peak_sec": peak,
+                    "slice_start_origin": start_s,
+                    "duration": dur,
                 })
                 print(
-                    f"[Surgical Slice] Downloaded {target['channel_name']} "
-                    f"(heatmap={target['heatmap_score']:.2f} @ {int(peak)}s)",
+                    f"[Surgical Slice] {target['channel_name']} @ {peak:.1f}s "
+                    f"(heatmap={target['heatmap_score']:.2f}, dur={dur:.1f}s)",
                     flush=True,
                 )
         except Exception as e:
-            print(f"[Slice Warning] {target['video_id']}: {e}", flush=True)
-        finally:
-            if os.path.exists(raw_out):
-                os.remove(raw_out)
+            print(f"[Slice Warning] {target['channel_name']}: {e}", flush=True)
 
-    return candidates
+    return harvested
 
 # ==============================================================================
-# PART 9 OF 25: FRESH / LIVE YOUTUBE SAMPLER & RMS AUDIO SPIKE DETECTOR
-# Title: Secondary YouTube Harvester for Brand-New Uploads & Active Live Streams
-# Subtitle: Captures 90s windows & locates vocal/explosion audio reaction spikes
+# PART 11 OF 30: FRESH OFFICIAL VOD BACKUP HARVESTER
+# Subheading: Samples Brand-New Official Streams Before Heatmap Data Appears
+# Code Title: harvest_fresh_official_vods
 # ==============================================================================
-def find_audio_spike_timestamp(video_path):
-    """Scans 1-second RMS audio energy to locate the sharpest reaction spike."""
-    wav_path = f"probe_{os.getpid()}_{random.randint(100,999)}.wav"
+def harvest_fresh_official_vods(fresh_vod_pool, max_samples=3):
+    """
+    Backup harvester for brand-new official creator streams that do not yet have
+    YouTube heatmap graphs. Samples a 50-second mid-stream window at <=720p.
+    """
+    harvested = []
+    for idx, vod in enumerate(fresh_vod_pool[:max_samples]):
+        vid_id = vod["video_id"]
+        total_dur = float(vod.get("duration") or 0)
+        if total_dur < 240:
+            continue
+
+        # Pick a random high-action point in the middle 25%-75% of the stream
+        mid_anchor = total_dur * random.uniform(0.28, 0.72)
+        start_s = max(30.0, mid_anchor - 25.0)
+        end_s = min(total_dur - 10.0, start_s + 50.0)
+
+        raw_out = f"raw_fresh_{idx}_{vid_id}.mp4"
+        if os.path.exists(raw_out):
+            os.remove(raw_out)
+
+        dl_opts = _yt_dlp_base_opts()
+        dl_opts.update({
+            "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best",
+            "merge_output_format": "mp4",
+            "outtmpl": raw_out,
+            "download_ranges": yt_dlp.utils.download_range_func(None, [(start_s, end_s)]),
+            "force_keyframes_at_cuts": True,
+        })
+
+        try:
+            with yt_dlp.YoutubeDL(dl_opts) as ydl:
+                ydl.download([vod["url"]])
+            dur = get_media_duration(raw_out)
+            if dur >= 15.0:
+                harvested.append({
+                    "video_path": raw_out,
+                    "video_id": vid_id,
+                    "channel_name": vod["channel_name"],
+                    "source_title": vod["video_title"],
+                    "source_type": vod["source_type"],
+                    "heatmap_score": 0.0,
+                    "origin_peak_sec": start_s + (dur / 2.0),
+                    "slice_start_origin": start_s,
+                    "duration": dur,
+                })
+                print(
+                    f"[Fresh VOD Sample] {vod['channel_name']} @ {start_s:.0f}s (dur={dur:.1f}s)",
+                    flush=True,
+                )
+        except Exception as e:
+            print(f"[Fresh VOD Warning] {vod['channel_name']}: {e}", flush=True)
+
+    return harvested
+
+# ==============================================================================
+# PART 12 OF 30: VOCAL & EXPLOSION RMS AUDIO SPIKE DETECTOR
+# Subheading: Pinpoints Exact Laughter, Scream & Crash Peaks in 0.5s Windows
+# Code Title: detect_audio_reaction_peak
+# ==============================================================================
+def detect_audio_reaction_peak(video_path):
+    """
+    Analyzes audio energy in 0.5s blocks to locate the sharpest reaction/explosion
+    timestamp and computes its spike ratio above the median baseline volume.
+    """
+    wav_tmp = f"probe_aud_{random.randint(10000, 99999)}.wav"
     try:
         run_cmd_safe(
-            ["ffmpeg", "-y", "-i", video_path, "-ac", "1", "-ar", "16000", wav_path],
-            label="AudioProbe",
-            timeout_sec=45,
+            [
+                "ffmpeg", "-y", "-i", video_path,
+                "-vn", "-ac", "1", "-ar", "16000",
+                wav_tmp,
+            ],
+            label="AudioSpikeProbe",
+            timeout_sec=35,
         )
-        with wave.open(wav_path, "rb") as wf:
+        with wave.open(wav_tmp, "rb") as wf:
             sr = wf.getframerate()
-            total_frames = wf.getnframes()
-            dur_sec = total_frames // sr
-            if dur_sec < 12:
-                return 10.0, 1.0
-            energies = []
-            for sec in range(dur_sec):
-                raw = wf.readframes(sr)
-                samples = np.frombuffer(raw, dtype=np.int16).astype(np.float32)
-                rms = float(np.sqrt(np.mean(samples ** 2))) if len(samples) else 0.0
-                energies.append(rms)
+            raw_bytes = wf.readframes(wf.getnframes())
+        samples = np.frombuffer(raw_bytes, dtype=np.int16).astype(np.float32)
+        if len(samples) < sr * 4:
+            return 10.0, 1.0
 
-        med = float(np.median(energies)) + 1e-5
-        # Focus after first 8 seconds so intro greetings aren't picked
-        search_slice = energies[8: max(9, len(energies) - 3)]
-        best_rel_idx = int(np.argmax(search_slice))
-        best_sec = float(best_rel_idx + 8)
-        jump_ratio = float(search_slice[best_rel_idx] / med)
-        return best_sec, jump_ratio
-    except Exception:
-        return 15.0, 1.0
-    finally:
-        if os.path.exists(wav_path):
-            os.remove(wav_path)
+        win = int(sr * 0.5)
+        step = int(sr * 0.25)
+        rms_vals = []
+        times = []
+        for idx in range(0, len(samples) - win, step):
+            seg = samples[idx : idx + win]
+            rms_vals.append(float(np.sqrt(np.mean(seg * seg))))
+            times.append((idx + win * 0.5) / sr)
 
+        if not rms_vals:
+            return 10.0, 1.0
 
-def harvest_fresh_or_live_youtube(no_heatmap_pool, max_streams=3):
-    """Captures 75s samples from brand-new YouTube uploads or active YouTube lives."""
-    candidates = []
-    ordered = sorted(no_heatmap_pool, key=lambda x: x.get("priority_boost", 1.0), reverse=True)
-
-    for idx, item in enumerate(ordered[:max_streams]):
-        raw_out = f"raw_ytlive_{idx}_{item['video_id']}.mp4"
-        clean_out = f"clip_ytlive_{idx}_{item['video_id']}.mp4"
-
-        ydl_opts = _yt_dlp_base_opts()
-        ydl_opts.update({
-            "format": "best[height<=720][ext=mp4]/best[height<=720]",
-            "outtmpl": raw_out,
-            "live_from_start": False,
-        })
-        if not item.get("is_live") and float(item.get("duration") or 0) > 120:
-            mid = float(item["duration"]) * 0.45
-            ydl_opts["download_ranges"] = yt_dlp.utils.download_range_func(None, [(mid, mid + 75.0)])
+        arr = np.array(rms_vals)
+        # Keep peak away from the very first 3.5s or final 1.5s so cuts stay clean
+        valid_mask = [(t >= 3.5 and t <= (times[-1] - 1.5)) for t in times]
+        if any(valid_mask):
+            masked_arr = np.where(valid_mask, arr, -1.0)
+            best_i = int(np.argmax(masked_arr))
         else:
-            # Cap live stream recording cleanly at 65 seconds via external downloader args
-            ydl_opts["external_downloader"] = "ffmpeg"
-            ydl_opts["external_downloader_args"] = {"ffmpeg_i": ["-t", "65"]}
+            best_i = int(np.argmax(arr))
 
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([item["url"]])
-
-            if ensure_valid_clip_with_audio(raw_out, clean_out):
-                peak_sec, jump_ratio = find_audio_spike_timestamp(clean_out)
-                candidates.append({
-                    "video_id": item["video_id"],
-                    "video_path": clean_out,
-                    "channel_name": item["channel_name"],
-                    "region": item["region"],
-                    "platform": item["platform"],
-                    "source_title": item["video_title"],
-                    "origin_peak_sec": peak_sec,
-                    "audio_peak": peak_sec,
-                    "heatmap_score": 0.0,
-                    "jump_ratio": round(jump_ratio, 2),
-                })
-        except Exception as e:
-            print(f"[YT Fresh/Live Warning] {item['video_id']}: {e}", flush=True)
-        finally:
-            if os.path.exists(raw_out):
-                os.remove(raw_out)
-
-    return candidates
+        baseline = max(float(np.median(arr)), 1.0)
+        spike_ratio = round(float(arr[best_i]) / baseline, 2)
+        return round(float(times[best_i]), 2), spike_ratio
+    except Exception:
+        return 10.0, 1.0
+    finally:
+        if os.path.exists(wav_tmp):
+            try:
+                os.remove(wav_tmp)
+            except Exception:
+                pass
 
 # ==============================================================================
-# PART 10 OF 25: BACKUP TWITCH/KICK FALLBACK (ONLY IF YOUTUBE POOL IS EMPTY)
-# Title: Emergency Secondary Stream Harvester
-# Subtitle: Runs ONLY when YouTube yields < 2 candidates; heavily filtered in Part 11
+# PART 13 OF 30: OPENCV MOTION INTENSITY & STATIC/AD-SCREEN FILTER
+# Subheading: Frame-Difference Action Scorer & Static/Loading Rejector
+# Code Title: extract_motion_and_key_frames
 # ==============================================================================
-def harvest_backup_twitch_streams(max_streams=2):
-    """Emergency fallback if YouTube has zero available GTA 6 videos/streams."""
-    cid = os.environ.get("TWITCH_CLIENT_ID", "").strip()
-    csec = os.environ.get("TWITCH_CLIENT_SECRET", "").strip()
-    if not cid or not csec:
-        return []
-
-    try:
-        tok_res = requests.post(
-            "https://twitch.tv",
-            params={"client_id": cid, "client_secret": csec, "grant_type": "client_credentials"},
-            timeout=15,
-        ).json()
-        token = tok_res.get("access_token")
-        if not token:
-            return []
-
-        headers = {"Client-ID": cid, "Authorization": f"Bearer {token}"}
-        game_res = requests.get(
-            "https://twitch.tv",
-            headers=headers,
-            params={"name": "Grand Theft Auto VI"},
-            timeout=15,
-        ).json()
-        game_data = game_res.get("data") or []
-        if not game_data:
-            return []
-        game_id = next(iter(game_data)).get("id")
-
-        streams_res = requests.get(
-            "https://twitch.tv",
-            headers=headers,
-            params={"game_id": game_id, "first": 6},
-            timeout=15,
-        ).json()
-        streams = streams_res.get("data") or []
-    except Exception as e:
-        print(f"[Twitch Backup Warning] {e}", flush=True)
-        return []
-
-    candidates = []
-    for idx, st in enumerate(streams[:max_streams]):
-        login = st.get("user_login")
-        disp = st.get("user_name") or login
-        if not login:
-            continue
-        raw_out = f"raw_tw_{idx}_{login}.mp4"
-        clean_out = f"clip_tw_{idx}_{login}.mp4"
-        ydl_opts = {
-            "quiet": True,
-            "no_warnings": True,
-            "format": "best[height<=720]",
-            "outtmpl": raw_out,
-            "external_downloader": "ffmpeg",
-            "external_downloader_args": {"ffmpeg_i": ["-t", "55"]},
-        }
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([f"https://twitch.tv{login}"])
-            if ensure_valid_clip_with_audio(raw_out, clean_out):
-                peak_sec, jump_ratio = find_audio_spike_timestamp(clean_out)
-                candidates.append({
-                    "video_id": f"tw_{login}_{int(time.time())}",
-                    "video_path": clean_out,
-                    "channel_name": disp,
-                    "region": "GLOBAL",
-                    "platform": "Twitch-Backup",
-                    "source_title": st.get("title") or "GTA 6 Live",
-                    "origin_peak_sec": peak_sec,
-                    "audio_peak": peak_sec,
-                    "heatmap_score": 0.0,
-                    "jump_ratio": round(jump_ratio, 2),
-                })
-        except Exception:
-            pass
-        finally:
-            if os.path.exists(raw_out):
-                os.remove(raw_out)
-
-    return candidates
-
-# ==============================================================================
-# PART 11 OF 25: AD-SCREEN, FROZEN-FRAME & VISUAL MOTION GATE (OPENCV)
-# Title: Fast Pixel-Level Filter for Commercial Breaks, Pause Menus & Static Filler
-# Subtitle: Runs locally in <0.2s per clip with zero API calls
-# ==============================================================================
-def analyze_clip_motion_and_ads(video_path, peak_sec):
+def extract_motion_and_key_frames(video_path, center_sec):
     """
-    Inspects 6 frames around the climax window for:
-    1) Flat/solid ad screens (e.g. Twitch 'Commercial break in progress')
-    2) Frozen/pause screens (near-zero frame-to-frame difference)
-    3) Visual motion score (0.0 - 10.0)
-    Returns (is_valid, motion_score, sampled_pil_frames)
+    Samples 9 frames across [center_sec - 5.5s, center_sec + 2.5s], computes real
+    pixel motion score (0-10), rejects frozen/loading screens, and returns PIL frames.
     """
     cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        return False, 0.0, []
+
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
-    if total_frames < 30:
+    dur = total_frames / max(fps, 1.0)
+    if dur < 6.0:
         cap.release()
         return False, 0.0, []
 
-    dur_sec = total_frames / fps
-    start_s = max(0.0, min(dur_sec - 12.0, peak_sec - 10.0))
-    end_s = min(dur_sec - 0.5, start_s + 14.0)
+    start_t = max(0.5, center_sec - 5.5)
+    end_t = min(dur - 0.5, center_sec + 2.5)
+    if end_t <= start_t:
+        start_t, end_t = 0.5, max(1.5, dur - 0.5)
 
+    sample_ts = np.linspace(start_t, end_t, num=9)
+    gray_prev = None
+    diffs = []
     pil_frames = []
-    gray_thumbs = []
-    for idx in range(6):
-        ts = start_s + (end_s - start_s) * (idx / 5.0)
+
+    for ts in sample_ts:
         cap.set(cv2.CAP_PROP_POS_FRAMES, int(ts * fps))
         ok, frame = cap.read()
         if not ok or frame is None:
             continue
 
-        small = cv2.resize(frame, (192, 108))
-        gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
+        # Reject pitch-black loading screens
+        if float(np.mean(frame)) < 12.0:
+            continue
 
-        # Reject flat low-detail screens (Twitch purple/blue commercial banner or black loading screen)
-        lap_var = float(cv2.Laplacian(gray, cv2.CV_64F).var())
-        if lap_var < 38.0:
-            cap.release()
-            return False, 0.0, []
+        small_gray = cv2.resize(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), (160, 90))
+        if gray_prev is not None:
+            diffs.append(float(np.mean(cv2.absdiff(small_gray, gray_prev))))
+        gray_prev = small_gray
 
-        gray_thumbs.append(gray.astype(np.float32))
         rgb = cv2.cvtColor(cv2.resize(frame, (384, 216)), cv2.COLOR_BGR2RGB)
         pil_frames.append(Image.fromarray(rgb))
 
     cap.release()
-    if len(gray_thumbs) < 4:
+
+    if len(pil_frames) < 4 or not diffs:
         return False, 0.0, []
 
-    # Measure real on-screen movement across consecutive frames
-    diffs = [
-        float(np.mean(np.abs(gray_thumbs[i] - gray_thumbs[i - 1])))
-        for i in range(1, len(gray_thumbs))
-    ]
-    avg_diff = float(np.mean(diffs))
-    peak_diff = float(np.max(diffs))
-
-    # Reject static pause menus / map screens that barely move
-    if peak_diff < 2.8 or avg_diff < 1.8:
+    mean_diff = float(np.mean(diffs))
+    if mean_diff < 1.8:
         return False, 0.0, []
 
-    # Normalize visual motion into 0.0 - 10.0
-    motion_score = min(10.0, max(0.0, (avg_diff * 0.45) + (peak_diff * 0.25)))
-    return True, round(motion_score, 2), pil_frames
+    motion_score = round(min(10.0, (mean_diff / 18.0) * 10.0), 2)
+    return True, motion_score, pil_frames
 
 # ==============================================================================
-# PART 12 OF 25: MULTI-SIGNAL CLIP RATER & ACTION PEAK LOCALIZER
-# Title: OpenCLIP Neural Vision + Motion + Heatmap + Vocal Spike Scorer
-# Subtitle: Pinpoints the exact peak action frame & eliminates filler/menus
+# PART 14 OF 30: MULTI-SIGNAL NEURAL + CROWD CLIP RATER
+# Subheading: Combines OpenCLIP Action Semantics, Crowd Heatmaps, Motion & Audio
+# Code Title: rate_gta6_candidates
 # ==============================================================================
-_CLIP_BUNDLE = None
+_OPENCLIP_CACHE = None
 
 
-def get_local_openclip_judge():
-    """Loads and caches OpenCLIP ViT-B-32 once per run (0 API calls, unlimited runs)."""
-    global _CLIP_BUNDLE
-    if _CLIP_BUNDLE is not None:
-        return _CLIP_BUNDLE
+def _get_openclip_rater():
+    global _OPENCLIP_CACHE
+    if _OPENCLIP_CACHE is not None:
+        return _OPENCLIP_CACHE
 
     model, _, preprocess = open_clip.create_model_and_transforms(
         "ViT-B-32", pretrained="laion2b_s34b_b79k"
@@ -817,694 +692,940 @@ def get_local_openclip_judge():
     model.eval()
     tokenizer = open_clip.get_tokenizer("ViT-B-32")
 
-    positive_prompts = [
-        "exciting video game sports car crash explosion stunt or high speed police chase",
-        "intense video game gunfight shootout chaos helicopter crash or ragdoll fail",
-        "dramatic ocean boat speedboat plane crash or hilarious physics glitch in video game",
+    pos_prompts = [
+        "intense video game car crash explosion mid air stunt or high speed police chase",
+        "chaotic video game shootout helicopter crash ragdoll fail or hilarious physics glitch",
+        "dramatic speedboat ocean crash street race collision or epic heist escape in video game",
     ]
-    negative_prompts = [
-        "video game pause menu settings screen or mini map navigation UI",
-        "twitch commercial break in progress purple blue banner screen",
-        "video game character calmly walking jogging on empty sidewalk or standing still",
+    neg_prompts = [
+        "video game pause menu settings screen map navigation or inventory UI",
+        "video game character calmly walking on empty sidewalk or standing still talking",
+        "loading screen black screen or static stream starting soon banner",
     ]
 
     with torch.no_grad():
-        pos_tokens = tokenizer(positive_prompts)
-        neg_tokens = tokenizer(negative_prompts)
-        pos_emb = model.encode_text(pos_tokens)
+        pos_emb = model.encode_text(tokenizer(pos_prompts))
         pos_emb /= pos_emb.norm(dim=-1, keepdim=True)
-        neg_emb = model.encode_text(neg_tokens)
+        neg_emb = model.encode_text(tokenizer(neg_prompts))
         neg_emb /= neg_emb.norm(dim=-1, keepdim=True)
 
-    _CLIP_BUNDLE = (model, preprocess, pos_emb, neg_emb)
-    return _CLIP_BUNDLE
+    _OPENCLIP_CACHE = (model, preprocess, pos_emb, neg_emb)
+    return _OPENCLIP_CACHE
 
 
-def score_candidates_with_local_vision(candidates):
+def rate_gta6_candidates(candidates):
     """
-    Evaluates all harvested GTA 6 candidates using 4 combined signals:
-    1) Frame-by-frame OpenCLIP visual excitement vs. filler (35%)
-    2) YouTube Most-Replayed crowd heatmap score (35%)
-    3) OpenCV motion intensity (15%)
-    4) Vocal/explosion RMS audio spike ratio (15%)
+    Scores each harvested GTA 6 slice across 4 signals (0-10 scale) and keeps
+    only clips meeting CHANNEL_CONFIG['min_viral_score'].
     """
-    model, preprocess, pos_emb, neg_emb = get_local_openclip_judge()
-    scored_winners = []
+    model, preprocess, pos_emb, neg_emb = _get_openclip_rater()
+    winners = []
 
     for cand in candidates:
-        is_valid, motion_score, pil_frames = analyze_clip_motion_and_ads(
-            cand["video_path"], cand["audio_peak"]
+        peak_sec, jump_ratio = detect_audio_reaction_peak(cand["video_path"])
+        cand["audio_peak"] = peak_sec
+        cand["jump_ratio"] = jump_ratio
+
+        ok_motion, motion_score, pil_frames = extract_motion_and_key_frames(
+            cand["video_path"], peak_sec
         )
-        if not is_valid or not pil_frames:
-            print(
-                f"[Clip Rater REJECT] {cand['channel_name']} -> Static/Ad/Low-Motion screen",
-                flush=True,
-            )
+        if not ok_motion or not pil_frames:
+            print(f"[Rater REJECT] {cand['channel_name']} -> Frozen/Low-Motion screen", flush=True)
             continue
 
         try:
-            img_tensors = torch.stack([preprocess(im) for im in pil_frames])
+            tensors = torch.stack([preprocess(im) for im in pil_frames])
             with torch.no_grad():
-                img_emb = model.encode_image(img_tensors)
+                img_emb = model.encode_image(tensors)
                 img_emb /= img_emb.norm(dim=-1, keepdim=True)
 
-                # Per-frame action margin (identifies the exact peak frame in the window)
                 frame_pos = (img_emb @ pos_emb.T).max(dim=-1).values
                 frame_neg = (img_emb @ neg_emb.T).max(dim=-1).values
-                frame_margins = (frame_pos - frame_neg).cpu().numpy()
+                margins = (frame_pos - frame_neg).cpu().numpy()
 
-                peak_margin = float(np.max(frame_margins))
-                mean_margin = float(np.mean(frame_margins))
+                peak_margin = float(np.max(margins))
+                mean_margin = float(np.mean(margins))
 
-            # Reject if even the best frame looks like a map, pause menu, or calm walking
-            if peak_margin < -0.01 or mean_margin < -0.025:
+            # Reject routine walking, maps, or menu screens
+            if peak_margin < -0.005 or mean_margin < -0.02:
                 print(
-                    f"[Clip Rater REJECT] {cand['channel_name']} -> Menu/Map/Walking filler "
-                    f"(peak_margin={peak_margin:.3f})",
+                    f"[Rater REJECT] {cand['channel_name']} -> Menu/Map/Calm filler (margin={peak_margin:.3f})",
                     flush=True,
                 )
                 continue
 
-            # Convert visual margin into 0-10 score
-            action_score = max(0.0, min(10.0, ((peak_margin * 0.65 + mean_margin * 0.35) + 0.055) * 72.0))
-            hm_score_10 = float(cand.get("heatmap_score", 0.0)) * 10.0
-            audio_score_10 = min(10.0, float(cand.get("jump_ratio", 1.0)) * 2.4)
+            action_10 = max(0.0, min(10.0, ((peak_margin * 0.65 + mean_margin * 0.35) + 0.05) * 70.0))
+            hm_10 = float(cand.get("heatmap_score", 0.0)) * 10.0
+            audio_10 = min(10.0, float(jump_ratio) * 2.5)
 
-            if hm_score_10 > 0:
-                total_score = (
-                    (action_score * 0.35)
-                    + (hm_score_10 * 0.35)
-                    + (motion_score * 0.15)
-                    + (audio_score_10 * 0.15)
-                )
+            if hm_10 > 0:
+                final_score = (action_10 * 0.35) + (hm_10 * 0.35) + (motion_score * 0.15) + (audio_10 * 0.15)
             else:
-                total_score = (
-                    (action_score * 0.45)
-                    + (motion_score * 0.30)
-                    + (audio_score_10 * 0.25)
-                )
+                final_score = (action_10 * 0.45) + (motion_score * 0.30) + (audio_10 * 0.25)
 
-            if cand.get("region") == "IN":
-                total_score += 0.40
-
-            total_score = round(min(10.0, total_score), 2)
+            final_score = round(min(10.0, final_score), 2)
             print(
-                f"[Clip Rater] {cand['channel_name']} ({cand['platform']}) -> "
-                f"Score={total_score}/10 (action={action_score:.1f}, hm={hm_score_10:.1f}, "
-                f"motion={motion_score:.1f}, audio={audio_score_10:.1f})",
+                f"[Clip Rater] {cand['channel_name']} ({cand['source_type']}) -> "
+                f"Score={final_score}/10 (action={action_10:.1f}, hm={hm_10:.1f}, "
+                f"motion={motion_score:.1f}, audio={audio_10:.1f})",
                 flush=True,
             )
 
-            if total_score >= float(CHANNEL_CONFIG["min_visual_viral_score"]):
-                cand["viral_score"] = total_score
+            if final_score >= float(CHANNEL_CONFIG["min_viral_score"]):
+                cand["viral_score"] = final_score
                 cand["motion_score"] = motion_score
-                scored_winners.append(cand)
+                winners.append(cand)
         except Exception as e:
-            print(f"[Clip Rater Warning] {cand['channel_name']}: {e}", flush=True)
+            print(f"[Rater Warning] {cand['channel_name']}: {e}", flush=True)
 
-    scored_winners.sort(key=lambda x: x["viral_score"], reverse=True)
-    return scored_winners
+    winners.sort(key=lambda x: x["viral_score"], reverse=True)
+    return winners
 
 # ==============================================================================
-# PART 13 OF 25: MULTI-FRAME VERIFIED WEBCAM DETECTOR
-# Title: Corner Facecam Locator for True Split-Screen Layout
-# Subtitle: Prevents false locks on in-game characters, billboards & HUD icons
+# PART 15 OF 30: PERSISTENT VAULT BANKER
+# Subheading: Banks High-Scoring 26s Clips Across Hours 1–5 & Purges Stale Files
+# Code Title: bank_winners_into_vault & prune_expired_vault_items
 # ==============================================================================
-def detect_verified_webcam_box(video_path, peak_sec):
-    """
-    Checks 4 frames around the climax window for a stationary corner webcam.
-    Returns (crop_w, crop_h, x0, y0) if a real webcam is verified, else None.
-    """
-    try:
-        cap = cv2.VideoCapture(video_path)
-        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
-        if total_frames < 20:
-            cap.release()
-            return None
+def prune_expired_vault_items(history_data):
+    """Removes uncompiled vault clips older than max_vault_age_hours or missing on disk."""
+    max_age_sec = float(CHANNEL_CONFIG["max_vault_age_hours"]) * 3600.0
+    now_ts = time.time()
+    kept = []
 
-        cascade = cv2.CascadeClassifier(
-            cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+    for item in history_data.get("vault_queue", []):
+        vpath = item.get("vault_path", "")
+        added_ts = float(item.get("added_epoch", 0))
+        if not vpath or not os.path.exists(vpath):
+            continue
+        if (now_ts - added_ts) > max_age_sec:
+            try:
+                os.remove(vpath)
+            except Exception:
+                pass
+            continue
+        kept.append(item)
+
+    history_data["vault_queue"] = kept
+
+
+def bank_winners_into_vault(scored_winners, history_data):
+    """
+    Copies winning 26s slices into clip_vault/ and registers them in history_data['vault_queue']
+    so Hours 1-5 build up a multi-creator pool for the T-1h Top-5 Compiler.
+    """
+    ensure_vault_dir()
+    prune_expired_vault_items(history_data)
+    added_count = 0
+
+    for cand in scored_winners:
+        vid_id = cand["video_id"]
+        peak_sec = float(cand["origin_peak_sec"])
+        if is_clip_already_used_or_banked(history_data, vid_id, peak_sec):
+            continue
+
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        vault_fname = f"vault_{stamp}_{vid_id}_{int(round(peak_sec))}.mp4"
+        vault_path = os.path.join(VAULT_DIR, vault_fname)
+        shutil.copy2(cand["video_path"], vault_path)
+
+        history_data["vault_queue"].append({
+            "vault_path": vault_path,
+            "video_id": vid_id,
+            "channel_name": cand["channel_name"],
+            "source_title": cand["source_title"],
+            "source_type": cand["source_type"],
+            "heatmap_score": float(cand.get("heatmap_score", 0.0)),
+            "viral_score": float(cand["viral_score"]),
+            "audio_peak": float(cand["audio_peak"]),
+            "origin_peak_sec": peak_sec,
+            "added_epoch": time.time(),
+        })
+        added_count += 1
+
+    print(
+        f"[Vault Banker] Banked {added_count} new GTA 6 gem(s) -> "
+        f"Total ready in Vault: {len(history_data['vault_queue'])} clip(s).",
+        flush=True,
+    )
+
+# ==============================================================================
+# PART 16 OF 30: T-MINUS 1 HOUR SLOT GATE & DAILY QUOTA GUARD
+# Subheading: Triggers Compilation 1 Hour Before Each 6-Hour Slot & Guards Quota
+# Code Title: check_compile_trigger_and_slot
+# ==============================================================================
+def count_todays_uploads(history_data):
+    today_prefix = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return sum(
+        1
+        for u in history_data.get("uploads", [])
+        if u.get("uploaded") and str(u.get("created_at", "")).startswith(today_prefix)
+    )
+
+
+def get_next_unscheduled_6h_slot(history_data, now_utc=None):
+    """Finds the single closest upcoming 6-hour peak slot not yet scheduled."""
+    now = now_utc or datetime.now(timezone.utc)
+    scheduled_set = set(history_data.get("scheduled_slots", []))
+    slot_hours = sorted(int(h) for h in CHANNEL_CONFIG["slot_hours_utc"])
+
+    candidates = []
+    for day_offset in (0, 1):
+        base_day = (now + timedelta(days=day_offset)).replace(minute=0, second=0, microsecond=0)
+        for hr in slot_hours:
+            cand_dt = base_day.replace(hour=hr)
+            if cand_dt > (now + timedelta(minutes=15)):
+                candidates.append(cand_dt)
+
+    candidates.sort()
+    for slot_dt in candidates:
+        iso_str = slot_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+        if iso_str not in scheduled_set:
+            return slot_dt, iso_str
+    return None, None
+
+
+def check_compile_trigger_and_slot(history_data):
+    """
+    Decides whether this hourly run should compile & schedule a Short right now:
+    - Always harvests first (Hours 1-5 + Compile Hour).
+    - Compiles when within ~1 hour of the next unscheduled 6h slot (or in local test mode).
+    """
+    do_upload = bool(CHANNEL_CONFIG["upload_to_youtube"])
+    do_schedule = bool(CHANNEL_CONFIG["enable_scheduling"])
+
+    if not do_upload:
+        # Local artifact test mode: compile whenever Vault has >= 1 clip
+        return True, None
+
+    if count_todays_uploads(history_data) >= int(CHANNEL_CONFIG["max_daily_uploads"]):
+        print("[Quota Guard] Daily upload cap reached. Banking clips only.", flush=True)
+        return False, None
+
+    if not do_schedule:
+        return True, None
+
+    now = datetime.now(timezone.utc)
+    slot_dt, slot_iso = get_next_unscheduled_6h_slot(history_data, now)
+    if not slot_dt:
+        return False, None
+
+    hours_until_slot = (slot_dt - now).total_seconds() / 3600.0
+    offset_hr = float(CHANNEL_CONFIG["compile_offset_hours"])
+
+    # Trigger compilation when we are <= (offset_hr + 0.35h) away from the target slot
+    if hours_until_slot <= (offset_hr + 0.35):
+        print(
+            f"[T-1h Compiler Trigger] Target slot {slot_iso} is {hours_until_slot:.2f}h away -> Compiling Top Vault Clips!",
+            flush=True,
         )
-        dur_sec = total_frames / fps
-        start_s = max(0.0, min(dur_sec - 10.0, peak_sec - 8.0))
+        return True, slot_iso
 
-        hits = []
-        for idx in range(4):
-            ts = start_s + (idx * 2.5)
-            cap.set(cv2.CAP_PROP_POS_FRAMES, int(ts * fps))
-            ok, frame = cap.read()
-            if not ok or frame is None:
-                continue
-            h, w = frame.shape[:2]
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            faces = cascade.detectMultiScale(
-                gray, scaleFactor=1.18, minNeighbors=7, minSize=(55, 55)
-            )
-            for (fx, fy, fw, fh) in faces:
-                cx = fx + (fw / 2.0)
-                cy = fy + (fh / 2.0)
-                in_outer_corner = (cx < w * 0.28 or cx > w * 0.72) and (
-                    cy < h * 0.36 or cy > h * 0.64
-                )
-                if in_outer_corner:
-                    hits.append((cx, cy, fw, fh, w, h))
-                    break
-        cap.release()
+    print(
+        f"[Harvest-Only Hour] Next slot {slot_iso} is {hours_until_slot:.2f}h away -> Clips banked in Vault.",
+        flush=True,
+    )
+    return False, None
 
-        if len(hits) < 2:
-            return None
-
-        xs = [cx for (cx, _, _, _, _, _) in hits]
-        ys = [cy for (_, cy, _, _, _, _) in hits]
-        
-        if (max(xs) - min(xs)) > 55 or (max(ys) - min(ys)) > 55:
-            return None
-
-        first_hit = next(iter(hits))
-        cx, cy, fw, fh, w, h = first_hit
-        crop_w = int(min(w * 0.34, max(fw * 3.8, w * 0.25)))
-        crop_h = int(min(h * 0.42, crop_w * (660.0 / 1080.0)))
-        x0 = int(max(0, min(w - crop_w, cx - (crop_w / 2.0))))
-        y0 = int(max(0, min(h - crop_h, cy - (crop_h / 2.0))))
-        return (crop_w, crop_h, x0, y0)
-    except Exception:
+# ==============================================================================
+# PART 17 OF 30: TOP-5 DISTINCT-CREATOR VAULT CHOOSER & PACING BALANCER
+# Subheading: Picks Up to 5 Top Distinct Creators & Trims Crisp Climax Windows
+# Code Title: build_top5_plan_from_vault
+# ==============================================================================
+def build_top5_plan_from_vault(history_data):
+    """
+    Reviews all clips banked in history_data['vault_queue'], picks up to
+    CHANNEL_CONFIG['max_clips_per_short'] (max 5) distinct-creator winners,
+    and trims crisp climax durations:
+    - 5 clips: 12.5s each (~62.5s Short | #5 -> #4 -> #3 -> #2 -> #1)
+    - 4 clips: 13.0s each (~52.0s Short | #4 -> #3 -> #2 -> #1)
+    - 3 clips: 14.0s each (~42.0s Short | #3 -> #2 -> #1)
+    - 2 clips: 16.0s each (~32.0s Short | #2 -> #1)
+    - 1 clip:  21.5s single viral climax (#1)
+    """
+    prune_expired_vault_items(history_data)
+    vault_items = list(history_data.get("vault_queue", []))
+    if not vault_items:
+        print("[Vault Chooser] Vault queue is empty—nothing to compile yet.", flush=True)
         return None
 
+    vault_items.sort(key=lambda x: float(x.get("viral_score", 0.0)), reverse=True)
+    max_clips = min(5, max(1, int(CHANNEL_CONFIG["max_clips_per_short"])))
+
+    chosen = []
+    seen_creators = set()
+    for item in vault_items:
+        cname = str(item.get("channel_name", "")).strip().lower()
+        if cname in seen_creators:
+            continue
+        if not os.path.exists(item.get("vault_path", "")):
+            continue
+        chosen.append(item)
+        seen_creators.add(cname)
+        if len(chosen) >= max_clips:
+            break
+
+    if not chosen:
+        return None
+
+    count = len(chosen)
+    dur_map = {1: 21.5, 2: 16.0, 3: 14.0, 4: 13.0, 5: 12.5}
+    seg_dur = dur_map[count]
+
+    # Order ascending by score so the #1 best clip always plays LAST
+    ordered_asc = list(reversed(chosen))
+    ranks = tuple(range(count, 0, -1))
+    segments = []
+
+    for rank_num, item in zip(ranks, ordered_asc):
+        vpath = item["vault_path"]
+        clip_dur = get_media_duration(vpath)
+        peak = float(item.get("audio_peak", clip_dur * 0.65))
+        end_t = min(clip_dur - 0.25, peak + (seg_dur * 0.28))
+        start_t = max(0.0, end_t - seg_dur)
+        actual_dur = round(end_t - start_t, 2)
+
+        # Transcribe & translate spoken audio inside the exact trimmed climax window
+        eng_text, word_events = transcribe_window_to_english(vpath, start_t, end_t)
+
+        segments.append({
+            "rank": rank_num,
+            "vault_item": item,
+            "video_path": vpath,
+            "channel_name": item["channel_name"],
+            "source_title": item["source_title"],
+            "viral_score": item["viral_score"],
+            "start_sec": round(start_t, 2),
+            "end_sec": round(end_t, 2),
+            "duration": actual_dur,
+            "transcript_en": eng_text,
+            "word_events": word_events,
+        })
+
+    mode_label = "SINGLE" if count == 1 else f"TOP_{count}_COUNTDOWN"
+    print(
+        f"[Vault Chooser] Selected {count} distinct creator(s) for {mode_label}: "
+        + ", ".join(f"#{s['rank']} {s['channel_name']} ({s['viral_score']}/10)" for s in segments),
+        flush=True,
+    )
+    return {"mode": mode_label, "segments": segments}
+
 # ==============================================================================
-# PART 14 OF 25: FASTER-WHISPER AUTO-ENGLISH TRANSCRIBER
-# Title: Multilingual-to-English Speech-to-Text Engine
-# Subtitle: Translates Hindi/Spanish/English streamer reactions into English text
+# PART 18 OF 30: FASTER-WHISPER MULTILINGUAL-TO-ENGLISH TRANSLATOR
+# Subheading: Translates Streamer Speech Into Synced English Word Timestamps
+# Code Title: transcribe_window_to_english
 # ==============================================================================
-_WHISPER_MODEL = None
+_WHISPER_CACHE = None
 
 
-def get_whisper_model():
-    """Loads Faster-Whisper 'base' model once per run (cached on CPU)."""
-    global _WHISPER_MODEL
-    if _WHISPER_MODEL is None:
-        _WHISPER_MODEL = WhisperModel("base", device="cpu", compute_type="int8")
-    return _WHISPER_MODEL
+def _get_whisper_model():
+    global _WHISPER_CACHE
+    if _WHISPER_CACHE is None:
+        _WHISPER_CACHE = WhisperModel("tiny", device="cpu", compute_type="int8")
+    return _WHISPER_CACHE
 
 
-def transcribe_clip_to_english(video_path):
+def transcribe_window_to_english(video_path, start_sec, end_sec):
     """
-    Transcribes and translates any spoken language (Hindi, Spanish, English)
-    into clean English text + timestamped word segments for captions.
+    Translates spoken dialogue in [start_sec, end_sec] into English text and
+    returns (full_english_sentence, list_of_word_dicts_relative_to_window_start).
     """
+    wav_tmp = f"whisper_win_{random.randint(10000, 99999)}.wav"
     try:
-        model = get_whisper_model()
+        dur = max(1.0, float(end_sec) - float(start_sec))
+        run_cmd_safe(
+            [
+                "ffmpeg", "-y", "-ss", f"{start_sec:.2f}", "-t", f"{dur:.2f}",
+                "-i", video_path, "-vn", "-ac", "1", "-ar", "16000",
+                wav_tmp,
+            ],
+            label="WhisperWindowWav",
+            timeout_sec=35,
+        )
+        model = _get_whisper_model()
         segments, _ = model.transcribe(
-            video_path,
+            wav_tmp,
             task="translate",
             beam_size=1,
+            word_timestamps=True,
             vad_filter=True,
         )
-        lines = []
-        word_events = []
+        words_out = []
+        full_parts = []
         for seg in segments:
             txt = seg.text.strip()
             if txt:
-                lines.append(txt)
-                word_events.append((float(seg.start), float(seg.end), txt))
-        return " ".join(lines).strip(), word_events
-    except Exception as e:
-        print(f"[Whisper Warning] {e}", flush=True)
+                full_parts.append(txt)
+            for w in getattr(seg, "words", []) or []:
+                clean_w = w.word.strip()
+                if clean_w:
+                    words_out.append({
+                        "word": clean_w,
+                        "start": round(float(w.start), 2),
+                        "end": round(float(w.end), 2),
+                    })
+        return " ".join(full_parts).strip(), words_out
+    except Exception:
         return "", []
+    finally:
+        if os.path.exists(wav_tmp):
+            try:
+                os.remove(wav_tmp)
+            except Exception:
+                pass
 
 # ==============================================================================
-# PART 15 OF 25: ADAPTIVE 1-TO-5 CLIP COUNTDOWN CHOOSER
-# Title: Dynamic Single, Double, Triple, Quad or 5-Clip Short Sequencer
-# Subtitle: Adapts clip count (1 to 5) to quality winners & puts #1 climax LAST
+# PART 19 OF 30: GEMINI 2.5 SCENE-GROUNDED TITLE, BANNER & 3-ACT SCRIPT WRITER
+# Subheading: Inspects Climax Frames to Write Accurate English Hook & Punchline
+# Code Title: generate_scene_grounded_script
 # ==============================================================================
-def build_short_plan(scored_winners):
-    """
-    Dynamically builds a 1, 2, 3, 4, or 5-clip Short based on how many
-    distinct-creator GTA 6 clips beat the quality threshold:
-    - 5 clips: 9.0s each (~45s Short | #5 -> #4 -> #3 -> #2 -> #1)
-    - 4 clips: 10.5s each (~42s Short | #4 -> #3 -> #2 -> #1)
-    - 3 clips: 12.5s each (~37.5s Short | #3 -> #2 -> #1)
-    - 2 clips: 15.0s each (~30s Short | #2 -> #1)
-    - 1 clip:  21.0s single viral climax (#1)
-    """
-    if not scored_winners:
-        print("[Quality Gate] Zero GTA 6 clips met the quality bar—skipping run.", flush=True)
-        return None
-
-    distinct_winners = []
-    seen_creators = set()
-    for cand in scored_winners:
-        cname = cand["channel_name"].strip().lower()
-        if cname in seen_creators:
-            continue
-        distinct_winners.append(cand)
-        seen_creators.add(cname)
-        if len(distinct_winners) >= 5:
-            break
-
-    # Transcribe & translate spoken lines to English for each chosen clip
-    for w in distinct_winners:
-        eng_text, word_events = transcribe_clip_to_english(w["video_path"])
-        w["transcript_en"] = eng_text
-        w["word_events"] = word_events
-
-    count = len(distinct_winners)
-    dur_map = {1: 21.0, 2: 15.0, 3: 12.5, 4: 10.5, 5: 9.0}
-    seg_dur = dur_map[count]
-
-    # Ascending order so the #1 highest-rated GTA 6 moment always plays LAST
-    ordered_asc = list(reversed(distinct_winners))
-    ranks = tuple(range(count, 0, -1))
-    specs = []
-    for rank_num, cand in zip(ranks, ordered_asc):
-        clip_dur = get_media_duration(cand["video_path"])
-        peak = float(cand["audio_peak"])
-        end_t = min(clip_dur - 0.3, peak + (seg_dur * 0.30))
-        start_t = max(0.0, end_t - seg_dur)
-        specs.append({
-            "rank": rank_num,
-            "candidate": cand,
-            "start_sec": round(start_t, 2),
-            "end_sec": round(end_t, 2),
-            "duration": round(end_t - start_t, 2),
-        })
-
-    mode_label = "SINGLE" if count == 1 else f"MULTI_{count}"
-    print(
-        f"[Short Chooser] Assembled {mode_label} GTA 6 Short with {count} distinct clip(s)!",
-        flush=True,
-    )
-    return {"mode": mode_label, "segments": specs}
-
-# ==============================================================================
-# PART 16 OF 25: SCENE-GROUNDED ENGLISH TITLE & 3-ACT COMMENTARY WRITER
-# Title: Multimodal Gemini Writer Inspecting Winning Keyframes + Transcript
-# Subtitle: Generates scene-accurate English titles, 3.5s intro hook & climax outro
-# ==============================================================================
-def _extract_winner_frames_for_gemini(segments):
-    """Extracts 2 crisp JPEG keyframes around each winning clip's climax."""
-    image_parts = []
-    for seg in segments:
-        cand = seg["candidate"]
-        vpath = cand["video_path"]
-        mid_t = max(0.5, seg["end_sec"] - 2.5)
-        for offset_idx, ts in enumerate((max(0.2, mid_t - 2.5), mid_t)):
-            tmp_jpg = f"gem_f_{os.getpid()}_{seg['rank']}_{offset_idx}.jpg"
-            subprocess.run(
-                [
-                    "ffmpeg", "-y", "-ss", f"{ts:.2f}", "-i", vpath,
-                    "-vframes", "1", "-vf", "scale=512:-2", "-q:v", "6", tmp_jpg,
-                ],
-                capture_output=True,
-            )
-            if os.path.exists(tmp_jpg):
-                with open(tmp_jpg, "rb") as f:
-                    image_parts.append(
-                        types.Part.from_bytes(data=f.read(), mime_type="image/jpeg")
-                    )
-                os.remove(tmp_jpg)
-    return image_parts
-
-
 def generate_scene_grounded_script(short_plan, history_data):
     """
-    Inspects the winning keyframes + English transcripts via Gemini to write:
-    1) title: Scene-accurate English YouTube Short title (< 65 chars)
-    2) banner: 2-4 ALL-CAPS hook words tied to the actual scene
-    3) intro_vo: 3.0-3.8s energetic English opening hook describing what's happening
-    4) outro_vo: 2.5-3.2s English punchline reacting to the #1 climax ending
-    5) tags: Relevant English SEO tags
+    Uses Gemini 2.5 Flash vision on the actual winning GTA 6 frames to generate
+    a scene-grounded English title, top banner, Act 1 hook, and Act 3 punchline.
     """
     segments = short_plan["segments"]
-    mode = short_plan["mode"]
-    recent_titles = [
-        u.get("title", "") for u in history_data.get("uploads", [])[-20:] if u.get("title")
-    ]
+    creators = [s["channel_name"] for s in segments]
+    top_seg = segments[-1]  # #1 climax plays last
+    recent_titles = [u.get("title", "") for u in history_data.get("uploads", [])[-12:]]
 
-    scene_notes = []
-    creators = []
-    for seg in segments:
-        c = seg["candidate"]
-        creators.append(c["channel_name"])
-        tr = (c.get("transcript_en") or "")[:240]
-        scene_notes.append(
-            f"Rank #{seg['rank']} ({c['channel_name']} [{c['region']}]): "
-            f"Source='{c.get('source_title', '')[:70]}' | Speech='{tr}'"
+    frame_paths = []
+    prompt_parts = []
+    context_lines = []
+
+    for idx, seg in enumerate(segments):
+        mid_ts = (seg["start_sec"] + seg["end_sec"]) / 2.0
+        for offset_i, sample_t in enumerate((max(0.2, mid_ts - 1.2), mid_ts + 0.8)):
+            f_img = f"gem_ctx_{idx}_{offset_i}.jpg"
+            try:
+                run_cmd_safe(
+                    [
+                        "ffmpeg", "-y", "-ss", f"{sample_t:.2f}",
+                        "-i", seg["video_path"], "-vframes", "1", "-q:v", "4",
+                        f_img,
+                    ],
+                    label="GeminiFrame",
+                    timeout_sec=20,
+                )
+                if os.path.exists(f_img):
+                    frame_paths.append(f_img)
+                    prompt_parts.append(Image.open(f_img))
+            except Exception:
+                pass
+
+        context_lines.append(
+            f"- Rank #{seg['rank']} | Creator: {seg['channel_name']} | "
+            f"Stream Title: {seg['source_title']} | "
+            f"Translated Dialogue: '{seg['transcript_en'] or 'intense gameplay reaction'}'"
         )
 
-    lead_creator = next(iter(reversed(creators)))  # Rank #1 creator
-    avoid_block = (
-        "NEVER repeat or mimic these recent titles:\n- " + "\n- ".join(recent_titles[-12:])
-        if recent_titles else ""
+    prompt_text = (
+        f"You are writing metadata and voiceover lines for {CHANNEL_CONFIG['channel_name']} "
+        f"({CHANNEL_CONFIG['channel_handle']}), a Grand Theft Auto VI Shorts channel.\n"
+        f"Inspect the attached gameplay frames and clip details:\n"
+        + "\n".join(context_lines)
+        + f"\nAvoid repeating any of these recent titles: {recent_titles}\n\n"
+        f"Return STRICT valid JSON with these exact 5 keys:\n"
+        f'1. "title": Catchy, accurate English YouTube Shorts title describing what actually happens (max 68 chars, 1 emoji, no #Shorts tag yet).\n'
+        f'2. "banner": Short 3-to-5 word UPPERCASE hook banner for the top of the screen (e.g. "5 INSANE VICE CITY FAILS").\n'
+        f'3. "intro_vo": Energetic 1-sentence English spoken hook (10-14 words, ~3.5s) setting up the clips.\n'
+        f'4. "outro_vo": Punchy 1-sentence English closing reaction/question (9-13 words, ~3.2s) after the #1 climax.\n'
+        f'5. "tags": List of 8 relevant English tags including "GTA 6", "Grand Theft Auto 6", "Vice City", and creator names.\n'
     )
+    prompt_parts.append(prompt_text)
 
     api_key = os.environ.get("GEMINI_API_KEY", "").strip()
     if api_key:
-        frame_parts = _extract_winner_frames_for_gemini(segments)
         client = genai.Client(
-            api_key=api_key, http_options=types.HttpOptions(timeout=25000)
+            api_key=api_key,
+            http_options=types.HttpOptions(timeout=45000),
         )
-        prompt = (
-            f"You are the head YouTube Shorts producer for 'Vice City Clips Vault' (GTA 6 highlights).\n"
-            f"Format: {'Top 3-2-1 Countdown' if mode == 'MULTI' else 'Single Viral Climax'}\n"
-            f"Clips included:\n" + "\n".join(scene_notes) + "\n\n"
-            f"{avoid_block}\n\n"
-            f"Look closely at the attached frames from these exact clips and return valid JSON:\n"
-            f'1. "title": Specific English title under 65 chars describing the EXACT crash, stunt, police chase, or reaction visible in the frames + 1 emoji. BANNED: generic clickbait like "Watch Closely" or "Nobody Expected".\n'
-            f'2. "banner": 2 to 4 ALL-CAPS words matching the exact scene (e.g. "SEAPLANE WIPEOUT", "COP CHASE GONE WRONG", "INSANE HIGHWAY SAVE").\n'
-            f'3. "intro_vo": 1 punchy 9-13 word English narrator intro setting up the exact action in these frames (remember: narrator will go completely silent during the climax!).\n'
-            f'4. "outro_vo": 1 witty 7-10 word English narrator punchline reacting to the #1 ending.\n'
-            f'5. "tags": list of 8 short English tags.'
-        )
-
-        for model_id in ("gemini-3.5-flash-lite", "gemini-3.8-flash"):
+        for model_id in ("gemini-2.5-flash", "gemini-3.5-flash-lite"):
             try:
                 resp = client.models.generate_content(
                     model=model_id,
-                    contents=[*frame_parts, prompt],
+                    contents=prompt_parts,
                     config=types.GenerateContentConfig(
-                        temperature=0.85,
                         response_mime_type="application/json",
+                        temperature=0.75,
                     ),
                 )
-                data = json.loads(resp.text.strip())
-                title = str(data.get("title", "")).strip()
-                banner = str(data.get("banner", "")).strip().upper()[:24]
-                intro_vo = str(data.get("intro_vo", "")).strip()
-                outro_vo = str(data.get("outro_vo", "")).strip()
-                tags = data.get("tags") or ["GTA 6", "Vice City", "GTA 6 Clips", "Shorts"]
-
-                if title and title not in recent_titles and len(title) >= 12:
-                    print(f"[Gemini Scene Writer] Title via {model_id}: {title}", flush=True)
-                    return {
-                        "title": title,
-                        "banner": banner or "VICE CITY CHAOS",
-                        "intro_vo": intro_vo,
-                        "outro_vo": outro_vo,
-                        "tags": [str(t) for t in tags[:12]],
-                        "creators": creators,
-                    }
+                parsed = json.loads(resp.text.strip())
+                if parsed.get("title") and parsed.get("intro_vo") and parsed.get("outro_vo"):
+                    parsed["creators"] = creators
+                    print(f"[Gemini Scene Writer] Generated via {model_id}: '{parsed['title']}'", flush=True)
+                    for fp in frame_paths:
+                        if os.path.exists(fp):
+                            os.remove(fp)
+                    return parsed
             except Exception as e:
-                print(f"[Gemini Writer Warning] {model_id}: {e}", flush=True)
+                print(f"[Gemini Warning] {model_id}: {e}", flush=True)
 
-    # Scene-aware fallback if API key is missing or offline
-    fallback_title = (
-        f"Top 3 Wildest GTA 6 Moments Featuring {lead_creator} 🔥"
-        if mode == "MULTI"
-        else f"{lead_creator}'s Craziest Vice City Moment Caught Live 🚨"
-    )
+    for fp in frame_paths:
+        if os.path.exists(fp):
+            try:
+                os.remove(fp)
+            except Exception:
+                pass
+
+    count = len(segments)
+    top_creator = top_seg["channel_name"]
+    if count > 1:
+        fallback_title = f"Top {count} Craziest GTA 6 Moments Featuring {top_creator} 🔥"
+        fallback_banner = f"TOP {count} VICE CITY MOMENTS"
+        fallback_intro = f"Here are the top {count} wildest Vice City moments caught on stream today!"
+    else:
+        fallback_title = f"{top_creator} Had The Wildest Moment In Vice City 😱"
+        fallback_banner = "PURE VICE CITY CHAOS"
+        fallback_intro = f"Watch how fast things spiral out of control for {top_creator} in Vice City!"
+
     return {
-        "title": fallback_title,
-        "banner": "TOP 3 CHAOS" if mode == "MULTI" else "PURE MADNESS",
-        "intro_vo": (
-            f"Three insane Vice City clips—wait until you see {lead_creator} at number one!"
-            if mode == "MULTI"
-            else f"Watch how fast things go wrong for {lead_creator} in Vice City!"
-        ),
-        "outro_vo": f"Rate {lead_creator}'s clutch from one to ten in the comments!",
-        "tags": ["GTA 6", "Grand Theft Auto 6", "Vice City", "GTA 6 Clips", "Shorts"],
+        "title": fallback_title[:75],
+        "banner": fallback_banner,
+        "intro_vo": fallback_intro,
+        "outro_vo": f"Rate {top_creator}'s Vice City moment from 1 to 10 in the comments!",
+        "tags": ["GTA 6", "Grand Theft Auto 6", "Vice City", "GTA VI", "Shorts"] + creators[:3],
         "creators": creators,
     }
 
 # ==============================================================================
-# PART 17 OF 25: EDGE-TTS NEURAL VOICEOVER GENERATOR
-# Title: High-Energy English Narrator Synthesizer with Silence Trimming
-# Subtitle: Generates crisp Act 1 Hook & Act 3 Punchline audio tracks
+# PART 20 OF 30: VERIFIED WEBCAM CORNER DETECTOR
+# Subheading: OpenCV Haar Face Verification for Splitcam vs. Cinema Framing
+# Code Title: detect_verified_webcam_box
 # ==============================================================================
-async def _synthesize_edge_tts_async(text, out_mp3):
-    communicate = edge_tts.Communicate(
-        text=text,
-        voice=CHANNEL_CONFIG["voice_name"],
-        rate="+12%",
-        pitch="+2Hz",
-    )
-    await communicate.save(out_mp3)
+def detect_verified_webcam_box(video_path, start_sec, end_sec):
+    """
+    Checks 5 frames in [start_sec, end_sec] for a consistent streamer facecam in
+    one of the 4 corners. Returns (x, y, w, h) in source pixels or None.
+    """
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        return None
 
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    src_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 1920)
+    src_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 1080)
 
-def generate_clean_tts_clip(text, final_wav_path):
-    """Generates clean 48kHz stereo WAV narration with trailing silence trimmed."""
-    clean_text = re.sub(r"[^\w\s.,!?'\-]", "", str(text or "")).strip()
-    if not clean_text:
-        return 0.0
+    cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+    face_cascade = cv2.CascadeClassifier(cascade_path)
 
-    raw_mp3 = f"tts_raw_{os.getpid()}_{random.randint(100,999)}.mp3"
-    try:
-        asyncio.run(_synthesize_edge_tts_async(clean_text, raw_mp3))
-    except Exception:
-        try:
-            gTTS(text=clean_text, lang="en", slow=False).save(raw_mp3)
-        except Exception as e:
-            print(f"[TTS Warning] Both Edge-TTS and gTTS failed: {e}", flush=True)
-            return 0.0
+    sample_ts = np.linspace(start_sec + 0.5, max(start_sec + 1.0, end_sec - 0.5), num=5)
+    hits = []
 
-    try:
-        run_cmd_safe(
-            [
-                "ffmpeg", "-y", "-i", raw_mp3,
-                "-af", "silenceremove=start_periods=1:start_threshold=-45dB:stop_periods=-1:stop_duration=0.15:stop_threshold=-45dB",
-                "-ar", "48000", "-ac", "2",
-                final_wav_path,
-            ],
-            label="CleanTTS",
-            timeout_sec=30,
-        )
-        return get_media_duration(final_wav_path)
-    except Exception:
-        return 0.0
-    finally:
-        if os.path.exists(raw_mp3):
-            os.remove(raw_mp3)
+    for ts in sample_ts:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, int(ts * fps))
+        ok, frame = cap.read()
+        if not ok or frame is None:
+            continue
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.15, minNeighbors=5, minSize=(48, 48))
+        for (fx, fy, fw, fh) in faces:
+            cx = (fx + fw * 0.5) / src_w
+            cy = (fy + fh * 0.5) / src_h
+            # Must sit in left/right edge zone and not dead-center gameplay
+            in_left = cx <= 0.28
+            in_right = cx >= 0.72
+            in_top_or_bot = cy <= 0.36 or cy >= 0.64
+            if (in_left or in_right) and in_top_or_bot:
+                hits.append((cx, cy, fx, fy, fw, fh))
+                break
+
+    cap.release()
+
+    if len(hits) < 3:
+        return None
+
+    xs = [cx for (cx, _, _, _, _, _) in hits]
+    ys = [cy for (_, cy, _, _, _, _) in hits]
+    if (max(xs) - min(xs)) > 0.08 or (max(ys) - min(ys)) > 0.08:
+        return None
+
+    med_cx = float(np.median(xs)) * src_w
+    med_cy = float(np.median(ys)) * src_h
+    cam_w = int(src_w * 0.26)
+    cam_h = int(src_h * 0.28)
+
+    box_x = int(max(0, min(src_w - cam_w, med_cx - cam_w * 0.5)))
+    box_y = int(max(0, min(src_h - cam_h, med_cy - cam_h * 0.5)))
+    return (box_x, box_y, cam_w, cam_h)
 
 # ==============================================================================
-# PART 18 OF 25: SMART SPLITCAM / 16:9 CINEMA & 3-2-1 RANK RENDERER
-# Title: Adaptive Vertical Frame Compositor with Rank Badges & Creator Credits
-# Subtitle: Uses Splitcam for verified webcams; 16:9 Cinema + Blur BG otherwise
+# PART 21 OF 30: 1080X1920 VERTICAL LAYOUT RENDERER
+# Subheading: Renders Verified Splitcam or Full 16:9 Cinema Center With Rank Badges
+# Code Title: render_vertical_segments_and_concat
 # ==============================================================================
 def _escape_drawtext(txt):
-    s = str(txt or "").replace("\\", "\\\\")
-    s = s.replace(":", "\\:").replace("'", "\\'").replace("%", "\\%")
-    return s
-
-
-def render_formatted_segment(seg, seg_index, total_segments, out_seg_path):
-    """
-    Slices [start_sec, end_sec] and renders a crisp 1080x1920 30fps segment with:
-    - Verified Splitcam (top webcam + bottom gameplay) OR 16:9 Cinema Center + Blur BG
-    - Bold #3 / #2 / #1 Countdown Badge (when total_segments > 1)
-    - Creator Credit & @Vice-City_ClipsVault Watermark
-    """
-    cand = seg["candidate"]
-    src_path = cand["video_path"]
-    start_s = float(seg["start_sec"])
-    dur_s = max(5.0, float(seg["duration"]))
-    rank_num = int(seg["rank"])
-    creator_label = _escape_drawtext(f"Credit: {cand['channel_name']}")
-    wm_label = _escape_drawtext(CHANNEL_CONFIG["watermark_text"])
-
-    webcam_box = detect_verified_webcam_box(src_path, cand["audio_peak"])
-
-    if webcam_box is not None:
-        cw, ch, x0, y0 = webcam_box
-        # Top 720px = verified streamer facecam | Bottom 1200px = sharp gameplay + neon divider
-        base_graph = (
-            f"[0:v]split=2[cam_in][game_in];"
-            f"[cam_in]crop={cw}:{ch}:{x0}:{y0},scale=1080:720:force_original_aspect_ratio=increase,"
-            f"crop=1080:720,unsharp=5:5:0.6[top_cam];"
-            f"[game_in]scale=1080:1200:force_original_aspect_ratio=increase,"
-            f"crop=1080:1200,unsharp=5:5:0.75[bot_game];"
-            f"[top_cam][bot_game]vstack=inputs=2,"
-            f"drawbox=x=0:y=717:w=1080:h=6:color=#ff00cc@0.95:t=fill[framed]"
-        )
-        layout_used = "SPLITCAM"
-    else:
-        # 16:9 Cinema Center (1080x940) over darkened blurred backdrop (keeps 100% of HUD visible)
-        base_graph = (
-            f"[0:v]split=2[bg_in][fg_in];"
-            f"[bg_in]scale=1080:1920:force_original_aspect_ratio=increase,"
-            f"crop=1080:1920,gblur=sigma=24,eq=brightness=-0.16[bg];"
-            f"[fg_in]scale=1080:940:force_original_aspect_ratio=decrease,"
-            f"unsharp=5:5:0.80[fg];"
-            f"[bg][fg]overlay=(W-w)/2:(H-h)/2+40,"
-            f"drawbox=x=0:y=528:w=1080:h=4:color=#00f0ff@0.85:t=fill,"
-            f"drawbox=x=0:y=1472:w=1080:h=4:color=#ff00cc@0.85:t=fill[framed]"
-        )
-        layout_used = "CINEMA_BLUR"
-
-    # Add Watermark, Creator Credit, and Bold #3 -> #2 -> #1 Rank Badge
-    overlays = (
-        f"[framed]"
-        f"drawtext=text='{wm_label}':fontcolor=white@0.88:fontsize=28:"
-        f"x=(w-text_w)/2:y=58:box=1:boxcolor=black@0.45:boxborderw=8,"
-        f"drawtext=text='{creator_label}':fontcolor=#ffe600:fontsize=30:"
-        f"x=(w-text_w)/2:y=104:box=1:boxcolor=black@0.55:boxborderw=8"
+    return (
+        str(txt or "")
+        .replace("\\", "\\\\")
+        .replace(":", "\\:")
+        .replace("'", "\\'")
+        .replace("%", "\\%")
     )
 
-    if total_segments > 1:
-        rank_color = "#ff2a55" if rank_num == 1 else ("#ffaa00" if rank_num == 2 else "#00e5ff")
-        overlays += (
-            f",drawtext=text='\\#{rank_num}':fontcolor={rank_color}:fontsize=76:"
-            f"x=54:y=165:box=1:boxcolor=black@0.75:boxborderw=14"
-        )
 
-    overlays += "[vout]"
-    full_vf = f"{base_graph};{overlays}"
-
-    run_cmd_safe(
-        [
-            "ffmpeg", "-y",
-            "-ss", f"{start_s:.2f}", "-t", f"{dur_s:.2f}", "-i", src_path,
-            "-filter_complex", full_vf,
-            "-map", "[vout]", "-map", "0:a",
-            "-r", "30", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-            "-c:a", "aac", "-ar", "48000", "-ac", "2",
-            out_seg_path,
-        ],
-        label=f"RenderSeg_{rank_num}",
-        timeout_sec=120,
-    )
-    print(
-        f"[Segment #{rank_num}] Rendered {cand['channel_name']} ({layout_used}, {dur_s:.1f}s)",
-        flush=True,
-    )
-
-# ==============================================================================
-# PART 19 OF 25: TIMELINE CONCATENATOR & 3-ACT AUDIO DUCKER
-# Title: Crash-Safe Xfade Joiner + Hook -> Silent Climax -> Punchline Mixer
-# Subtitle: Narrator goes 100% silent during main climax so raw reaction shines
-# ==============================================================================
-def assemble_timeline_with_3act_audio(seg_files, script_bundle, merged_out_path):
+def render_vertical_segments_and_concat(short_plan):
     """
-    1) Joins 1 or 3 segments using safe-clamped xfade transitions (no exit 234 crash)
-    2) Mixes 3-Act Audio:
-       - Act 1 (0 -> ~3.8s): Intro Hook VO (game ducked to 15%)
-       - Act 2 (middle climax): Narrator 100% SILENT (game/streamer at 100%)
-       - Act 3 (final ~3.5s): Outro Punchline VO (game ducked to 18%)
+    Renders each chosen GTA 6 segment to 1080x1920 @ 30fps with dynamic creator
+    credit + rank badge, then concatenates all segments into 'stitched_video.mp4'.
+    Returns (stitched_path, timeline_segments_with_offsets).
     """
-    durs = [get_media_duration(p) for p in seg_files]
-    if len(seg_files) == 1:
-        shutil.copyfile(next(iter(seg_files)), "timeline_raw.mp4")
-    else:
-        min_seg_dur = min(durs)
-        safe_xfade = round(min(0.35, max(0.15, min_seg_dur * 0.25)), 2)
+    font_bold = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+    segments = short_plan["segments"]
+    is_multi = len(segments) > 1
 
-        inputs = []
-        for p in seg_files:
-            inputs.extend(["-i", p])
+    rendered_files = []
+    timeline_meta = []
+    cursor_sec = 0.0
 
-        v_chain = ""
-        a_chain = ""
-        curr_v = "[0:v]"
-        curr_a = "[0:a]"
-        running_offset = 0.0
+    for idx, seg in enumerate(segments):
+        seg_out = f"seg_render_{idx}.mp4"
+        if os.path.exists(seg_out):
+            os.remove(seg_out)
 
-        for idx in range(1, len(seg_files)):
-            running_offset += durs[idx - 1] - safe_xfade
-            next_v = f"[v{idx}]"
-            next_a = f"[a{idx}]"
-            trans_type = "wipeleft" if idx == 1 else "smoothleft"
-            v_chain += (
-                f"{curr_v}[{idx}:v]xfade=transition={trans_type}:"
-                f"duration={safe_xfade:.2f}:offset={running_offset:.2f}{next_v};"
+        start_s = float(seg["start_sec"])
+        dur_s = float(seg["duration"])
+        creator_label = _escape_drawtext(f"Credit: {seg['channel_name']}")
+        wm_label = _escape_drawtext(CHANNEL_CONFIG["watermark_text"])
+        rank_num = int(seg["rank"])
+
+        cam_box = detect_verified_webcam_box(seg["video_path"], start_s, start_s + dur_s)
+
+        if cam_box is not None:
+            bx, by, bw, bh = cam_box
+            layout_mode = "SPLITCAM_FACE"
+            base_graph = (
+                f"[0:v]split=2[v_game][v_cam];"
+                f"[v_cam]crop={bw}:{bh}:{bx}:{by},scale=1080:614:force_original_aspect_ratio=increase,crop=1080:614[top_cam];"
+                f"[v_game]scale=1080:1306:force_original_aspect_ratio=increase,crop=1080:1306[bot_game];"
+                f"[top_cam][bot_game]vstack=inputs=2,"
+                f"drawbox=x=0:y=611:w=1080:h=6:color=#00E5FF@0.90:t=fill[canvas]"
             )
-            a_chain += f"{curr_a}[{idx}:a]acrossfade=d={safe_xfade:.2f}{next_a};"
-            curr_v = next_v
-            curr_a = next_a
+        else:
+            layout_mode = "CINEMA_BLUR"
+            base_graph = (
+                f"[0:v]split=2[v_bg][v_fg];"
+                f"[v_bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=24:6,eq=brightness=-0.16[bg];"
+                f"[v_fg]scale=1080:608:force_original_aspect_ratio=decrease[fg];"
+                f"[bg][fg]overlay=(W-w)/2:(H-h)/2,"
+                f"drawbox=x=0:y=650:w=1080:h=5:color=#00E5FF@0.90:t=fill,"
+                f"drawbox=x=0:y=1265:w=1080:h=5:color=#FF2A85@0.90:t=fill[canvas]"
+            )
 
-        filter_complex = f"{v_chain}{a_chain}".rstrip(";")
-        run_cmd_safe(
-            [
-                "ffmpeg", "-y", *inputs,
-                "-filter_complex", filter_complex,
-                "-map", curr_v, "-map", curr_a,
-                "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-                "-c:a", "aac", "-ar", "48000", "-ac", "2",
-                "timeline_raw.mp4",
-            ],
-            label="XfadeMerge",
-            timeout_sec=150,
+        # Top watermark + dynamic per-clip creator credit
+        text_chain = (
+            f"[canvas]drawtext=fontfile={font_bold}:text='{wm_label}':"
+            f"fontsize=26:fontcolor=white@0.88:x=(w-text_w)/2:y=56:"
+            f"shadowcolor=black@0.85:shadowx=2:shadowy=2,"
+            f"drawtext=fontfile={font_bold}:text='{creator_label}':"
+            f"fontsize=25:fontcolor=#FFD54F@0.95:x=(w-text_w)/2:y=94:"
+            f"shadowcolor=black@0.90:shadowx=2:shadowy=2"
         )
 
-    total_dur = get_media_duration("timeline_raw.mp4")
-    if not CHANNEL_CONFIG["enable_ai_voiceover"]:
-        os.replace("timeline_raw.mp4", merged_out_path)
-        return total_dur
+        # Add rank badge (#5 -> #1) when compiling 2-5 clips
+        if is_multi:
+            badge_color = "#FF1744" if rank_num == 1 else "#00E5FF"
+            text_chain += (
+                f",drawbox=x=42:y=146:w=118:h=58:color={badge_color}@0.92:t=fill,"
+                f"drawtext=fontfile={font_bold}:text='#{rank_num}':"
+                f"fontsize=36:fontcolor=white:x=68:y=158:"
+                f"shadowcolor=black@0.85:shadowx=2:shadowy=2"
+            )
 
-    intro_dur = generate_clean_tts_clip(script_bundle.get("intro_vo", ""), "vo_act1.wav")
-    outro_dur = generate_clean_tts_clip(script_bundle.get("outro_vo", ""), "vo_act3.wav")
+        text_chain += "[vout]"
+        full_fc = f"{base_graph};{text_chain}"
 
-    # Ensure Act 2 climax always gets at least 55% of the video in 100% raw silence
-    if intro_dur > 0 and outro_dur > 0 and total_dur > (intro_dur + outro_dur + 5.0):
-        outro_start = max(intro_dur + 4.5, total_dur - outro_dur - 0.35)
-        outro_delay_ms = int(outro_start * 1000)
-        duck_expr = (
-            f"if(lt(t,{intro_dur + 0.30:.2f}),0.15,"
-            f"if(between(t,{outro_start:.2f},{outro_start + outro_dur + 0.30:.2f}),0.18,1.0))"
-        )
         run_cmd_safe(
             [
                 "ffmpeg", "-y",
-                "-i", "timeline_raw.mp4", "-i", "vo_act1.wav", "-i", "vo_act3.wav",
-                "-filter_complex",
-                f"[0:a]volume='{duck_expr}':eval=frame[ga];"
-                "[1:a]aresample=48000,aformat=channel_layouts=stereo,volume=1.35[v1];"
-                f"[2:a]aresample=48000,aformat=channel_layouts=stereo,adelay={outro_delay_ms}|{outro_delay_ms},volume=1.35[v3];"
-                "[ga][v1][v3]amix=inputs=3:duration=first:normalize=0[aout]",
-                "-map", "0:v", "-map", "[aout]",
-                "-c:v", "copy", "-c:a", "aac", "-ar", "48000", "-ac", "2",
-                merged_out_path,
+                "-ss", f"{start_s:.2f}", "-t", f"{dur_s:.2f}",
+                "-i", seg["video_path"],
+                "-filter_complex", full_fc,
+                "-map", "[vout]", "-map", "0:a?",
+                "-r", "30",
+                "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+                "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-ac", "2",
+                seg_out,
             ],
-            label="3ActAudioMix",
-            timeout_sec=90,
+            label=f"RenderSeg_{idx}",
+            timeout_sec=140,
         )
-        print(
-            f"[3-Act Audio] Intro 0.0-{intro_dur:.1f}s | SILENT CLIMAX {intro_dur:.1f}-{outro_start:.1f}s | Outro {outro_start:.1f}-{total_dur:.1f}s",
-            flush=True,
-        )
-    elif intro_dur > 0:
-        duck_expr = f"if(lt(t,{intro_dur + 0.30:.2f}),0.15,1.0)"
+
+        actual_d = get_media_duration(seg_out)
+        rendered_files.append(seg_out)
+        timeline_meta.append({
+            **seg,
+            "offset_start": round(cursor_sec, 3),
+            "offset_end": round(cursor_sec + actual_d, 3),
+            "rendered_dur": round(actual_d, 3),
+        })
+        cursor_sec += actual_d
+        print(f"[Segment #{rank_num}] Rendered {seg['channel_name']} ({layout_mode}, {actual_d:.1f}s)", flush=True)
+
+    stitched_out = "stitched_video.mp4"
+    if os.path.exists(stitched_out):
+        os.remove(stitched_out)
+
+    if len(rendered_files) == 1:
+        shutil.copy2(rendered_files[0], stitched_out)
+    else:
+        concat_txt = "concat_list.txt"
+        with open(concat_txt, "w", encoding="utf-8") as cf:
+            for rf in rendered_files:
+                cf.write(f"file '{os.path.abspath(rf)}'\n")
         run_cmd_safe(
             [
-                "ffmpeg", "-y", "-i", "timeline_raw.mp4", "-i", "vo_act1.wav",
-                "-filter_complex",
-                f"[0:a]volume='{duck_expr}':eval=frame[ga];"
-                "[1:a]aresample=48000,aformat=channel_layouts=stereo,volume=1.35[v1];"
-                "[ga][v1]amix=inputs=2:duration=first:normalize=0[aout]",
-                "-map", "0:v", "-map", "[aout]",
-                "-c:v", "copy", "-c:a", "aac", "-ar", "48000", "-ac", "2",
-                merged_out_path,
+                "ffmpeg", "-y", "-f", "concat", "-safe", "0",
+                "-i", concat_txt, "-c", "copy", stitched_out,
             ],
-            label="IntroOnlyAudioMix",
+            label="ConcatSegments",
             timeout_sec=90,
         )
+
+    return stitched_out, timeline_meta
+
+# ==============================================================================
+# PART 22 OF 30: ZERO-FILE SYNTHESIZED SUB-BASS COUNTDOWN SFX GENERATOR
+# Subheading: Generates Punchy Transition Impact Drops via FFmpeg Audio Math
+# Code Title: generate_countdown_impact_sfx
+# ==============================================================================
+def generate_countdown_impact_sfx(out_wav="impact_drop.wav"):
+    """Synthesizes a clean 0.42s sub-bass impact drop using FFmpeg aevalsrc."""
+    if os.path.exists(out_wav):
+        os.remove(out_wav)
+    expr = "0.75*sin(2*PI*(95*t - 55*t*t))*exp(-7.5*t)"
+    run_cmd_safe(
+        [
+            "ffmpeg", "-y", "-f", "lavfi",
+            "-i", f"aevalsrc='{expr}':s=44100:d=0.42",
+            "-af", "afade=t=in:st=0:d=0.015,afade=t=out:st=0.22:d=0.20",
+            out_wav,
+        ],
+        label="SynthImpactSFX",
+        timeout_sec=25,
+    )
+    return out_wav
+
+# ==============================================================================
+# PART 23 OF 30: NEURAL ENGLISH VOICEOVER SYNTHESIZER
+# Subheading: Synthesizes Crisp Act 1 Intro & Act 3 Outro Voice Tracks
+# Code Title: synthesize_voiceover_mp3
+# ==============================================================================
+async def _edge_tts_save(text, voice, out_path):
+    comm = edge_tts.Communicate(text, voice=voice, rate="+8%")
+    await comm.save(out_path)
+
+
+def synthesize_voiceover_mp3(text, out_path):
+    """Generates clean neural English speech MP3 and returns its duration in seconds."""
+    if os.path.exists(out_path):
+        os.remove(out_path)
+    clean_txt = re.sub(r"[^\w\s.,!?'-]", "", str(text or "")).strip()
+    if not clean_txt:
+        return 0.0
+
+    try:
+        asyncio.run(_edge_tts_save(clean_txt, CHANNEL_CONFIG["voice_name"], out_path))
+        dur = get_media_duration(out_path)
+        if dur > 0.4:
+            return dur
+    except Exception:
+        pass
+
+    try:
+        tts = gTTS(text=clean_txt, lang="en", slow=False)
+        tts.save(out_path)
+        return get_media_duration(out_path)
+    except Exception:
+        return 0.0
+
+# ==============================================================================
+# PART 24 OF 30: 3-ACT AUDIO TIMELINE MIXER & COPYRIGHT AUDIO SHIELD
+# Subheading: Silent Narrator During Climaxes + Impact SFX + Loudness Normalization
+# Code Title: mix_three_act_audio_master
+# ==============================================================================
+def mix_three_act_audio_master(stitched_video, timeline_meta, script_data):
+    """
+    Builds the 3-Act audio master:
+    - Act 1 (0.0s -> ~3.4s): Intro hook voiceover (game audio gently ducked)
+    - Act 2 (Middle climaxes): Narrator 100% SILENT so streamer reactions shine;
+      sub-bass impact drops fire at each rank transition (#5 -> #1)
+    - Act 3 (Final ~3.3s): Outro punchline voiceover
+    """
+    total_dur = get_media_duration(stitched_video)
+    mixed_out = "audio_mixed_video.mp4"
+    if os.path.exists(mixed_out):
+        os.remove(mixed_out)
+
+    intro_mp3 = "vo_intro.mp3"
+    outro_mp3 = "vo_outro.mp3"
+    intro_dur = synthesize_voiceover_mp3(script_data.get("intro_vo", ""), intro_mp3) if CHANNEL_CONFIG["enable_ai_voiceover"] else 0.0
+    outro_dur = synthesize_voiceover_mp3(script_data.get("outro_vo", ""), outro_mp3) if CHANNEL_CONFIG["enable_ai_voiceover"] else 0.0
+
+    has_intro = intro_dur > 0.4 and os.path.exists(intro_mp3)
+    has_outro = outro_dur > 0.4 and os.path.exists(outro_mp3) and total_dur > (intro_dur + outro_dur + 4.0)
+    outro_start = max(intro_dur + 2.0, total_dur - outro_dur - 0.15) if has_outro else total_dur
+
+    # Collect transition timestamps for multi-clip countdown impact drops
+    transition_times = [
+        round(seg["offset_start"], 3)
+        for seg in timeline_meta[1:]
+        if seg["offset_start"] > 1.0
+    ]
+    has_sfx = len(transition_times) > 0
+    sfx_wav = generate_countdown_impact_sfx() if has_sfx else None
+
+    cmd = ["ffmpeg", "-y", "-i", stitched_video]
+    in_idx = 1
+    intro_idx = outro_idx = sfx_idx = None
+
+    if has_intro:
+        cmd.extend(["-i", intro_mp3])
+        intro_idx = in_idx
+        in_idx += 1
+    if has_outro:
+        cmd.extend(["-i", outro_mp3])
+        outro_idx = in_idx
+        in_idx += 1
+    if has_sfx and sfx_wav and os.path.exists(sfx_wav):
+        cmd.extend(["-i", sfx_wav])
+        sfx_idx = in_idx
+        in_idx += 1
+
+    # Duck game audio only during Act 1 intro and Act 3 outro; 100% full volume in Act 2
+    duck_conds = []
+    if has_intro:
+        duck_conds.append(f"between(t,0,{intro_dur + 0.15:.2f})")
+    if has_outro:
+        duck_conds.append(f"between(t,{outro_start:.2f},{total_dur:.2f})")
+
+    if duck_conds:
+        expr = "+".join(duck_conds)
+        game_filter = f"[0:a]highpass=f=45,volume='if(gt({expr},0),0.32,1.0)':eval=frame[agame]"
     else:
-        os.replace("timeline_raw.mp4", merged_out_path)
+        game_filter = "[0:a]highpass=f=45,volume=1.0[agame]"
 
-    return total_dur
+    filter_parts = [game_filter]
+    mix_inputs = ["[agame]"]
+
+    if has_intro:
+        filter_parts.append(f"[{intro_idx}:a]adelay=0|0,volume=1.25[aintro]")
+        mix_inputs.append("[aintro]")
+
+    if has_outro:
+        delay_ms = int(round(outro_start * 1000))
+        filter_parts.append(f"[{outro_idx}:a]adelay={delay_ms}|{delay_ms},volume=1.25[aoutro]")
+        mix_inputs.append("[aoutro]")
+
+    if sfx_idx is not None:
+        splits = "".join(f"[sfx{i}]" for i in range(len(transition_times)))
+        filter_parts.append(f"[{sfx_idx}:a]asplit={len(transition_times)}{splits}")
+        for i, t_sec in enumerate(transition_times):
+            t_ms = max(0, int(round((t_sec - 0.12) * 1000)))
+            filter_parts.append(f"[sfx{i}]adelay={t_ms}|{t_ms},volume=0.85[sfxd{i}]")
+            mix_inputs.append(f"[sfxd{i}]")
+
+    if len(mix_inputs) == 1:
+        filter_parts.append("[agame]loudnorm=I=-14:TP=-1.5:LRA=11[aout]")
+    else:
+        joined = "".join(mix_inputs)
+        filter_parts.append(
+            f"{joined}amix=inputs={len(mix_inputs)}:duration=first:dropout_transition=0:normalize=0,"
+            f"loudnorm=I=-14:TP=-1.5:LRA=11[aout]"
+        )
+
+    run_cmd_safe(
+        cmd + [
+            "-filter_complex", ";".join(filter_parts),
+            "-map", "0:v", "-map", "[aout]",
+            "-c:v", "copy",
+            "-c:a", "aac", "-b:a", "192k", "-ar", "44100",
+            mixed_out,
+        ],
+        label="ThreeActAudioMix",
+        timeout_sec=110,
+    )
+
+    print(
+        f"[3-Act Audio] Intro 0.0-{intro_dur:.1f}s | SILENT CLIMAX {intro_dur:.1f}-{outro_start:.1f}s | "
+        f"Outro {outro_start:.1f}-{total_dur:.1f}s | Transition SFX={len(transition_times)}",
+        flush=True,
+    )
+    return mixed_out, round(intro_dur, 2), round(outro_start, 2)
 
 # ==============================================================================
-# PART 20 OF 25: DYNAMIC ENGLISH SUBTITLES (ASS POP-IN) & HOOK BANNER BURNER
-# Title: Synced English Caption Generator & Neon Progress Bar Overlay
-# Subtitle: Guarantees 100% English subtitles regardless of streamer language
+# PART 25 OF 30: TOP HOOK BANNER & SYNCED ENGLISH ASS SUBTITLE BURNER
+# Subheading: Burns Clean Top Hook Banner & Word-Synced English Captions
+# Code Title: burn_banner_and_english_captions
 # ==============================================================================
-def _format_ass_time(sec):
-    cs = max(0, int(round(sec * 100)))
-    hrs = cs // 360000
-    mins = (cs % 360000) // 6000
-    secs = (cs % 6000) // 100
-    rem = cs % 100
-    return f"{hrs}:{mins:02d}:{secs:02d}.{rem:02d}"
+def _fmt_ass_time(sec):
+    s = max(0.0, float(sec))
+    h = int(s // 3600)
+    m = int((s % 3600) // 60)
+    rem = s % 60
+    return f"{h}:{m:02d}:{rem:05.2f}"
 
 
-def burn_hook_banner_and_english_captions(merged_path, banner_text, final_short_path):
+def _chunk_words_to_events(text_or_words, start_offset, max_dur, is_word_list=False):
+    """Groups words into crisp 3-word caption chunks with exact start/end timestamps."""
+    events = []
+    if is_word_list:
+        buf = []
+        for w in text_or_words:
+            buf.append(w)
+            if len(buf) >= 3:
+                t0 = start_offset + float(buf[0]["start"])
+                t1 = start_offset + max(float(buf[-1]["end"]), float(buf[0]["start"]) + 0.35)
+                phrase = " ".join(x["word"] for x in buf).upper()
+                events.append((t0, t1, phrase))
+                buf = []
+        if buf:
+            t0 = start_offset + float(buf[0]["start"])
+            t1 = start_offset + max(float(buf[-1]["end"]), float(buf[0]["start"]) + 0.35)
+            phrase = " ".join(x["word"] for x in buf).upper()
+            events.append((t0, t1, phrase))
+        return events
+
+    words = [w.strip() for w in str(text_or_words or "").split() if w.strip()]
+    if not words or max_dur <= 0.3:
+        return events
+    chunks = [" ".join(words[i : i + 3]).upper() for i in range(0, len(words), 3)]
+    step = max_dur / len(chunks)
+    for idx, ch in enumerate(chunks):
+        events.append((start_offset + idx * step, start_offset + (idx + 1) * step, ch))
+    return events
+
+
+def burn_banner_and_english_captions(audio_mixed_video, timeline_meta, script_data, intro_dur, outro_start):
     """
-    1) Transcribes & translates final merged track to English for exact timing
-    2) Writes Vice City styled .ass pop-in subtitles (yellow highlight + black outline)
-    3) Burns top ALL-CAPS Hook Banner + bottom retention progress bar
+    Burns the top hook banner + bold yellow/white English captions onto the Short
+    and outputs 'final_short_<timestamp>.mp4'.
     """
-    _, word_events = transcribe_clip_to_english(merged_path)
-    total_dur = max(1.0, get_media_duration(merged_path))
+    total_dur = get_media_duration(audio_mixed_video)
+    ass_path = "captions_master.ass"
+    if os.path.exists(ass_path):
+        os.remove(ass_path)
 
-    ass_path = "captions_en.ass"
+    caption_events = []
+    # Act 1 exact English hook captions
+    if intro_dur > 0.4:
+        caption_events.extend(_chunk_words_to_events(script_data.get("intro_vo", ""), 0.05, intro_dur - 0.1))
+
+    # Act 2 translated English captions from each streamer's climax window
+    for seg in timeline_meta:
+        seg_off = float(seg["offset_start"])
+        seg_end = float(seg["offset_end"])
+        w_events = seg.get("word_events") or []
+        for (t0, t1, phrase) in _chunk_words_to_events(w_events, seg_off, seg_end - seg_off, is_word_list=True):
+            # Keep middle captions clear of Act 1 intro and Act 3 outro voiceovers
+            if t0 >= (intro_dur + 0.15) and t1 <= (outro_start - 0.15):
+                caption_events.append((t0, t1, phrase))
+
+    # Act 3 exact English outro captions
+    if outro_start < total_dur - 0.4:
+        caption_events.extend(
+            _chunk_words_to_events(script_data.get("outro_vo", ""), outro_start, total_dur - outro_start - 0.1)
+        )
+
     ass_header = (
         "[Script Info]\n"
         "ScriptType: v4.00+\n"
@@ -1514,98 +1635,88 @@ def burn_hook_banner_and_english_captions(merged_path, banner_text, final_short_
         "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, "
         "Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, "
         "Alignment, MarginL, MarginR, MarginV, Encoding\n"
-        "Style: Default,DejaVu Sans,58,&H0000FFFF,&H00FFFFFF,&H00000000,&H96000000,"
-        "-1,0,0,0,100,100,0,0,1,4,2,2,60,60,310,1\n\n"
+        "Style: ViralCap,DejaVu Sans,54,&H0018E5FF,&H00FFFFFF,&H00000000,&H80000000,"
+        "-1,0,0,0,100,100,1,0,1,4,2,2,65,65,330,1\n\n"
         "[Events]\n"
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
     )
 
-    dialogue_lines = []
-    for (st, en, raw_line) in word_events:
-        words = raw_line.upper().split()
-        if not words:
-            continue
-        # Chunk into punchy 3-4 word bursts for high retention
-        chunk_size = 4
-        chunks = [words[i : i + chunk_size] for i in range(0, len(words), chunk_size)]
-        span = max(0.25, (en - st) / len(chunks))
-        for c_idx, chunk_words in enumerate(chunks):
-            c_start = st + (c_idx * span)
-            c_end = min(en, c_start + span)
-            if (c_end - c_start) < 0.12:
-                continue
-            phrase = " ".join(chunk_words).replace("{", "").replace("}", "")
-            dialogue_lines.append(
-                f"Dialogue: 0,{_format_ass_time(c_start)},{_format_ass_time(c_end)},Default,,0,0,0,,"
-                f"{{\\fscx92\\fscy92\\t(0,80,\\fscx104\\fscy104)\\t(80,150,\\fscx100\\fscy100)}}{phrase}"
-            )
+    lines = [ass_header]
+    for (t0, t1, txt) in caption_events:
+        clean_ass_txt = txt.replace("{", "").replace("}", "").replace("\n", " ")
+        lines.append(f"Dialogue: 0,{_fmt_ass_time(t0)},{_fmt_ass_time(t1)},ViralCap,,0,0,0,,{clean_ass_txt}\n")
 
-    with open(ass_path, "w", encoding="utf-8") as f:
-        f.write(ass_header + "\n".join(dialogue_lines) + "\n")
+    with open(ass_path, "w", encoding="utf-8") as af:
+        af.writelines(lines)
 
-    safe_banner = _escape_drawtext(banner_text.upper()[:26])
-    vf_final = (
-        f"ass={ass_path},"
-        f"drawbox=x=120:y=248:w=840:h=76:color=black@0.82:t=fill,"
-        f"drawbox=x=120:y=248:w=840:h=4:color=#ffe600@0.95:t=fill,"
-        f"drawbox=x=120:y=320:w=840:h=4:color=#ffe600@0.95:t=fill,"
-        f"drawtext=text='{safe_banner}':fontcolor=#ffe600:fontsize=40:"
-        f"x=(w-text_w)/2:y=267,"
-        f"drawbox=x=0:y=1906:w='iw*(t/{total_dur:.2f})':h=14:color=#ff00cc@0.95:t=fill"
+    banner_txt = _escape_drawtext(str(script_data.get("banner", "VICE CITY CHAOS")).upper()[:34])
+    font_bold = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+
+    vf_chain = (
+        f"drawbox=x=95:y=222:w=890:h=84:color=#0B0E17@0.88:t=fill,"
+        f"drawbox=x=95:y=222:w=890:h=4:color=#FFD54F@0.95:t=fill,"
+        f"drawbox=x=95:y=302:w=890:h=4:color=#FFD54F@0.95:t=fill,"
+        f"drawtext=fontfile={font_bold}:text='{banner_txt}':"
+        f"fontsize=38:fontcolor=#FFD54F:x=(w-text_w)/2:y=246:"
+        f"shadowcolor=black@0.9:shadowx=2:shadowy=2,"
+        f"subtitles={ass_path}"
     )
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    final_mp4 = f"final_short_{stamp}.mp4"
 
     run_cmd_safe(
         [
-            "ffmpeg", "-y", "-i", merged_path,
-            "-vf", vf_final,
-            "-c:v", "libx264", "-preset", "veryfast", "-crf", "19",
+            "ffmpeg", "-y", "-i", audio_mixed_video,
+            "-vf", vf_chain,
+            "-c:v", "libx264", "-preset", "medium", "-crf", "19",
             "-c:a", "copy",
-            final_short_path,
+            final_mp4,
         ],
-        label="BurnCaptionsAndBanner",
-        timeout_sec=120,
+        label="BurnBannerAndSubs",
+        timeout_sec=160,
     )
-    print(f"[Final Render] Saved {final_short_path} ({total_dur:.1f}s)", flush=True)
+    print(f"[Final Render] Created '{final_mp4}' ({get_media_duration(final_mp4):.1f}s)", flush=True)
+    return final_mp4
 
 # ==============================================================================
-# PART 21 OF 25: HIGH-CONTRAST CLIMAX THUMBNAIL GENERATOR
-# Title: Peak-Action Frame Extractor for Custom YouTube Shorts Cover
-# Subtitle: Captures a sharp, vibrant JPEG from the #1 climax segment
+# PART 26 OF 30: CUSTOM 1080X1920 THUMBNAIL FRAME EXTRACTOR
+# Subheading: Extracts High-Impact Cover Image From the #1 Climax Finale
+# Code Title: extract_short_thumbnail
 # ==============================================================================
-def generate_short_thumbnail(final_short_path, thumb_out_path):
-    """Extracts a sharp, high-contrast frame near the #1 climax of the rendered Short."""
-    dur = get_media_duration(final_short_path)
-    grab_ts = max(1.0, dur - 4.2)
+def extract_short_thumbnail(final_mp4):
+    """Extracts a sharp 1080x1920 JPEG thumbnail from the #1 climax finale."""
+    total_dur = get_media_duration(final_mp4)
+    grab_ts = max(1.0, total_dur * 0.82)
+    thumb_jpg = final_mp4.replace(".mp4", "_thumb.jpg")
     try:
         run_cmd_safe(
             [
-                "ffmpeg", "-y", "-ss", f"{grab_ts:.2f}", "-i", final_short_path,
-                "-vframes", "1",
-                "-vf", "eq=contrast=1.10:saturation=1.18,unsharp=5:5:0.9",
-                "-q:v", "2",
-                thumb_out_path,
+                "ffmpeg", "-y", "-ss", f"{grab_ts:.2f}",
+                "-i", final_mp4, "-vframes", "1", "-q:v", "2",
+                thumb_jpg,
             ],
-            label="MakeThumb",
-            timeout_sec=30,
+            label="ExtractThumb",
+            timeout_sec=25,
         )
-        return os.path.exists(thumb_out_path)
+        if os.path.exists(thumb_jpg):
+            return thumb_jpg
     except Exception as e:
         print(f"[Thumbnail Warning] {e}", flush=True)
-        return False
+    return None
 
 # ==============================================================================
-# PART 22 OF 25: YOUTUBE DATA API V3 CLIENT & SINGLE-SLOT UPLOADER
-# Title: OAuth Token Refresher & Privacy/Schedule-Controlled Video Publisher
-# Subtitle: Respects upload_to_youtube, youtube_privacy & enable_scheduling strictly
+# PART 27 OF 30: YOUTUBE OAUTH & SCHEDULED UPLOADER
+# Subheading: Schedules Short for Upcoming 6h Slot, Sets Thumbnail & Posts Credits
+# Code Title: upload_or_schedule_short_to_youtube
 # ==============================================================================
-def get_youtube_service():
-    """Authenticates YouTube Data API v3 from YOUTUBE_TOKEN_JSON secret."""
+def _get_youtube_service():
     raw_token = os.environ.get("YOUTUBE_TOKEN_JSON", "").strip()
     if not raw_token:
-        raise RuntimeError("YOUTUBE_TOKEN_JSON secret is missing.")
-    token_info = json.loads(raw_token)
+        raise RuntimeError("Missing YOUTUBE_TOKEN_JSON secret.")
+    token_dict = json.loads(raw_token)
     creds = Credentials.from_authorized_user_info(
-        token_info,
+        token_dict,
         scopes=[
             "https://googleapis.com",
             "https://googleapis.com",
@@ -1616,112 +1727,160 @@ def get_youtube_service():
     return build("youtube", "v3", credentials=creds)
 
 
-def upload_short_to_youtube(youtube, video_path, thumb_path, script_bundle, publish_at_iso=None):
+def upload_or_schedule_short_to_youtube(final_mp4, thumb_jpg, script_data, timeline_meta, slot_iso=None):
     """
-    Uploads 1 Short with:
-    - Scene-grounded English title + #Shorts tag
-    - Creator credits in description
-    - Exact privacyStatus ('public' | 'private' | 'unlisted') or scheduled publishAt
+    Uploads final_mp4 to @Vice-City_ClipsVault:
+    - If slot_iso is provided, schedules it as private with publishAt=slot_iso.
+    - Otherwise uses CHANNEL_CONFIG['youtube_privacy'].
     """
-    title = script_bundle["title"][:95]
-    if "#shorts" not in title.lower():
-        title = f"{title} #Shorts"[:100]
+    if not CHANNEL_CONFIG["upload_to_youtube"]:
+        print(
+            f"[Test Mode] upload_to_youtube=False -> Saved '{final_mp4}' locally for artifact preview.",
+            flush=True,
+        )
+        return None
 
-    creators_txt = ", ".join(script_bundle.get("creators", []))
+    youtube = _get_youtube_service()
+    raw_title = str(script_data.get("title", "Wildest GTA 6 Moments 🔥")).strip()
+    if "#shorts" not in raw_title.lower():
+        raw_title = f"{raw_title} #Shorts"
+    final_title = raw_title[:98]
+
+    credit_lines = [
+        f"• #{seg['rank']} Featured Creator: {seg['channel_name']} ({seg['source_title']})"
+        for seg in reversed(timeline_meta)
+    ]
     description = (
-        f"{script_bundle['title']}\n\n"
-        f"Featured Creators: {creators_txt}\n"
-        f"Game: {CHANNEL_CONFIG['game_title']}\n"
-        f"Subscribe to {CHANNEL_CONFIG['channel_handle']} for daily Vice City & GTA 6 highlights!\n\n"
-        f"#GTA6 #GrandTheftAuto6 #ViceCity #GTA6Clips #Shorts"
+        f"{script_data.get('intro_vo', '')}\n\n"
+        f"🎮 Game: {CHANNEL_CONFIG['game_title']} (Vice City / Leonida)\n"
+        f"🎬 Curated & Edited by {CHANNEL_CONFIG['channel_handle']}\n\n"
+        f"Featured Official Creators:\n" + "\n".join(credit_lines) + "\n\n"
+        f"#GTA6 #GrandTheftAuto6 #ViceCity #GTAVI #Shorts"
     )
 
-    do_schedule = bool(CHANNEL_CONFIG["enable_scheduling"]) and bool(publish_at_iso)
-    status_body = {
-        "selfDeclaredMadeForKids": False,
-        "containsSyntheticMedia": bool(CHANNEL_CONFIG["enable_ai_voiceover"]),
-    }
-    if do_schedule:
-        # YouTube requires privacyStatus='private' alongside publishAt; auto-publishes at publishAt
+    status_body = {"selfDeclaredMadeForKids": False}
+    if slot_iso and CHANNEL_CONFIG["enable_scheduling"]:
         status_body["privacyStatus"] = "private"
-        status_body["publishAt"] = publish_at_iso
+        status_body["publishAt"] = slot_iso
     else:
         status_body["privacyStatus"] = CHANNEL_CONFIG["youtube_privacy"]
 
     body = {
         "snippet": {
-            "title": title,
+            "title": final_title,
             "description": description,
-            "tags": script_bundle.get("tags", ["GTA 6", "Vice City", "Shorts"]),
+            "tags": script_data.get("tags", ["GTA 6", "Vice City", "Shorts"]),
             "categoryId": "20",  # Gaming
-            "defaultLanguage": "en",
-            "defaultAudioLanguage": "en",
         },
         "status": status_body,
     }
 
-    media = MediaFileUpload(video_path, mimetype="video/mp4", chunksize=-1, resumable=True)
-    request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
-
+    media = MediaFileUpload(final_mp4, mimetype="video/mp4", chunksize=-1, resumable=True)
+    req = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
     response = None
     while response is None:
-        _, response = request.next_chunk()
+        _, response = req.next_chunk()
 
-    video_id = response.get("id")
-    if video_id and thumb_path and os.path.exists(thumb_path):
+    video_id = response["id"]
+    mode_desc = f"SCHEDULED for {slot_iso}" if slot_iso else f"PUBLISHED ({status_body['privacyStatus']})"
+    print(f"[YouTube Upload] {mode_desc} -> https://youtu.be{video_id}", flush=True)
+
+    if thumb_jpg and os.path.exists(thumb_jpg):
         try:
             youtube.thumbnails().set(
                 videoId=video_id,
-                media_body=MediaFileUpload(thumb_path, mimetype="image/jpeg"),
+                media_body=MediaFileUpload(thumb_jpg, mimetype="image/jpeg"),
             ).execute()
         except Exception as e:
-            print(f"[Thumb Upload Info] Custom thumbnail skipped: {e}", flush=True)
+            print(f"[Thumbnail Upload Note] {e}", flush=True)
 
-    mode_desc = f"SCHEDULED ({publish_at_iso})" if do_schedule else f"UPLOADED ({status_body['privacyStatus']})"
-    print(f"[YouTube Success] Video ID={video_id} | {mode_desc} | Title='{title}'", flush=True)
-    return video_id
-
-# ==============================================================================
-# PART 23 OF 25: ENGAGEMENT PINNED COMMENTER
-# Title: Post-Upload Community Question Commenter
-# Subtitle: Skips private drafts automatically; boosts comments on public/unlisted
-# ==============================================================================
-def post_first_engagement_comment(youtube, video_id, script_bundle):
-    """Posts an interactive English comment on public/unlisted uploads."""
-    if not video_id:
-        return
-    if not CHANNEL_CONFIG["enable_scheduling"] and CHANNEL_CONFIG["youtube_privacy"] == "private":
-        return
-
-    creators = script_bundle.get("creators", [])
-    top_creator = next(iter(reversed(creators)), "that clip")
-    comment_text = (
-        f"Rate {top_creator}'s Vice City moment from 1 to 10! "
-        f"Which creator should we feature next? 👇🔥"
-    )
     try:
+        creators_str = ", ".join(dict.fromkeys(seg["channel_name"] for seg in reversed(timeline_meta)))
+        comment_txt = (
+            f"Which Vice City moment was your #1? Drop your rating (1-10) below! 👇🔥\n"
+            f"Full credit to the original creators: {creators_str}"
+        )
         youtube.commentThreads().insert(
             part="snippet",
             body={
                 "snippet": {
                     "videoId": video_id,
-                    "topLevelComment": {"snippet": {"textOriginal": comment_text}},
+                    "topLevelComment": {"snippet": {"textOriginal": comment_txt}},
                 }
             },
         ).execute()
-        print(f"[Comment Posted] Added engagement question on {video_id}", flush=True)
-    except Exception as e:
-        print(f"[Comment Info] Skipped comment: {e}", flush=True)
+    except Exception:
+        pass
+
+    return video_id
 
 # ==============================================================================
-# PART 24 OF 25: TEMPORARY MEDIA & WORKSPACE CLEANUP
-# Title: Safe Artifact Preserver & Temp File Sweeper
-# Subtitle: Cleans intermediate clips while keeping final_short_*.mp4 & history.json
+# PART 28 OF 30: VAULT CLEANUP & USED-FINGERPRINT COMMITTER
+# Subheading: Marks Compiled Clips as Used, Purges Consumed MP4s & Logs Slot
+# Code Title: finalize_vault_and_history_after_compile
+# ==============================================================================
+def finalize_vault_and_history_after_compile(history_data, timeline_meta, script_data, yt_video_id, slot_iso):
+    """
+    Updates history.json after compilation:
+    - Adds fingerprints of all used segments to 'used_clips'
+    - Removes consumed clips from 'vault_queue' and deletes their files in clip_vault/
+    - Logs the scheduled slot & upload metadata
+    """
+    consumed_paths = set()
+    for seg in timeline_meta:
+        v_item = seg.get("vault_item") or {}
+        vid_id = v_item.get("video_id", "")
+        peak_s = float(v_item.get("origin_peak_sec", 0.0))
+        if vid_id:
+            fp = build_clip_fingerprint(vid_id, peak_s)
+            if fp not in history_data["used_clips"]:
+                history_data["used_clips"].append(fp)
+        vpath = v_item.get("vault_path", "")
+        if vpath:
+            consumed_paths.add(vpath)
+            if os.path.exists(vpath):
+                try:
+                    os.remove(vpath)
+                except Exception:
+                    pass
+
+    history_data["vault_queue"] = [
+        item for item in history_data.get("vault_queue", [])
+        if item.get("vault_path") not in consumed_paths
+    ]
+
+    if slot_iso and yt_video_id:
+        if slot_iso not in history_data["scheduled_slots"]:
+            history_data["scheduled_slots"].append(slot_iso)
+
+    history_data["uploads"].append({
+        "video_id": yt_video_id or "LOCAL_PREVIEW",
+        "title": script_data.get("title", ""),
+        "clip_count": len(timeline_meta),
+        "creators": [s["channel_name"] for s in reversed(timeline_meta)],
+        "scheduled_for": slot_iso,
+        "uploaded": bool(yt_video_id),
+        "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    })
+
+# ==============================================================================
+# PART 29 OF 30: TEMPORARY WORKSPACE CLEANER
+# Subheading: Purges Intermediate Files While Preserving clip_vault & Final Shorts
+# Code Title: cleanup_temp_workspace
 # ==============================================================================
 def cleanup_temp_workspace():
-    """Deletes intermediate clips/audio/subtitles while keeping final Shorts & thumbnails."""
-    prefixes = ("raw_", "clip_", "seg_", "timeline_", "merged_", "vo_", "tts_", "probe_", "gem_f_", "judge_f_")
-    exact_files = ("captions_en.ass",)
+    """Deletes temporary working files while keeping clip_vault/ and final_short_*.mp4."""
+    prefixes = ("raw_hm_", "raw_fresh_", "seg_render_", "probe_aud_", "whisper_win_", "gem_ctx_")
+    exact_files = (
+        "stitched_video.mp4",
+        "audio_mixed_video.mp4",
+        "vo_intro.mp3",
+        "vo_outro.mp3",
+        "impact_drop.wav",
+        "captions_master.ass",
+        "concat_list.txt",
+        "yt_cookies.txt",
+    )
     for fname in os.listdir("."):
         if fname.startswith(prefixes) or fname in exact_files:
             try:
@@ -1730,147 +1889,70 @@ def cleanup_temp_workspace():
                 pass
 
 # ==============================================================================
-# PART 25 OF 25: MASTER HOURLY ORCHESTRATOR (__MAIN__)
-# Title: End-to-End ViceCityClipsVault Automated Production Pipeline
-# Subtitle: YouTube-First Heatmap Harvest -> Local OpenCLIP Judge -> 3-Act Render
+# PART 30 OF 30: MASTER 2-STAGE PIPELINE ORCHESTRATOR
+# Subheading: Executes Stage 1 (Hourly Vault Harvest) & Stage 2 (T-1h Top-5 Compile)
+# Code Title: run_master_pipeline Entrypoint
 # ==============================================================================
-def run_hourly_pipeline():
-    start_wall = time.time()
-    print("============================================================", flush=True)
+def run_master_pipeline():
+    t_start = time.time()
     print(
-        f"[Boot] {CHANNEL_CONFIG['channel_name']} ({CHANNEL_CONFIG['channel_handle']}) | "
-        f"upload={CHANNEL_CONFIG['upload_to_youtube']} | "
-        f"privacy={CHANNEL_CONFIG['youtube_privacy']} | "
-        f"schedule={CHANNEL_CONFIG['enable_scheduling']}",
+        f"=== {CHANNEL_CONFIG['channel_name']} ({CHANNEL_CONFIG['channel_handle']}) | "
+        f"2-Stage Vault + T-1h Top-5 Pipeline ===",
         flush=True,
     )
-    print("============================================================", flush=True)
 
     history_data = load_history()
-    do_upload = bool(CHANNEL_CONFIG["upload_to_youtube"])
-    do_schedule = bool(CHANNEL_CONFIG["enable_scheduling"])
 
-    # 1) Quota & Single-Slot Gate (only enforced when uploading to YouTube)
-    next_slot_iso = None
-    if do_upload:
-        todays_count = count_todays_uploads(history_data)
-        if todays_count >= int(CHANNEL_CONFIG["max_daily_uploads"]):
-            print(
-                f"[Quota Guard] Daily upload cap reached ({todays_count}/{CHANNEL_CONFIG['max_daily_uploads']}). Exiting cleanly.",
-                flush=True,
-            )
-            return
-        if do_schedule:
-            next_slot_iso = get_next_single_peak_slot(history_data)
-            if not next_slot_iso:
-                print(
-                    "[Slot Guard] Next upcoming peak slot is already scheduled! Skipping until next slot opens.",
-                    flush=True,
+    try:
+        # ------------------------------------------------------------------
+        # STAGE 1: HOURLY VAULT HARVEST (Runs every hour to bank 26s gems)
+        # ------------------------------------------------------------------
+        discovered = discover_equal_weight_original_streams()
+        heatmap_peaks, fresh_vods = scan_heatmaps_in_parallel(discovered, history_data, max_inspect=60)
+
+        candidates = harvest_26s_climax_slices(heatmap_peaks, max_slices=8)
+        if len(candidates) < 3 and fresh_vods:
+            candidates.extend(harvest_fresh_official_vods(fresh_vods, max_samples=3))
+
+        if candidates:
+            winners = rate_gta6_candidates(candidates)
+            if winners:
+                bank_winners_into_vault(winners, history_data)
+        else:
+            print("[Stage 1] No new candidate slices extracted this hour.", flush=True)
+
+        # ------------------------------------------------------------------
+        # STAGE 2: T-MINUS 1 HOUR TOP-5 COMPILER & SCHEDULER
+        # ------------------------------------------------------------------
+        should_compile, slot_iso = check_compile_trigger_and_slot(history_data)
+        if should_compile:
+            short_plan = build_top5_plan_from_vault(history_data)
+            if short_plan:
+                script_data = generate_scene_grounded_script(short_plan, history_data)
+                stitched_mp4, timeline_meta = render_vertical_segments_and_concat(short_plan)
+                mixed_mp4, intro_dur, outro_start = mix_three_act_audio_master(
+                    stitched_mp4, timeline_meta, script_data
                 )
-                return
-            print(f"[Slot Guard] Target single upcoming slot: {next_slot_iso}", flush=True)
+                final_mp4 = burn_banner_and_english_captions(
+                    mixed_mp4, timeline_meta, script_data, intro_dur, outro_start
+                )
+                thumb_jpg = extract_short_thumbnail(final_mp4)
+                yt_vid_id = upload_or_schedule_short_to_youtube(
+                    final_mp4, thumb_jpg, script_data, timeline_meta, slot_iso=slot_iso
+                )
+                finalize_vault_and_history_after_compile(
+                    history_data, timeline_meta, script_data, yt_vid_id, slot_iso
+                )
+            else:
+                print("[Stage 2] Vault had 0 qualified clips ready—skipping slot cleanly.", flush=True)
 
-    # 2) Wide YouTube + Indian Creator Discovery -> Pre-Download Heatmap Check
-    discovered = discover_wide_youtube_videos()
-    heatmap_targets, no_heatmap_pool = inspect_videos_for_heatmap_peaks(
-        discovered, history_data, max_inspect=24
-    )
+        save_history(history_data)
+        elapsed = round(time.time() - t_start, 1)
+        print(f"[Complete] 2-Stage Pipeline finished cleanly in {elapsed}s.", flush=True)
 
-    # 3) Surgical 26s Climax Slices from Top Heatmap Peaks
-    candidates = download_surgical_heatmap_slices(heatmap_targets, max_slices=8)
-
-    # 4) If fewer than 4 heatmap slices found, sample Fresh / Live YouTube streams
-    if len(candidates) < 4 and no_heatmap_pool:
-        extra_yt = harvest_fresh_or_live_youtube(no_heatmap_pool, max_streams=3)
-        candidates.extend(extra_yt)
-
-    # 5) Last-Resort Twitch Fallback ONLY if YouTube yielded < 2 candidates
-    if len(candidates) < 2:
-        print("[Source Fallback] YouTube pool < 2; checking Twitch backup...", flush=True)
-        candidates.extend(harvest_backup_twitch_streams(max_streams=2))
-
-    if not candidates:
-        print("[Harvest Info] No valid GTA 6 candidates available this hour.", flush=True)
-        return
-
-    # 6) Unlimited Local OpenCLIP + OpenCV Visual Action Judge (0 API calls!)
-    scored_winners = score_candidates_with_local_vision(candidates)
-    short_plan = build_short_plan(scored_winners)
-    if not short_plan:
+    finally:
         cleanup_temp_workspace()
-        return
-
-    # 7) Scene-Grounded English Title & 3-Act Commentary (Gemini sees winning frames)
-    script_bundle = generate_scene_grounded_script(short_plan, history_data)
-
-    # 8) Render Formatted Segments (#3 -> #2 -> #1 or #1 Single)
-    segments = short_plan["segments"]
-    seg_files = []
-    for idx, seg in enumerate(segments):
-        seg_out = f"seg_{idx}_rank{seg['rank']}.mp4"
-        render_formatted_segment(seg, idx, len(segments), seg_out)
-        seg_files.append(seg_out)
-
-    # 9) Join Timeline + 3-Act Audio (Intro Hook -> Silent Climax -> Outro Punchline)
-    merged_path = "merged_3act.mp4"
-    assemble_timeline_with_3act_audio(seg_files, script_bundle, merged_path)
-
-    # 10) Burn Top Hook Banner + Synced English Subtitles
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    final_short_path = f"final_short_{stamp}.mp4"
-    thumb_path = f"thumb_{stamp}.jpg"
-    burn_hook_banner_and_english_captions(
-        merged_path, script_bundle["banner"], final_short_path
-    )
-    generate_short_thumbnail(final_short_path, thumb_path)
-
-    # 11) Upload / Schedule Single Video (ONLY if upload_to_youtube == True)
-    uploaded_vid_id = None
-    if do_upload:
-        yt_service = get_youtube_service()
-        uploaded_vid_id = upload_short_to_youtube(
-            yt_service,
-            final_short_path,
-            thumb_path,
-            script_bundle,
-            publish_at_iso=next_slot_iso,
-        )
-        post_first_engagement_comment(yt_service, uploaded_vid_id, script_bundle)
-        if do_schedule and next_slot_iso:
-            history_data["scheduled_slots"].append(next_slot_iso)
-    else:
-        print(
-            f"[Test Mode] upload_to_youtube=False -> Saved '{final_short_path}' locally for artifact preview.",
-            flush=True,
-        )
-
-    # 12) Record Used Fingerprints & Title in history.json
-    for seg in segments:
-        c = seg["candidate"]
-        fp = build_clip_fingerprint(c["video_id"], c["origin_peak_sec"])
-        if fp not in history_data["used_clips"]:
-            history_data["used_clips"].append(fp)
-
-    history_data["uploads"].append({
-        "video_id": uploaded_vid_id or f"local_{stamp}",
-        "title": script_bundle["title"],
-        "mode": short_plan["mode"],
-        "creators": script_bundle.get("creators", []),
-        "scheduled_for": next_slot_iso,
-        "uploaded": do_upload,
-        "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-    })
-    save_history(history_data)
-    cleanup_temp_workspace()
-
-    elapsed = round(time.time() - start_wall, 1)
-    print(f"[Complete] Pipeline finished cleanly in {elapsed}s!", flush=True)
 
 
 if __name__ == "__main__":
-    try:
-        run_hourly_pipeline()
-    except Exception as fatal_err:
-        print(f"[Fatal Error] {fatal_err}", flush=True)
-        cleanup_temp_workspace()
-        sys.exit(1)
+    run_master_pipeline()
