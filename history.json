@@ -529,7 +529,8 @@
   "last_weekly_recap_date": "",
   "used_clips": [
     "G8WvyTOigJM::0",
-    "bW4QndN-lzQ::1"
+    "bW4QndN-lzQ::1",
+    "zCg8_f4UGYE::0"
   ],
   "uploads": [
     {
@@ -553,6 +554,17 @@
       "scheduled_for": null,
       "uploaded": false,
       "created_at": "2026-11-21T10:58:15Z"
+    },
+    {
+      "video_id": "local_20261121_114228",
+      "title": "gamerxTgxt's Craziest Vice City Moment Caught Live 🚨",
+      "mode": "SINGLE",
+      "creators": [
+        "gamerxTgxt"
+      ],
+      "scheduled_for": null,
+      "uploaded": false,
+      "created_at": "2026-11-21T11:42:36Z"
     }
   ]
 }
