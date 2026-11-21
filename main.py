@@ -275,8 +275,8 @@ def get_next_single_peak_slot(history_data):
 
 # ==============================================================================
 # PART 6 OF 25: WIDE YOUTUBE + INDIAN CREATOR DISCOVERY ENGINE
-# Title: Zero-Bandwidth Metadata Scanner for Ended Lives, Uploads & Live Streams
-# Subtitle: Prioritizes Indian & global GTA 6 YouTube videos before touching Twitch
+# Title: Strict GTA 6 Zero-Bandwidth Scanner for Ended Lives & Uploads
+# Subtitle: Blocks non-GTA 6 games & scans 60+ GTA 6 videos across Indian + Global channels
 # ==============================================================================
 def _yt_dlp_base_opts():
     opts = {
@@ -293,28 +293,39 @@ def _yt_dlp_base_opts():
         opts["cookiefile"] = "yt_cookies.txt"
     return opts
 
+
+def _is_strictly_gta6_title(raw_title):
+    """Enforces strictly GTA 6 / Vice City / Leonida titles and blocks all other games."""
+    t = str(raw_title or "").lower()
+    has_gta6 = any(
+        k in t for k in ("gta 6", "gta vi", "grand theft auto 6", "grand theft auto vi", "vice city", "leonida")
+    )
+    is_blocked_game = any(
+        b in t for b in ("gta 5", "gta v", "gta5", "gtav", "san andreas", "minecraft", "valorant", "free fire", "bgmi", "donut")
+    )
+    return has_gta6 and not is_blocked_game
+
+
 def discover_wide_youtube_videos():
     """
-    Discovers candidate GTA 6 YouTube ended lives & uploads across:
+    Discovers strictly GTA 6 YouTube ended lives & uploads across:
     1) Priority Indian + Global creators (/streams and /videos tabs)
-    2) Wide YouTube searches (rotated per hour to stay well under rate limits)
-    Downloads 0 MB of video during discovery.
+    2) Wide YouTube searches (4 rotating queries x 18 results = ~70 candidates)
     """
     discovered = {}
     flat_opts = _yt_dlp_base_opts()
     flat_opts["extract_flat"] = "in_playlist"
-    flat_opts["playlistend"] = 6
+    flat_opts["playlistend"] = 8
 
-    # 1) Check rotating subset of priority Indian + global creators each hour
     hour_seed = datetime.now(timezone.utc).hour
     shuffled_creators = list(PRIORITY_YT_CREATORS)
     random.Random(hour_seed).shuffle(shuffled_creators)
-    selected_creators = shuffled_creators[:5]
+    selected_creators = shuffled_creators[:6]
 
     for creator in selected_creators:
         handle = creator["handle"]
         for tab in ("streams", "videos"):
-            url = f"https://youtube.com/{handle}/{tab}"
+            url = f"https://youtube.com{handle}/{tab}"
             try:
                 with yt_dlp.YoutubeDL(flat_opts) as ydl:
                     info = ydl.extract_info(url, download=False)
@@ -323,12 +334,10 @@ def discover_wide_youtube_videos():
                     if not entry or not entry.get("id"):
                         continue
                     vid_id = entry["id"]
-                    title_low = str(entry.get("title") or "").lower()
                     dur = float(entry.get("duration") or 0)
-                    # Keep GTA-related videos >= 90s (skip Shorts)
                     if dur and dur < 90:
                         continue
-                    if not any(k in title_low for k in ("gta", "grand theft", "vice city", "leonida")):
+                    if not _is_strictly_gta6_title(entry.get("title")):
                         continue
                     discovered[vid_id] = {
                         "video_id": vid_id,
@@ -341,26 +350,27 @@ def discover_wide_youtube_videos():
                     }
             except Exception:
                 pass
-            time.sleep(0.5)
+            time.sleep(0.3)
 
-    # 2) Wide YouTube Search (3 rotating queries per hour -> ~30 fresh videos)
+    # Wide YouTube Search (4 rotating queries x 18 results each)
     q_idx = hour_seed % len(WIDE_YT_SEARCH_QUERIES)
     queries_this_hour = [
-        WIDE_YT_SEARCH_QUERIES[q_idx],
-        WIDE_YT_SEARCH_QUERIES[(q_idx + 1) % len(WIDE_YT_SEARCH_QUERIES)],
-        WIDE_YT_SEARCH_QUERIES[(q_idx + 2) % len(WIDE_YT_SEARCH_QUERIES)],
+        WIDE_YT_SEARCH_QUERIES[(q_idx + offset) % len(WIDE_YT_SEARCH_QUERIES)]
+        for offset in range(4)
     ]
 
     for query in queries_this_hour:
         try:
             with yt_dlp.YoutubeDL(flat_opts) as ydl:
-                res = ydl.extract_info(f"ytsearch12:{query}", download=False)
+                res = ydl.extract_info(f"ytsearch18:{query}", download=False)
             for entry in (res or {}).get("entries") or []:
                 if not entry or not entry.get("id"):
                     continue
                 vid_id = entry["id"]
                 dur = float(entry.get("duration") or 0)
                 if dur and dur < 90:
+                    continue
+                if not _is_strictly_gta6_title(entry.get("title")):
                     continue
                 if vid_id not in discovered:
                     is_indian = any(
@@ -378,46 +388,59 @@ def discover_wide_youtube_videos():
                     }
         except Exception as e:
             print(f"[YT Discovery Warning] Query '{query}': {e}", flush=True)
-        time.sleep(0.6)
+        time.sleep(0.4)
 
     items = list(discovered.values())
-    print(f"[YT Discovery] Found {len(items)} unique GTA 6 videos/ended lives to inspect.", flush=True)
+    print(f"[YT Discovery] Found {len(items)} strictly GTA 6 videos/ended lives to inspect.", flush=True)
     return items
 
 # ==============================================================================
-# PART 7 OF 25: PRE-DOWNLOAD "MOST REPLAYED" HEATMAP EXTRACTOR
-# Title: Crowd-Validated Viral Spike Detector Before Any Video Download
-# Subtitle: Reads yt-dlp heatmap markers (0.0-1.0) & ranks top climax timestamps
+# PART 7 OF 25: PARALLEL PRE-DOWNLOAD "MOST REPLAYED" HEATMAP EXTRACTOR
+# Title: 6-Worker Concurrent Heatmap Scanner Before Any Video Download
+# Subtitle: Inspects up to 60 GTA 6 videos in ~12 seconds instead of 1-by-1
 # ==============================================================================
-def inspect_videos_for_heatmap_peaks(discovered_items, history_data, max_inspect=24):
+def inspect_videos_for_heatmap_peaks(discovered_items, history_data, max_inspect=60):
     """
-    Inspects full video metadata (download=False) to read YouTube's 'Most Replayed' heatmap.
-    Returns ranked viral timestamp targets BEFORE downloading any video files.
+    Concurrently inspects up to 60 GTA 6 videos using 6 parallel workers
+    to read YouTube's 'Most Replayed' heatmap markers before downloading anything.
     """
-    inspect_opts = _yt_dlp_base_opts()
-    inspect_opts["skip_download"] = True
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
+    ordered = sorted(
+        discovered_items, key=lambda x: x.get("priority_boost", 1.0), reverse=True
+    )[:max_inspect]
     heatmap_targets = []
     no_heatmap_pool = []
 
-    # Prioritize Indian & creator-boosted videos first
-    ordered = sorted(discovered_items, key=lambda x: x.get("priority_boost", 1.0), reverse=True)
-
-    for meta in ordered[:max_inspect]:
-        vid_id = meta["video_id"]
+    def _inspect_single_video(meta):
+        inspect_opts = _yt_dlp_base_opts()
+        inspect_opts["skip_download"] = True
         try:
             with yt_dlp.YoutubeDL(inspect_opts) as ydl:
                 info = ydl.extract_info(meta["url"], download=False)
             if not info:
-                continue
+                return None
+            full_title = info.get("title") or meta["title"]
+            if not _is_strictly_gta6_title(full_title):
+                return None
+            return (meta, info)
+        except Exception:
+            return None
 
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        futures = [executor.submit(_inspect_single_video, m) for m in ordered]
+        for fut in as_completed(futures):
+            pair = fut.result()
+            if not pair:
+                continue
+            meta, info = pair
+            vid_id = meta["video_id"]
             is_live = bool(info.get("is_live"))
             duration = float(info.get("duration") or 0)
             channel_name = info.get("uploader") or info.get("channel") or meta["channel_name"]
             heatmap = info.get("heatmap") or []
 
             if heatmap and not is_live:
-                # Find strongest non-intro peaks (skip first 20s intro spike)
                 valid_bins = [
                     b for b in heatmap
                     if float(b.get("start_time", 0)) >= 20.0
@@ -447,28 +470,23 @@ def inspect_videos_for_heatmap_peaks(discovered_items, history_data, max_inspect
                     picked_for_vid += 1
                     if picked_for_vid >= 2:
                         break
-            else:
-                # Brand-new ended live or active live stream (no heatmap yet)
-                if not is_clip_already_used(history_data, vid_id, 0):
-                    no_heatmap_pool.append({
-                        "video_id": vid_id,
-                        "url": meta["url"],
-                        "video_title": info.get("title") or meta["title"],
-                        "channel_name": channel_name,
-                        "region": meta["region"],
-                        "platform": "YouTube-Live" if is_live else "YouTube-Fresh",
-                        "is_live": is_live,
-                        "duration": duration,
-                        "priority_boost": meta.get("priority_boost", 1.0),
-                    })
-        except Exception:
-            pass
-        time.sleep(0.45)
+            elif not is_clip_already_used(history_data, vid_id, 0):
+                no_heatmap_pool.append({
+                    "video_id": vid_id,
+                    "url": meta["url"],
+                    "video_title": info.get("title") or meta["title"],
+                    "channel_name": channel_name,
+                    "region": meta["region"],
+                    "platform": "YouTube-Live" if is_live else "YouTube-Fresh",
+                    "is_live": is_live,
+                    "duration": duration,
+                    "priority_boost": meta.get("priority_boost", 1.0),
+                })
 
     heatmap_targets.sort(key=lambda x: x["weighted_score"], reverse=True)
     print(
-        f"[Heatmap Pre-Check] Found {len(heatmap_targets)} Most-Replayed spikes "
-        f"+ {len(no_heatmap_pool)} fresh/live YouTube streams.",
+        f"[Parallel Heatmap Check] Scanned {len(ordered)} GTA 6 videos -> "
+        f"{len(heatmap_targets)} Most-Replayed spikes + {len(no_heatmap_pool)} fresh/live streams.",
         flush=True,
     )
     return heatmap_targets, no_heatmap_pool
@@ -780,9 +798,9 @@ def analyze_clip_motion_and_ads(video_path, peak_sec):
     return True, round(motion_score, 2), pil_frames
 
 # ==============================================================================
-# PART 12 OF 25: UNLIMITED LOCAL OPENCLIP VISUAL ACTION JUDGE
-# Title: Zero-Limit Neural Vision Scorer for Viral Gameplay vs. Filler Screens
-# Subtitle: Runs 100% locally on CPU; auto-rejects maps, menus, walking & ad screens
+# PART 12 OF 25: MULTI-SIGNAL CLIP RATER & ACTION PEAK LOCALIZER
+# Title: OpenCLIP Neural Vision + Motion + Heatmap + Vocal Spike Scorer
+# Subtitle: Pinpoints the exact peak action frame & eliminates filler/menus
 # ==============================================================================
 _CLIP_BUNDLE = None
 
@@ -800,14 +818,14 @@ def get_local_openclip_judge():
     tokenizer = open_clip.get_tokenizer("ViT-B-32")
 
     positive_prompts = [
-        "exciting video game car crash explosion stunt or high speed police chase",
-        "intense video game gunfight shootout chaos or hilarious ragdoll fail",
-        "dramatic airplane helicopter boat crash or near miss stunt in video game",
+        "exciting video game sports car crash explosion stunt or high speed police chase",
+        "intense video game gunfight shootout chaos helicopter crash or ragdoll fail",
+        "dramatic ocean boat speedboat plane crash or hilarious physics glitch in video game",
     ]
     negative_prompts = [
         "video game pause menu settings screen or mini map navigation UI",
         "twitch commercial break in progress purple blue banner screen",
-        "video game character calmly walking jogging on empty road or standing still",
+        "video game character calmly walking jogging on empty sidewalk or standing still",
     ]
 
     with torch.no_grad():
@@ -824,8 +842,11 @@ def get_local_openclip_judge():
 
 def score_candidates_with_local_vision(candidates):
     """
-    Evaluates all harvested candidates locally using OpenCV motion + OpenCLIP vision
-    + YouTube Most-Replayed heatmap proof. Zero API limits!
+    Evaluates all harvested GTA 6 candidates using 4 combined signals:
+    1) Frame-by-frame OpenCLIP visual excitement vs. filler (35%)
+    2) YouTube Most-Replayed crowd heatmap score (35%)
+    3) OpenCV motion intensity (15%)
+    4) Vocal/explosion RMS audio spike ratio (15%)
     """
     model, preprocess, pos_emb, neg_emb = get_local_openclip_judge()
     scored_winners = []
@@ -836,7 +857,7 @@ def score_candidates_with_local_vision(candidates):
         )
         if not is_valid or not pil_frames:
             print(
-                f"[Local Judge REJECT] {cand['channel_name']} -> Static/Ad/Low-Motion screen",
+                f"[Clip Rater REJECT] {cand['channel_name']} -> Static/Ad/Low-Motion screen",
                 flush=True,
             )
             continue
@@ -846,35 +867,51 @@ def score_candidates_with_local_vision(candidates):
             with torch.no_grad():
                 img_emb = model.encode_image(img_tensors)
                 img_emb /= img_emb.norm(dim=-1, keepdim=True)
-                pos_sim = float((img_emb @ pos_emb.T).max(dim=-1).values.mean().item())
-                neg_sim = float((img_emb @ neg_emb.T).max(dim=-1).values.mean().item())
 
-            # Reject if frames look more like a map/menu/walking/ad than real action
-            if neg_sim > (pos_sim + 0.015):
+                # Per-frame action margin (identifies the exact peak frame in the window)
+                frame_pos = (img_emb @ pos_emb.T).max(dim=-1).values
+                frame_neg = (img_emb @ neg_emb.T).max(dim=-1).values
+                frame_margins = (frame_pos - frame_neg).cpu().numpy()
+
+                peak_margin = float(np.max(frame_margins))
+                mean_margin = float(np.mean(frame_margins))
+
+            # Reject if even the best frame looks like a map, pause menu, or calm walking
+            if peak_margin < -0.01 or mean_margin < -0.025:
                 print(
-                    f"[Local Judge REJECT] {cand['channel_name']} -> Menu/Map/Walking detected "
-                    f"(pos={pos_sim:.3f} vs neg={neg_sim:.3f})",
+                    f"[Clip Rater REJECT] {cand['channel_name']} -> Menu/Map/Walking filler "
+                    f"(peak_margin={peak_margin:.3f})",
                     flush=True,
                 )
                 continue
 
-            # Combine Visual Action (0-10), Motion (0-10), and YouTube Heatmap Proof (0-10)
-            clip_delta = max(0.0, min(10.0, (pos_sim - neg_sim + 0.06) * 65.0))
-            hm_bonus = float(cand.get("heatmap_score", 0.0)) * 10.0
-            audio_bonus = min(10.0, float(cand.get("jump_ratio", 1.0)) * 2.2)
+            # Convert visual margin into 0-10 score
+            action_score = max(0.0, min(10.0, ((peak_margin * 0.65 + mean_margin * 0.35) + 0.055) * 72.0))
+            hm_score_10 = float(cand.get("heatmap_score", 0.0)) * 10.0
+            audio_score_10 = min(10.0, float(cand.get("jump_ratio", 1.0)) * 2.4)
 
-            if hm_bonus > 0:
-                total_score = (clip_delta * 0.45) + (motion_score * 0.25) + (hm_bonus * 0.30)
+            if hm_score_10 > 0:
+                total_score = (
+                    (action_score * 0.35)
+                    + (hm_score_10 * 0.35)
+                    + (motion_score * 0.15)
+                    + (audio_score_10 * 0.15)
+                )
             else:
-                total_score = (clip_delta * 0.50) + (motion_score * 0.30) + (audio_bonus * 0.20)
+                total_score = (
+                    (action_score * 0.45)
+                    + (motion_score * 0.30)
+                    + (audio_score_10 * 0.25)
+                )
 
             if cand.get("region") == "IN":
-                total_score += 0.45  # Slight priority boost for Indian creators
+                total_score += 0.40
 
             total_score = round(min(10.0, total_score), 2)
             print(
-                f"[Local Judge] {cand['channel_name']} ({cand['platform']}) -> "
-                f"Score={total_score}/10 (action={clip_delta:.1f}, motion={motion_score:.1f}, hm={hm_bonus:.1f})",
+                f"[Clip Rater] {cand['channel_name']} ({cand['platform']}) -> "
+                f"Score={total_score}/10 (action={action_score:.1f}, hm={hm_score_10:.1f}, "
+                f"motion={motion_score:.1f}, audio={audio_score_10:.1f})",
                 flush=True,
             )
 
@@ -883,7 +920,7 @@ def score_candidates_with_local_vision(candidates):
                 cand["motion_score"] = motion_score
                 scored_winners.append(cand)
         except Exception as e:
-            print(f"[OpenCLIP Warning] {cand['channel_name']}: {e}", flush=True)
+            print(f"[Clip Rater Warning] {cand['channel_name']}: {e}", flush=True)
 
     scored_winners.sort(key=lambda x: x["viral_score"], reverse=True)
     return scored_winners
@@ -996,19 +1033,22 @@ def transcribe_clip_to_english(video_path):
         return "", []
 
 # ==============================================================================
-# PART 15 OF 25: TOP 3-2-1 COUNTDOWN & SINGLE CLIMAX PLANNER
-# Title: High-Retention Short Sequencer (#3 -> #2 -> #1)
-# Subtitle: Orders approved winners so the #1 highest-scoring moment hits last
+# PART 15 OF 25: ADAPTIVE 1-TO-5 CLIP COUNTDOWN CHOOSER
+# Title: Dynamic Single, Double, Triple, Quad or 5-Clip Short Sequencer
+# Subtitle: Adapts clip count (1 to 5) to quality winners & puts #1 climax LAST
 # ==============================================================================
 def build_short_plan(scored_winners):
     """
-    Selects up to 3 distinct-creator winners and builds:
-    - MULTI (3-2-1 Countdown): #3 (11s) -> #2 (12s) -> #1 (14s) = ~37s Short
-    - SINGLE (1-2 winners): #1 (20s) high-impact climax Short
-    Returns None if zero clips passed the quality bar.
+    Dynamically builds a 1, 2, 3, 4, or 5-clip Short based on how many
+    distinct-creator GTA 6 clips beat the quality threshold:
+    - 5 clips: 9.0s each (~45s Short | #5 -> #4 -> #3 -> #2 -> #1)
+    - 4 clips: 10.5s each (~42s Short | #4 -> #3 -> #2 -> #1)
+    - 3 clips: 12.5s each (~37.5s Short | #3 -> #2 -> #1)
+    - 2 clips: 15.0s each (~30s Short | #2 -> #1)
+    - 1 clip:  21.0s single viral climax (#1)
     """
     if not scored_winners:
-        print("[Quality Gate] Zero clips met the visual quality bar—skipping run.", flush=True)
+        print("[Quality Gate] Zero GTA 6 clips met the quality bar—skipping run.", flush=True)
         return None
 
     distinct_winners = []
@@ -1019,52 +1059,42 @@ def build_short_plan(scored_winners):
             continue
         distinct_winners.append(cand)
         seen_creators.add(cname)
-        if len(distinct_winners) >= 3:
+        if len(distinct_winners) >= 5:
             break
 
-    # Enrich winning 1-3 clips with English transcripts
+    # Transcribe & translate spoken lines to English for each chosen clip
     for w in distinct_winners:
         eng_text, word_events = transcribe_clip_to_english(w["video_path"])
         w["transcript_en"] = eng_text
         w["word_events"] = word_events
 
-    if len(distinct_winners) >= 3:
-        # Ascending order so rank #3 plays first, #2 second, and #1 climax plays LAST!
-        ordered_321 = list(reversed(distinct_winners[:3]))
-        durations = [11.0, 12.5, 14.5]
-        ranks = (3, 2, 1)
-        specs = []
-        for rank_num, cand, seg_dur in zip(ranks, ordered_321, durations):
-            clip_dur = get_media_duration(cand["video_path"])
-            peak = float(cand["audio_peak"])
-            # Place the climax peak ~3.5s before the end of each segment
-            end_t = min(clip_dur - 0.3, peak + 3.5)
-            start_t = max(0.0, end_t - seg_dur)
-            specs.append({
-                "rank": rank_num,
-                "candidate": cand,
-                "start_sec": round(start_t, 2),
-                "end_sec": round(end_t, 2),
-                "duration": round(end_t - start_t, 2),
-            })
-        return {"mode": "MULTI", "segments": specs}
+    count = len(distinct_winners)
+    dur_map = {1: 21.0, 2: 15.0, 3: 12.5, 4: 10.5, 5: 9.0}
+    seg_dur = dur_map[count]
 
-    # Single mode when 1 or 2 clips passed
-    top_one = next(iter(distinct_winners))
-    clip_dur = get_media_duration(top_one["video_path"])
-    peak = float(top_one["audio_peak"])
-    end_t = min(clip_dur - 0.3, peak + 4.5)
-    start_t = max(0.0, end_t - 20.0)
-    return {
-        "mode": "SINGLE",
-        "segments": [{
-            "rank": 1,
-            "candidate": top_one,
+    # Ascending order so the #1 highest-rated GTA 6 moment always plays LAST
+    ordered_asc = list(reversed(distinct_winners))
+    ranks = tuple(range(count, 0, -1))
+    specs = []
+    for rank_num, cand in zip(ranks, ordered_asc):
+        clip_dur = get_media_duration(cand["video_path"])
+        peak = float(cand["audio_peak"])
+        end_t = min(clip_dur - 0.3, peak + (seg_dur * 0.30))
+        start_t = max(0.0, end_t - seg_dur)
+        specs.append({
+            "rank": rank_num,
+            "candidate": cand,
             "start_sec": round(start_t, 2),
             "end_sec": round(end_t, 2),
             "duration": round(end_t - start_t, 2),
-        }],
-    }
+        })
+
+    mode_label = "SINGLE" if count == 1 else f"MULTI_{count}"
+    print(
+        f"[Short Chooser] Assembled {mode_label} GTA 6 Short with {count} distinct clip(s)!",
+        flush=True,
+    )
+    return {"mode": mode_label, "segments": specs}
 
 # ==============================================================================
 # PART 16 OF 25: SCENE-GROUNDED ENGLISH TITLE & 3-ACT COMMENTARY WRITER
