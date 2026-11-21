@@ -232,26 +232,39 @@ def discover_gta6_candidates(history_data):
     random.shuffle(found)
     return found[:8]
 
-
 # ==============================================================================
-# PART 7 OF 30: CANDIDATE VIDEO DOWNLOADER (720P MP4 + DENO/COOKIES BYPASS)
-# Subheading: Downloads Candidate Gameplay Clip With Deno Runtime & Client Fallbacks
+# PART 7 OF 30: CANDIDATE VIDEO DOWNLOADER (720P MP4 + COOKIES & CLIENT BYPASS)
+# Subheading: Loads YouTube Cookies From Any Configured Secret & Downloads 720p MP4
 # Code Title: download_candidate_video
 # ==============================================================================
+def _prepare_cookies_file():
+    for candidate_path in ("yt_cookies.txt", "cookies.txt"):
+        if os.path.exists(candidate_path) and os.path.getsize(candidate_path) > 40:
+            return candidate_path
+
+    for env_name in ("YT_COOKIES_TXT", "YOUTUBE_COOKIES", "YT_COOKIES", "COOKIES_TXT"):
+        raw_val = os.environ.get(env_name, "").strip()
+        if len(raw_val) > 40:
+            out_cookie = "yt_cookies.txt"
+            with open(out_cookie, "w", encoding="utf-8") as cf:
+                cf.write(raw_val + "\n")
+            print(f"[Cookies] Loaded {len(raw_val)} bytes from {env_name}.", flush=True)
+            return out_cookie
+    return None
+
+
 def download_candidate_video(candidate, out_path):
     if os.path.exists(out_path):
         os.remove(out_path)
 
-    cookies_file = "yt_cookies.txt"
-    raw_cookies = os.environ.get("YT_COOKIES_TXT", "").strip()
-    if raw_cookies and not os.path.exists(cookies_file):
-        with open(cookies_file, "w", encoding="utf-8") as cf:
-            cf.write(raw_cookies + "\n")
+    cookies_file = _prepare_cookies_file()
+    if not cookies_file:
+        print("[Cookies Warning] No YouTube cookies secret found in env (YT_COOKIES_TXT / YOUTUBE_COOKIES).", flush=True)
 
     vid_id = str(candidate["video_id"]).strip()
     client_profiles = (
-        "youtube:player_client=tv_embedded,android_vr",
-        "youtube:player_client=web,mweb",
+        "youtube:player_client=mediaconnect,android_vr",
+        "youtube:player_client=tv_embedded,mweb",
     )
 
     for idx, extractor_arg in enumerate(client_profiles):
@@ -264,19 +277,18 @@ def download_candidate_video(candidate, out_path):
             "--no-playlist",
             "--max-filesize", "220M",
             "-o", out_path,
-            "--",
-            vid_id,
         ]
-        if os.path.exists(cookies_file) and os.path.getsize(cookies_file) > 20:
+        if cookies_file:
             cmd.extend(["--cookies", cookies_file])
+        cmd.extend(["--", vid_id])
 
-        res = run_cmd_safe(cmd, label=f"Download_{candidate['video_id']}_{idx}", timeout_sec=160, check=False)
+        res = run_cmd_safe(cmd, label=f"Download_{vid_id}_{idx}", timeout_sec=160, check=False)
         if res.returncode == 0 and os.path.exists(out_path) and get_media_duration(out_path) >= 20.0:
-            print(f"[Downloaded] {candidate['video_id']} ({candidate['channel_name']})", flush=True)
+            print(f"[Downloaded] {vid_id} ({candidate['channel_name']})", flush=True)
             return True
 
         err_msg = (res.stderr or res.stdout or "").strip().splitlines()[-1:]
-        print(f"[Download Retry {idx+1}] {candidate['video_id']}: {err_msg}", flush=True)
+        print(f"[Download Retry {idx+1}] {vid_id}: {err_msg}", flush=True)
         if os.path.exists(out_path):
             os.remove(out_path)
 
