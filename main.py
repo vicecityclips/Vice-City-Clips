@@ -474,24 +474,28 @@ def scan_heatmaps_in_parallel(discovered_items, history_data, max_inspect=60):
                 ]
                 valid_bins.sort(key=lambda b: float(b.get("value", 0)), reverse=True)
 
-                added_for_vid = 0
-                for b in valid_bins:
-                    peak_mid = (float(b["start_time"]) + float(b["end_time"])) / 2.0
-                    if is_clip_already_used_or_banked(history_data, vid_id, peak_mid):
-                        continue
-                    heatmap_peaks.append({
-                        "video_id": vid_id,
-                        "url": meta["url"],
-                        "video_title": str(info.get("title") or meta["title"]),
-                        "channel_name": meta["channel_name"],
-                        "peak_sec": peak_mid,
-                        "heatmap_score": float(b["value"]),
-                        "duration": duration,
-                        "source_type": "YouTube-Heatmap",
-                    })
-                    added_for_vid += 1
-                    if added_for_vid >= 2:
-                        break
+              picked_peaks_for_vid = []
+              for b in valid_bins:
+                  peak_mid = (float(b["start_time"]) + float(b["end_time"])) / 2.0
+                  if is_clip_already_used_or_banked(history_data, vid_id, peak_mid):
+                      continue
+                  # Ensure distinct peaks from the same video are at least 45s apart
+                  if any(abs(peak_mid - prev_p) < 45.0 for prev_p in picked_peaks_for_vid):
+                      continue
+                  heatmap_peaks.append({
+                      "video_id": vid_id,
+                      "url": meta["url"],
+                      "video_title": str(info.get("title") or meta["title"]),
+                      "channel_name": meta["channel_name"],
+                      "peak_sec": peak_mid,
+                      "heatmap_score": float(b["value"]),
+                      "duration": duration,
+                      "source_type": "YouTube-Heatmap",
+                  })
+                  picked_peaks_for_vid.append(peak_mid)
+                  if len(picked_peaks_for_vid) >= 6:
+                      break
+
             elif not is_live and duration >= 180 and not is_clip_already_used_or_banked(history_data, vid_id, 0):
                 fresh_vods.append({
                     "video_id": vid_id,
