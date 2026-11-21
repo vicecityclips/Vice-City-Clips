@@ -39,10 +39,12 @@ jobs:
       # ==============================================================================
       # WORKFLOW PART 2: SYSTEM TOOLS, MODEL CACHE & PYTHON DEPENDENCIES
       # ==============================================================================
-      - name: 2.1 Install System FFmpeg & Fonts
+      - name: 2.1 Install System FFmpeg, Fonts & Deno JS Runtime
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
+          sudo apt-get install -y -qq ffmpeg fonts-dejavu-core unzip
+          curl -fsSL https://deno.land | sh
+          echo "$HOME/.deno/bin" >> $GITHUB_PATH
 
       - name: 2.2 Cache OpenCLIP & Faster-Whisper Models
         uses: actions/cache@v4
