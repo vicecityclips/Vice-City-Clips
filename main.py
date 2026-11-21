@@ -284,6 +284,7 @@ def _yt_dlp_base_opts():
         "no_warnings": True,
         "ignoreerrors": True,
         "nocheckcertificate": True,
+        "remote_components": ["ejs:github"],
     }
     cookie_txt = os.environ.get("YOUTUBE_COOKIES_TXT", "").strip()
     if cookie_txt:
