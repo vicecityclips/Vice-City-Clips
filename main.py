@@ -831,7 +831,7 @@ def build_top5_plan_from_vault(history_data):
     top_item = next(iter(distinct_best))
     top_avail_dur = get_media_duration(top_item["vault_path"])
 
-    if len(distinct_best) == 1 or (float(top_item.get("viral_score", 0.0)) >= 8.5 and top_avail_dur >= 34.0):
+    if len(distinct_best) == 1 or (float(top_item.get("viral_score", 0.0)) >= 9.1 and top_avail_dur >= 34.0):
         chosen = [top_item]
     else:
         chosen = list(reversed(distinct_best))
