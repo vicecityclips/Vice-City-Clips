@@ -7,8 +7,8 @@ name: Vice-City Clips Vault 24/7 Auto-Clipper
 
 on:
   schedule:
-    # Runs every hour on the hour (UTC)
-    - cron: "0 * * * *"
+    # Runs at :30 past every hour (01:30, 02:30, 03:30... UTC) = 6 runs per 6-hour slot
+    - cron: "30 * * * *"
   workflow_dispatch:
     inputs:
       force_upload:
