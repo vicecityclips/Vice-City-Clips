@@ -75,7 +75,7 @@ CHANNEL_CONFIG = {
     "slice_duration_sec": 26.0,          # Raw 26s buffer harvested per heatmap peak
     "max_clips_per_short": 5,            # Compiles up to 5 top distinct clips into 1 Short
     "min_heatmap_score": 0.68,           # Crowd replay proof threshold (0.0 - 1.0)
-    "min_viral_score": 7.6,              # Strict quality gate (0.0 - 10.0)
+    "min_viral_score": 7.0,              # Strict quality gate (0.0 - 10.0)
     "max_vault_age_hours": 18,           # Expires stale uncompiled clips older than 18h
 
     # Audio & Narration Settings
@@ -1981,70 +1981,128 @@ def cleanup_temp_workspace():
                 pass
 
 # ==============================================================================
-# PART 30 OF 30: MASTER 2-STAGE PIPELINE ORCHESTRATOR
-# Subheading: Executes Stage 1 (Hourly Vault Harvest) & Stage 2 (T-1h Top-5 Compile)
+# PART 30 OF 30: MASTER 2-STAGE PIPELINE ORCHESTRATOR (__MAIN__)
+# Subheading: Auto-Expanding Multi-Wave Vault Harvest + T-1h Top-5 Compiler
 # Code Title: run_master_pipeline Entrypoint
 # ==============================================================================
 def run_master_pipeline():
-    t_start = time.time()
+    t0 = time.time()
+    target_vault_clips = int(CHANNEL_CONFIG["max_clips_per_short"])
     print(
         f"=== {CHANNEL_CONFIG['channel_name']} ({CHANNEL_CONFIG['channel_handle']}) | "
-        f"2-Stage Vault + T-1h Top-5 Pipeline ===",
+        f"upload_to_youtube={CHANNEL_CONFIG['upload_to_youtube']} | TargetVault={target_vault_clips} ===",
         flush=True,
     )
-
     history_data = load_history()
 
     try:
         # ------------------------------------------------------------------
-        # STAGE 1: HOURLY VAULT HARVEST (Runs every hour to bank 26s gems)
+        # STAGE 1: AUTO-EXPANDING MULTI-WAVE VAULT HARVEST (UNTIL >= 5 GEMS)
         # ------------------------------------------------------------------
         discovered = discover_equal_weight_original_streams()
-        heatmap_peaks, fresh_vods = scan_heatmaps_in_parallel(discovered, history_data, max_inspect=60)
+        heatmap_peaks, fresh_vods = scan_heatmaps_in_parallel(discovered, history_data, max_inspect=65)
 
-        candidates = harvest_26s_climax_slices(heatmap_peaks, max_slices=8)
-        if len(candidates) < 3 and fresh_vods:
-            candidates.extend(harvest_fresh_official_vods(fresh_vods, max_samples=3))
+        hm_cursor = 0
+        vod_cursor = 0
+        wave_configs = [
+            ("Wave 1 (Primary Heatmap + Fresh)", 8, 3),
+            ("Wave 2 (Expanded Heatmap + VODs)", 10, 5),
+            ("Wave 3 (Deep Reserve Search)", 12, 6),
+        ]
 
-        if candidates:
-            winners = rate_gta6_candidates(candidates)
-            if winners:
-                bank_winners_into_vault(winners, history_data)
-        else:
-            print("[Stage 1] No new candidate slices extracted this hour.", flush=True)
+        for wave_label, hm_take, vod_take in wave_configs:
+            if len(history_data.get("vault_queue", [])) >= target_vault_clips:
+                print(
+                    f"[Vault Ready] Already have {len(history_data['vault_queue'])} banked clips -> Stopping harvest early!",
+                    flush=True,
+                )
+                break
 
-        # ------------------------------------------------------------------
-        # STAGE 2: T-MINUS 1 HOUR TOP-5 COMPILER & SCHEDULER
-        # ------------------------------------------------------------------
-        should_compile, slot_iso = check_compile_trigger_and_slot(history_data)
-        if should_compile:
-            short_plan = build_top5_plan_from_vault(history_data)
-            if short_plan:
-                script_data = generate_scene_grounded_script(short_plan, history_data)
-                stitched_mp4, timeline_meta = render_vertical_segments_and_concat(short_plan)
-                mixed_mp4, intro_dur, outro_start = mix_three_act_audio_master(
-                    stitched_mp4, timeline_meta, script_data
-                )
-                final_mp4 = burn_banner_and_english_captions(
-                    mixed_mp4, timeline_meta, script_data, intro_dur, outro_start
-                )
-                thumb_jpg = extract_short_thumbnail(final_mp4)
-                yt_vid_id = upload_or_schedule_short_to_youtube(
-                    final_mp4, thumb_jpg, script_data, timeline_meta, slot_iso=slot_iso
-                )
-                finalize_vault_and_history_after_compile(
-                    history_data, timeline_meta, script_data, yt_vid_id, slot_iso
-                )
-            else:
-                print("[Stage 2] Vault had 0 qualified clips ready—skipping slot cleanly.", flush=True)
+            # If Wave 3 still needs more candidates, run a fresh deep search pass
+            if wave_label.startswith("Wave 3") and hm_cursor >= len(heatmap_peaks) and vod_cursor >= len(fresh_vods):
+                print("[Wave 3 Expand] Pool exhausted -> Running deep worldwide expansion scan...", flush=True)
+                extra_disc = discover_equal_weight_original_streams()
+                seen_ids = {d["video_id"] for d in discovered}
+                new_only = [d for d in extra_disc if d["video_id"] not in seen_ids]
+                if new_only:
+                    extra_hm, extra_vod = scan_heatmaps_in_parallel(new_only, history_data, max_inspect=50)
+                    heatmap_peaks.extend(extra_hm)
+                    fresh_vods.extend(extra_vod)
+
+            hm_batch = heatmap_peaks[hm_cursor : hm_cursor + hm_take]
+            hm_cursor += len(hm_batch)
+
+            vod_batch = fresh_vods[vod_cursor : vod_cursor + vod_take]
+            vod_cursor += len(vod_batch)
+
+            if not hm_batch and not vod_batch:
+                break
+
+            print(
+                f"[{wave_label}] Harvesting {len(hm_batch)} heatmap peaks + {len(vod_batch)} VOD samples "
+                f"(Vault={len(history_data.get('vault_queue', []))}/{target_vault_clips})...",
+                flush=True,
+            )
+            candidates = harvest_26s_climax_slices(hm_batch, max_slices=len(hm_batch))
+            if vod_batch:
+                candidates.extend(harvest_fresh_official_vods(vod_batch, max_samples=len(vod_batch)))
+
+            if candidates:
+                winners = rate_gta6_candidates(candidates)
+                if winners:
+                    bank_winners_into_vault(winners, history_data)
+                    save_history(history_data)
+
+            # Clean up temp wave slices before starting next wave
+            cleanup_temp_workspace()
 
         save_history(history_data)
-        elapsed = round(time.time() - t_start, 1)
-        print(f"[Complete] 2-Stage Pipeline finished cleanly in {elapsed}s.", flush=True)
 
+        # ------------------------------------------------------------------
+        # STAGE 2: T-MINUS 1 HOUR TOP-5 COMPILER & SLOT SCHEDULER
+        # ------------------------------------------------------------------
+        should_compile, target_slot_iso = check_compile_trigger_and_slot(history_data)
+        if not should_compile:
+            print(f"[Complete] Harvest-only run finished in {time.time() - t0:.1f}s.", flush=True)
+            return
+
+        short_plan = build_top5_plan_from_vault(history_data)
+        if not short_plan:
+            print(f"[Complete] No banked clips ready to compile ({time.time() - t0:.1f}s).", flush=True)
+            return
+
+        script_data = generate_scene_grounded_script(short_plan, history_data)
+        stitched_vid, timeline_meta = render_vertical_segments_and_concat(short_plan)
+        mixed_vid, intro_dur, outro_start = mix_three_act_audio_master(
+            stitched_vid, timeline_meta, script_data
+        )
+        final_mp4 = burn_banner_and_english_captions(
+            mixed_vid, timeline_meta, script_data, intro_dur, outro_start
+        )
+        thumb_jpg = extract_short_thumbnail(final_mp4)
+
+        uploaded_id = None
+        final_title = script_data["title"]
+        if CHANNEL_CONFIG["upload_to_youtube"]:
+            uploaded_id, final_title = upload_and_schedule_youtube_short(
+                final_mp4, thumb_jpg, script_data, timeline_meta, publish_at_iso=target_slot_iso
+            )
+            commit_compiled_clips_to_history(
+                history_data, timeline_meta, final_title, uploaded_id, target_slot_iso
+            )
+        else:
+            print(
+                f"[Test Mode] upload_to_youtube=False -> Saved '{final_mp4}' for artifact preview "
+                f"(Vault clips kept intact until live upload).",
+                flush=True,
+            )
+
+        save_history(history_data)
+        print(f"[Complete] 2-Stage pipeline finished cleanly in {time.time() - t0:.1f}s!", flush=True)
     finally:
         cleanup_temp_workspace()
 
 
 if __name__ == "__main__":
     run_master_pipeline()
+    
