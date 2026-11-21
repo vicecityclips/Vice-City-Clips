@@ -279,14 +279,24 @@ def get_next_single_peak_slot(history_data):
 # Subtitle: Prioritizes Indian & global GTA 6 YouTube videos before touching Twitch
 # ==============================================================================
 def _yt_dlp_base_opts():
-    return {
+    opts = {
         "quiet": True,
         "no_warnings": True,
         "ignoreerrors": True,
         "nocheckcertificate": True,
-        "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["tv", "mweb", "web_safari"],
+            }
+        },
     }
-
+    cookie_txt = os.environ.get("YOUTUBE_COOKIES_TXT", "").strip()
+    if cookie_txt:
+        cookie_file = "yt_cookies.txt"
+        with open(cookie_file, "w", encoding="utf-8") as cf:
+            cf.write(cookie_txt)
+        opts["cookiefile"] = cookie_file
+    return opts
 
 def discover_wide_youtube_videos():
     """
