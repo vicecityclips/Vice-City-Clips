@@ -3730,7 +3730,8 @@
       "viral_score": 8.8,
       "transcript_en": "",
       "word_events": [],
-      "harvested_at": "2026-11-21T18:20:10.142412+00:00"
+      "harvested_at": "2026-11-21T18:20:10.142412+00:00",
+      "test_rendered_count": 1
     },
     {
       "vault_path": "clip_vault/ys_3h2nuNCY_p0_2056s.mp4",
@@ -3979,7 +3980,8 @@
           "end": 49.99
         }
       ],
-      "harvested_at": "2026-11-21T18:21:34.335539+00:00"
+      "harvested_at": "2026-11-21T18:21:34.335539+00:00",
+      "test_rendered_count": 1
     },
     {
       "vault_path": "clip_vault/Zy7M_YcgaGU_p0_2820s.mp4",
@@ -4943,7 +4945,8 @@
           "end": 49.98
         }
       ],
-      "harvested_at": "2026-11-21T18:04:30.793416+00:00"
+      "harvested_at": "2026-11-21T18:04:30.793416+00:00",
+      "test_rendered_count": 1
     },
     {
       "vault_path": "clip_vault/Zy7M_YcgaGU_p1_508s.mp4",
