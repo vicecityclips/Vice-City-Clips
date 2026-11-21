@@ -3019,7 +3019,8 @@
           "end": 49.89
         }
       ],
-      "harvested_at": "2026-11-21T17:53:56.975521+00:00"
+      "harvested_at": "2026-11-21T17:53:56.975521+00:00",
+      "test_rendered_count": 1
     },
     {
       "vault_path": "clip_vault/ARwju5Gyk64_p0_652s.mp4",
