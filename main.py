@@ -578,64 +578,101 @@ def harvest_26s_climax_slices(heatmap_peaks, max_slices=8):
     return harvested
 
 # ==============================================================================
-# PART 11 OF 30: FRESH OFFICIAL VOD BACKUP HARVESTER
-# Subheading: Samples Brand-New Official Streams Before Heatmap Data Appears
-# Code Title: harvest_fresh_official_vods
 # ==============================================================================
-def harvest_fresh_official_vods(fresh_vod_pool, max_samples=3):
+# PART 11 OF 30: 50-SECOND CLIMAX SLICE HARVESTER INTO CLIP VAULT
+# Subheading: Extracts Up To 50s Around Peak Action & Records Local Peak Offset
+# Code Title: harvest_climax_slices_to_vault
+# ==============================================================================
+def harvest_climax_slices_to_vault(source_path, candidate_meta, peak_timestamps):
     """
-    Backup harvester for brand-new official creator streams that do not yet have
-    YouTube heatmap graphs. Samples a 50-second mid-stream window at <=720p.
+    Extracts up to 50.0s around each detected climax timestamp (23s pre-roll +
+    27s post-roll) into clip_vault/ so the planner can either run a full 45-52s
+    Solo Feature or trim around local_peak_sec for a 2-to-5 clip countdown.
     """
-    harvested = []
-    for idx, vod in enumerate(fresh_vod_pool[:max_samples]):
-        vid_id = vod["video_id"]
-        total_dur = float(vod.get("duration") or 0)
-        if total_dur < 240:
+    vault_dir = CHANNEL_CONFIG.get("vault_dir", "clip_vault")
+    os.makedirs(vault_dir, exist_ok=True)
+
+    total_dur = get_media_duration(source_path)
+    if total_dur < 12.0 or not peak_timestamps:
+        return []
+
+    target_slice_dur = 50.0
+    pre_roll = 23.0
+    video_id = str(candidate_meta.get("video_id", "vid")).strip()
+    channel_name = str(candidate_meta.get("channel_name", "GTA 6 Creator")).strip()
+    source_title = str(candidate_meta.get("title", "GTA 6 Gameplay")).strip()
+    base_viral_score = float(candidate_meta.get("viral_score", 7.8))
+
+    harvested_items = []
+    used_windows = []
+
+    for idx, raw_peak in enumerate(peak_timestamps):
+        peak_sec = float(raw_peak)
+
+        # Skip overlapping climax windows from the same source video
+        if any(abs(peak_sec - prev_p) < 35.0 for prev_p in used_windows):
             continue
 
-        # Pick a random high-action point in the middle 25%-75% of the stream
-        mid_anchor = total_dur * random.uniform(0.28, 0.72)
-        start_s = max(30.0, mid_anchor - 25.0)
-        end_s = min(total_dur - 10.0, start_s + 50.0)
+        slice_dur = min(target_slice_dur, total_dur)
+        slice_start = max(0.0, min(total_dur - slice_dur, peak_sec - pre_roll))
+        slice_end = min(total_dur, slice_start + slice_dur)
+        actual_span = round(slice_end - slice_start, 2)
 
-        raw_out = f"raw_fresh_{idx}_{vid_id}.mp4"
-        if os.path.exists(raw_out):
-            os.remove(raw_out)
+        if actual_span < 12.0:
+            continue
 
-        dl_opts = _yt_dlp_base_opts()
-        dl_opts.update({
-            "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best",
-            "merge_output_format": "mp4",
-            "outtmpl": raw_out,
-            "download_ranges": yt_dlp.utils.download_range_func(None, [(start_s, end_s)]),
-            "force_keyframes_at_cuts": True,
-        })
+        local_peak = round(max(1.0, min(actual_span - 1.0, peak_sec - slice_start)), 2)
+        safe_ts = int(round(slice_start))
+        vault_filename = f"{video_id}_p{idx}_{safe_ts}s.mp4"
+        vault_path = os.path.join(vault_dir, vault_filename)
 
         try:
-            with yt_dlp.YoutubeDL(dl_opts) as ydl:
-                ydl.download([vod["url"]])
-            dur = get_media_duration(raw_out)
-            if dur >= 15.0:
-                harvested.append({
-                    "video_path": raw_out,
-                    "video_id": vid_id,
-                    "channel_name": vod["channel_name"],
-                    "source_title": vod["video_title"],
-                    "source_type": vod["source_type"],
-                    "heatmap_score": 0.0,
-                    "origin_peak_sec": start_s + (dur / 2.0),
-                    "slice_start_origin": start_s,
-                    "duration": dur,
-                })
-                print(
-                    f"[Fresh VOD Sample] {vod['channel_name']} @ {start_s:.0f}s (dur={dur:.1f}s)",
-                    flush=True,
-                )
+            run_cmd_safe(
+                [
+                    "ffmpeg", "-y",
+                    "-ss", f"{slice_start:.2f}",
+                    "-t", f"{actual_span:.2f}",
+                    "-i", source_path,
+                    "-r", "30",
+                    "-c:v", "libx264", "-preset", "veryfast", "-crf", "21",
+                    "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-ac", "2",
+                    vault_path,
+                ],
+                label=f"HarvestVaultSlice_{idx}",
+                timeout_sec=120,
+            )
         except Exception as e:
-            print(f"[Fresh VOD Warning] {vod['channel_name']}: {e}", flush=True)
+            print(f"[Harvest Warning] Failed slice {vault_filename}: {e}", flush=True)
+            if os.path.exists(vault_path):
+                os.remove(vault_path)
+            continue
 
-    return harvested
+        verified_dur = get_media_duration(vault_path)
+        if verified_dur < 11.0:
+            if os.path.exists(vault_path):
+                os.remove(vault_path)
+            continue
+
+        used_windows.append(peak_sec)
+        harvested_items.append({
+            "vault_path": vault_path,
+            "video_id": video_id,
+            "channel_name": channel_name,
+            "source_title": source_title,
+            "source_start_sec": round(slice_start, 2),
+            "duration_sec": round(verified_dur, 2),
+            "local_peak_sec": local_peak,
+            "viral_score": round(base_viral_score, 2),
+            "transcript_en": "",
+            "word_events": [],
+            "harvested_at": datetime.now(timezone.utc).isoformat(),
+        })
+        print(
+            f"[Vault Harvested] {vault_filename} ({verified_dur:.1f}s, local_peak={local_peak:.1f}s) from {channel_name}",
+            flush=True,
+        )
+
+    return harvested_items
 
 # ==============================================================================
 # PART 12 OF 30: VOCAL & EXPLOSION RMS AUDIO SPIKE DETECTOR
@@ -1014,87 +1051,95 @@ def check_compile_trigger_and_slot(history_data):
     return False, None
 
 # ==============================================================================
-# PART 17 OF 30: TOP-5 DISTINCT-CREATOR VAULT CHOOSER & PACING BALANCER
-# Subheading: Picks Up to 5 Top Distinct Creators & Trims Crisp Climax Windows
+# PART 17 OF 30: DYNAMIC TOP 1-TO-5 VAULT PLANNER & DURATION BUDGETER
+# Subheading: Builds 45-52s Solo Feature OR Dynamic #N -> #1 Countdown (2-5 Clips)
 # Code Title: build_top5_plan_from_vault
 # ==============================================================================
 def build_top5_plan_from_vault(history_data):
     """
-    Reviews all clips banked in history_data['vault_queue'], picks up to
-    CHANNEL_CONFIG['max_clips_per_short'] (max 5) distinct-creator winners,
-    and trims crisp climax durations:
-    - 5 clips: 12.5s each (~62.5s Short | #5 -> #4 -> #3 -> #2 -> #1)
-    - 4 clips: 13.0s each (~52.0s Short | #4 -> #3 -> #2 -> #1)
-    - 3 clips: 14.0s each (~42.0s Short | #3 -> #2 -> #1)
-    - 2 clips: 16.0s each (~32.0s Short | #2 -> #1)
-    - 1 clip:  21.5s single viral climax (#1)
+    Selects up to 5 distinct-creator clips from clip_vault/:
+    - If top clip is an elite gem (score >= 8.5 and >= 34s) or only 1 clip exists:
+      builds a 45-52s Solo Monetization-Safe Feature (1 clip).
+    - Otherwise picks all available distinct-creator clips up to 5 (2, 3, 4, or 5)
+      and numbers them dynamically (#N down to #1).
     """
-    prune_expired_vault_items(history_data)
-    vault_items = list(history_data.get("vault_queue", []))
-    if not vault_items:
-        print("[Vault Chooser] Vault queue is empty—nothing to compile yet.", flush=True)
+    vault = [
+        item for item in history_data.get("vault_queue", [])
+        if item.get("vault_path") and os.path.exists(item["vault_path"])
+    ]
+    if not vault:
         return None
 
-    vault_items.sort(key=lambda x: float(x.get("viral_score", 0.0)), reverse=True)
-    max_clips = min(5, max(1, int(CHANNEL_CONFIG["max_clips_per_short"])))
+    # Sort highest viral_score first
+    vault.sort(key=lambda x: float(x.get("viral_score", 0.0)), reverse=True)
 
-    chosen = []
+    # Deduplicate by creator so each clip in a Short is from a distinct channel
+    distinct_best = []
     seen_creators = set()
-    for item in vault_items:
-        cname = str(item.get("channel_name", "")).strip().lower()
-        if cname in seen_creators:
+    for item in vault:
+        ch_key = str(item.get("channel_name", "")).strip().lower()
+        if ch_key and ch_key in seen_creators:
             continue
-        if not os.path.exists(item.get("vault_path", "")):
-            continue
-        chosen.append(item)
-        seen_creators.add(cname)
-        if len(chosen) >= max_clips:
+        if ch_key:
+            seen_creators.add(ch_key)
+        distinct_best.append(item)
+        if len(distinct_best) >= int(CHANNEL_CONFIG["max_clips_per_short"]):
             break
 
-    if not chosen:
-        return None
+    top_item = distinct_best[0]
+    top_avail_dur = get_media_duration(top_item["vault_path"])
+
+    # Mode A: Solo Feature Short (45-52s) if elite gem (>= 8.5) or only 1 clip in vault
+    if len(distinct_best) == 1 or (float(top_item.get("viral_score", 0.0)) >= 8.5 and top_avail_dur >= 34.0):
+        chosen = [top_item]
+    else:
+        # Mode B: Dynamic Countdown (2, 3, 4, or 5 clips — never forced to 5)
+        chosen = list(reversed(distinct_best))  # ascending: #N -> ... -> #1 finale
 
     count = len(chosen)
-    dur_map = {1: 21.5, 2: 16.0, 3: 14.0, 4: 13.0, 5: 12.5}
-    seg_dur = dur_map[count]
+    target_total = 50.0 if count == 1 else 56.5
+    per_clip_budget = target_total / count
 
-    # Order ascending by score so the #1 best clip always plays LAST
-    ordered_asc = list(reversed(chosen))
-    ranks = tuple(range(count, 0, -1))
     segments = []
-
-    for rank_num, item in zip(ranks, ordered_asc):
+    for idx, item in enumerate(chosen):
         vpath = item["vault_path"]
-        clip_dur = get_media_duration(vpath)
-        peak = float(item.get("audio_peak", clip_dur * 0.65))
-        end_t = min(clip_dur - 0.25, peak + (seg_dur * 0.28))
-        start_t = max(0.0, end_t - seg_dur)
-        actual_dur = round(end_t - start_t, 2)
+        avail_d = get_media_duration(vpath)
+        if avail_d <= 3.0:
+            continue
 
-        # Transcribe & translate spoken audio inside the exact trimmed climax window
-        eng_text, word_events = transcribe_window_to_english(vpath, start_t, end_t)
+        use_dur = min(avail_d, per_clip_budget)
+        # Center around peak if trimming a 50s vault slice down to 11-18s
+        peak_local = float(item.get("local_peak_sec", avail_d / 2.0))
+        start_s = max(0.0, min(avail_d - use_dur, peak_local - use_dur * 0.45))
 
+        rank_num = count - idx  # Dynamic: #3->#2->#1 if 3 clips, #2->#1 if 2 clips, 1 if solo
         segments.append({
             "rank": rank_num,
-            "vault_item": item,
             "video_path": vpath,
-            "channel_name": item["channel_name"],
-            "source_title": item["source_title"],
-            "viral_score": item["viral_score"],
-            "start_sec": round(start_t, 2),
-            "end_sec": round(end_t, 2),
-            "duration": actual_dur,
-            "transcript_en": eng_text,
-            "word_events": word_events,
+            "start_sec": round(start_s, 2),
+            "end_sec": round(start_s + use_dur, 2),
+            "duration": round(use_dur, 2),
+            "channel_name": item.get("channel_name", "GTA 6 Creator"),
+            "source_title": item.get("source_title", "GTA 6 Gameplay"),
+            "viral_score": float(item.get("viral_score", 7.5)),
+            "transcript_en": item.get("transcript_en", ""),
+            "word_events": item.get("word_events", []),
+            "vault_item": item,
         })
 
-    mode_label = "SINGLE" if count == 1 else f"TOP_{count}_COUNTDOWN"
+    if not segments:
+        return None
+
+    # Re-index ranks cleanly in case any corrupt file was skipped
+    final_count = len(segments)
+    for idx, seg in enumerate(segments):
+        seg["rank"] = final_count - idx
+
     print(
-        f"[Vault Chooser] Selected {count} distinct creator(s) for {mode_label}: "
-        + ", ".join(f"#{s['rank']} {s['channel_name']} ({s['viral_score']}/10)" for s in segments),
+        f"[Vault Plan] Built {final_count}-clip Short ({'SOLO FEATURE' if final_count == 1 else f'COUNTDOWN #{final_count} -> #1'}).",
         flush=True,
     )
-    return {"mode": mode_label, "segments": segments}
+    return {"segments": segments, "is_solo": final_count == 1}
 
 # ==============================================================================
 # PART 18 OF 30: FASTER-WHISPER MULTILINGUAL-TO-ENGLISH TRANSLATOR
@@ -1161,17 +1206,20 @@ def transcribe_window_to_english(video_path, start_sec, end_sec):
                 pass
 
 # ==============================================================================
-# PART 19 OF 30: GEMINI 2.5 SCENE-GROUNDED TITLE, BANNER & PER-CLIP SCRIPT WRITER
-# Subheading: Writes Accurate Title, Banner & Short Spoken Cues For Every Clip (#5 -> #1)
+# PART 19 OF 30: GEMINI 2.5 MONETIZATION-SAFE SCRIPT & COMMENTARY WRITER
+# Subheading: Writes 3-Beat Transformative Commentary (Solo) or Dynamic #N -> #1 Cues
 # Code Title: generate_scene_grounded_script
 # ==============================================================================
 def generate_scene_grounded_script(short_plan, history_data):
     """
-    Uses Gemini vision on the winning GTA 6 frames to generate a scene-grounded
-    English title, top banner, a short 1-sentence commentary cue for EACH clip
-    (#5 down to #1), and a closing outro question.
+    Uses Gemini 2.5 Vision to write scene-grounded English commentary:
+    - For 1-clip Solo Shorts (45-52s): generates an Opening Hook, a Mid-Clip
+      Breakdown cue, and an Outro Takeaway so the clip has substantive transformative
+      commentary for YouTube monetization eligibility.
+    - For 2-to-5 clip Countdowns: generates dynamic #N down to #1 cues.
     """
     segments = short_plan["segments"]
+    count = len(segments)
     creators = [s["channel_name"] for s in segments]
     top_seg = segments[-1]
     recent_titles = [u.get("title", "") for u in history_data.get("uploads", [])[-12:]]
@@ -1182,7 +1230,7 @@ def generate_scene_grounded_script(short_plan, history_data):
 
     for idx, seg in enumerate(segments):
         mid_ts = (seg["start_sec"] + seg["end_sec"]) / 2.0
-        for offset_i, sample_t in enumerate((max(0.2, mid_ts - 1.2), mid_ts + 0.8)):
+        for offset_i, sample_t in enumerate((max(0.2, mid_ts - 1.5), mid_ts + 1.0)):
             f_img = f"gem_ctx_{idx}_{offset_i}.jpg"
             try:
                 run_cmd_safe(
@@ -1206,19 +1254,31 @@ def generate_scene_grounded_script(short_plan, history_data):
             f"Translated Dialogue: '{seg['transcript_en'] or 'intense gameplay reaction'}'"
         )
 
-    rank_keys_desc = ", ".join(f'"{s["rank"]}"' for s in segments)
+    if count == 1:
+        mode_instructions = (
+            f'3. "clip_vos": JSON object with key "1" containing a punchy 1-sentence Opening Hook (8-11 words) setting up what happens in {top_seg["channel_name"]}\'s clip.\n'
+            f'4. "mid_vo": Punchy 1-sentence Mid-Clip Commentary (8-11 words) reacting to the turning point halfway through the clip (for transformative monetization value).\n'
+            f'5. "outro_vo": Punchy 1-sentence Closing Takeaway + question (8-11 words) after the climax.\n'
+        )
+    else:
+        rank_keys_desc = ", ".join(f'"{s["rank"]}"' for s in segments)
+        mode_instructions = (
+            f'3. "clip_vos": JSON object mapping each rank ({rank_keys_desc}) to a punchy 1-sentence English commentary hook (7-10 words) describing that specific clip (starting from #{count} down to #1).\n'
+            f'4. "mid_vo": "" (empty string for multi-clip countdowns).\n'
+            f'5. "outro_vo": Punchy 1-sentence English closing question (8-11 words) after the #1 climax.\n'
+        )
+
     prompt_text = (
-        f"You are writing metadata and voiceover cues for {CHANNEL_CONFIG['channel_name']} "
+        f"You are writing transformative commentary and metadata for {CHANNEL_CONFIG['channel_name']} "
         f"({CHANNEL_CONFIG['channel_handle']}), a Grand Theft Auto VI Shorts channel.\n"
         f"Inspect the attached gameplay frames and clip details:\n"
         + "\n".join(context_lines)
         + f"\nAvoid repeating any of these recent titles: {recent_titles}\n\n"
-        f"Return STRICT valid JSON with these exact 5 keys:\n"
+        f"Return STRICT valid JSON with these exact 6 keys:\n"
         f'1. "title": Catchy English YouTube Shorts title describing the wildest moment (max 68 chars, 1 emoji, no #Shorts tag).\n'
-        f'2. "banner": Short 3-to-5 word UPPERCASE top banner (e.g. "TOP 5 VICE CITY CHAOS").\n'
-        f'3. "clip_vos": JSON object mapping each rank ({rank_keys_desc}) to a punchy 1-sentence English commentary hook (7-10 words, ~2.2s) introducing that clip (e.g. "At number 5, watch this bank shootout go sideways!").\n'
-        f'4. "outro_vo": Punchy 1-sentence English closing question (8-11 words, ~2.8s) after the #1 climax.\n'
-        f'5. "tags": List of 8 relevant English tags including "GTA 6", "Grand Theft Auto 6", "Vice City", and creator names.\n'
+        f'2. "banner": Short 3-to-5 word UPPERCASE top banner (e.g. {"\"CRAZIEST VICE CITY MOMENT\"" if count == 1 else f"\"TOP {count} VICE CITY MOMENTS\""}).\n'
+        + mode_instructions
+        + f'6. "tags": List of 8 relevant English tags including "GTA 6", "Grand Theft Auto 6", "Vice City", and creator names.\n'
     )
     prompt_parts.append(prompt_text)
 
@@ -1256,13 +1316,12 @@ def generate_scene_grounded_script(short_plan, history_data):
             except Exception:
                 pass
 
-    count = len(segments)
     top_creator = top_seg["channel_name"]
     fallback_vos = {}
     for s in segments:
         r = str(s["rank"])
         if count == 1:
-            fallback_vos[r] = f"Watch how fast things spiral out of control for {s['channel_name']}!"
+            fallback_vos[r] = f"Watch how fast things spiral out of control for {s['channel_name']} in Vice City!"
         elif s["rank"] == 1:
             fallback_vos[r] = f"And at number 1, {s['channel_name']} takes Vice City chaos to the limit!"
         else:
@@ -1270,9 +1329,10 @@ def generate_scene_grounded_script(short_plan, history_data):
 
     return {
         "title": (f"Top {count} Craziest GTA 6 Moments Featuring {top_creator} 🔥" if count > 1 else f"{top_creator} Had The Wildest Moment In Vice City 😱")[:75],
-        "banner": f"TOP {count} VICE CITY MOMENTS" if count > 1 else "PURE VICE CITY CHAOS",
+        "banner": f"TOP {count} VICE CITY MOMENTS" if count > 1 else "CRAZIEST VICE CITY MOMENT",
         "clip_vos": fallback_vos,
-        "outro_vo": f"Which Vice City clip was your #1 favorite? Comment below!",
+        "mid_vo": f"Nobody expected what happens next in this Vice City encounter!" if count == 1 else "",
+        "outro_vo": f"Would you have survived that in Vice City? Comment below!",
         "tags": ["GTA 6", "Grand Theft Auto 6", "Vice City", "GTA VI", "Shorts"] + creators[:3],
         "creators": creators,
     }
@@ -1349,7 +1409,7 @@ def detect_verified_webcam_box(video_path, start_sec, end_sec):
 
 # ==============================================================================
 # PART 21 OF 30: 1080X1920 VERTICAL LAYOUT & XFADE TRANSITION RENDERER
-# Subheading: Renders Each Clip & Joins Them With Smooth 0.35s Flash-Wipe Transitions
+# Subheading: Renders Solo (45-52s) or Dynamic #N -> #1 Countdown With 0.35s Transitions
 # Code Title: render_vertical_segments_and_concat
 # ==============================================================================
 def _escape_drawtext(txt):
@@ -1364,14 +1424,19 @@ def _escape_drawtext(txt):
 
 def render_vertical_segments_and_concat(short_plan):
     """
-    Renders each chosen GTA 6 segment to 1080x1920 @ 30fps and joins multi-clip
+    Renders each chosen GTA 6 segment to 1080x1920 @ 30fps (auto-fitting total
+    runtime to <= 57.5s so #1 + outro never get cut off) and joins multi-clip
     Shorts using smooth 0.35s xfade video + acrossfade audio transitions.
-    Returns (stitched_path, timeline_segments_with_exact_offsets).
     """
     font_bold = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
     segments = short_plan["segments"]
     is_multi = len(segments) > 1
     xfade_dur = 0.35
+
+    raw_durs = [float(s["duration"]) for s in segments]
+    est_total = sum(raw_durs) - xfade_dur * max(0, len(segments) - 1)
+    max_target_sec = 57.5
+    scale_ratio = (max_target_sec / est_total) if est_total > max_target_sec else 1.0
 
     rendered_files = []
     seg_durations = []
@@ -1382,7 +1447,7 @@ def render_vertical_segments_and_concat(short_plan):
             os.remove(seg_out)
 
         start_s = float(seg["start_sec"])
-        dur_s = float(seg["duration"])
+        dur_s = round(max(6.5, float(seg["duration"]) * scale_ratio), 2)
         creator_label = _escape_drawtext(f"Credit: {seg['channel_name']}")
         wm_label = _escape_drawtext(CHANNEL_CONFIG["watermark_text"])
         rank_num = int(seg["rank"])
@@ -1419,6 +1484,7 @@ def render_vertical_segments_and_concat(short_plan):
             f"shadowcolor=black@0.90:shadowx=2:shadowy=2"
         )
 
+        # Only draw dynamic rank badge (#N -> #1) when compiling 2-5 clips
         if is_multi:
             badge_color = "#FF1744" if rank_num == 1 else "#00E5FF"
             text_chain += (
@@ -1465,9 +1531,9 @@ def render_vertical_segments_and_concat(short_plan):
             "offset_end": round(seg_durations[0], 3),
             "rendered_dur": round(seg_durations[0], 3),
         })
+        print(f"[Stitched Master] Solo Short runtime={seg_durations[0]:.2f}s.", flush=True)
         return stitched_out, timeline_meta
 
-    # Build chained xfade (video) + acrossfade (audio) graph across all segments
     cmd = ["ffmpeg", "-y"]
     for rf in rendered_files:
         cmd.extend(["-i", rf])
@@ -1521,6 +1587,7 @@ def render_vertical_segments_and_concat(short_plan):
         label="XfadeStitchSegments",
         timeout_sec=140,
     )
+    print(f"[Stitched Master] Total runtime={cum_dur:.2f}s across {len(rendered_files)} clips.", flush=True)
     return stitched_out, timeline_meta
 
 # ==============================================================================
@@ -1615,6 +1682,20 @@ def mix_three_act_audio_master(stitched_video, timeline_meta, script_data):
                         "end": t_end,
                         "text": vo_txt,
                     })
+
+        mid_txt = str(script_data.get("mid_vo", "")).strip()
+        if len(timeline_meta) == 1 and mid_txt and total_dur >= 24.0:
+            mid_mp3 = "vo_seg_mid.mp3"
+            mdur = synthesize_voiceover_mp3(mid_txt, mid_mp3)
+            if mdur > 0.4 and os.path.exists(mid_mp3):
+                m_start = round(total_dur * 0.46, 2)
+                vo_tracks.append({
+                    "path": mid_mp3,
+                    "start": m_start,
+                    "end": round(min(total_dur - 4.0, m_start + mdur), 2),
+                    "text": mid_txt,
+                })
+
 
         outro_txt = str(script_data.get("outro_vo", "")).strip()
         outro_mp3 = "vo_outro.mp3"
@@ -2029,128 +2110,145 @@ def cleanup_temp_workspace():
                 pass
 
 # ==============================================================================
-# PART 30 OF 30: MASTER 2-STAGE PIPELINE ORCHESTRATOR (__MAIN__)
-# Subheading: Auto-Expanding Multi-Wave Vault Harvest + T-1h Top-5 Compiler
-# Code Title: run_master_pipeline Entrypoint
+# PART 30 OF 30: MAIN 24/7 HARVEST + DYNAMIC 1-TO-5 VAULT ORCHESTRATOR
+# Subheading: Runs Hourly Harvest, Builds Dynamic 1-5 Clip Short, Renders & Schedules
+# Code Title: main
 # ==============================================================================
-def run_master_pipeline():
-    t0 = time.time()
-    target_vault_clips = int(CHANNEL_CONFIG["max_clips_per_short"])
-    print(
-        f"=== {CHANNEL_CONFIG['channel_name']} ({CHANNEL_CONFIG['channel_handle']}) | "
-        f"upload_to_youtube={CHANNEL_CONFIG['upload_to_youtube']} | TargetVault={target_vault_clips} ===",
-        flush=True,
-    )
+def main():
+    print("============================================================", flush=True)
+    print(f"[Boot] {CHANNEL_CONFIG['channel_name']} ({CHANNEL_CONFIG['channel_handle']}) Starting...", flush=True)
+    print("============================================================", flush=True)
+
     history_data = load_history()
+    os.makedirs(CHANNEL_CONFIG.get("vault_dir", "clip_vault"), exist_ok=True)
 
-    try:
-        # ------------------------------------------------------------------
-        # STAGE 1: AUTO-EXPANDING MULTI-WAVE VAULT HARVEST (UNTIL >= 5 GEMS)
-        # ------------------------------------------------------------------
-        discovered = discover_equal_weight_original_streams()
-        heatmap_peaks, fresh_vods = scan_heatmaps_in_parallel(discovered, history_data, max_inspect=65)
+    # ------------------------------------------------------------------
+    # PHASE 1: HOURLY HARVEST (Discover -> Download -> Action Filter -> Vault)
+    # ------------------------------------------------------------------
+    candidates = discover_gta6_candidates(history_data)
+    print(f"[Discovery] Found {len(candidates)} candidate GTA 6 videos.", flush=True)
 
-        hm_cursor = 0
-        vod_cursor = 0
-        wave_configs = [
-            ("Wave 1 (Primary Heatmap + Fresh)", 8, 3),
-            ("Wave 2 (Expanded Heatmap + VODs)", 10, 5),
-            ("Wave 3 (Deep Reserve Search)", 12, 6),
+    newly_vaulted = 0
+    for cand in candidates:
+        if newly_vaulted >= int(CHANNEL_CONFIG.get("max_new_clips_per_run", 3)):
+            break
+
+        vid_id = cand["video_id"]
+        raw_path = f"raw_{vid_id}.mp4"
+        try:
+            downloaded = download_candidate_video(cand, raw_path)
+            if not downloaded or not os.path.exists(raw_path):
+                continue
+
+            peaks = detect_audio_video_peaks(raw_path)
+            if not peaks:
+                print(f"[Skip] No strong climax peaks in {vid_id}.", flush=True)
+                continue
+
+            slices = harvest_climax_slices_to_vault(raw_path, cand, peaks)
+            for item in slices:
+                if not verify_action_motion_and_quality(item["vault_path"]):
+                    print(f"[Filter] Rejected low-motion clip {item['vault_path']}.", flush=True)
+                    if os.path.exists(item["vault_path"]):
+                        os.remove(item["vault_path"])
+                    continue
+
+                tx_en, w_events = transcribe_and_translate_clip(item["vault_path"])
+                item["transcript_en"] = tx_en
+                item["word_events"] = w_events
+
+                history_data.setdefault("vault_queue", []).append(item)
+                newly_vaulted += 1
+                print(f"[Vault Queued] {item['vault_path']} (Total in vault: {len(history_data['vault_queue'])})", flush=True)
+
+            history_data.setdefault("used_clips", []).append({
+                "video_id": vid_id,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            })
+        except Exception as e:
+            print(f"[Harvest Error] {vid_id}: {e}", flush=True)
+        finally:
+            if os.path.exists(raw_path):
+                try:
+                    os.remove(raw_path)
+                except Exception:
+                    pass
+
+    save_history(history_data)
+
+    # ------------------------------------------------------------------
+    # PHASE 2: CHECK 6-HOUR PUBLISH WINDOW (Or Manual force_upload)
+    # ------------------------------------------------------------------
+    force_flag = str(os.environ.get("FORCE_UPLOAD", "")).strip().lower() in ("1", "true", "yes")
+    should_build, slot_iso = should_trigger_publish_window(history_data, force_flag=force_flag)
+
+    if not should_build and CHANNEL_CONFIG.get("upload_to_youtube", False):
+        print(f"[Standby] Harvest complete ({newly_vaulted} new). Waiting for next 6-hour publish window.", flush=True)
+        return
+
+    # ------------------------------------------------------------------
+    # PHASE 3: BUILD DYNAMIC 1-TO-5 SHORT PLAN & RENDER
+    # ------------------------------------------------------------------
+    short_plan = build_top5_plan_from_vault(history_data)
+    if not short_plan or not short_plan.get("segments"):
+        print("[Standby] Vault has no ready clips yet. Will retry next hourly run.", flush=True)
+        return
+
+    script_data = generate_scene_grounded_script(short_plan, history_data)
+    stitched_video, timeline_meta = render_vertical_segments_and_concat(short_plan)
+
+    final_short_path = "final_vice_city_short.mp4"
+    compose_final_short_with_captions_and_audio(
+        stitched_video=stitched_video,
+        timeline_meta=timeline_meta,
+        script_data=script_data,
+        output_path=final_short_path,
+    )
+
+    if not os.path.exists(final_short_path):
+        raise RuntimeError("Final Short render failed — final_vice_city_short.mp4 missing.")
+
+    final_dur = get_media_duration(final_short_path)
+    print(f"[Ready] Rendered {final_short_path} ({final_dur:.2f}s | {len(timeline_meta)} clip(s)).", flush=True)
+
+    # ------------------------------------------------------------------
+    # PHASE 4: UPLOAD TO YOUTUBE (If Enabled) & CONSUME USED VAULT CLIPS
+    # ------------------------------------------------------------------
+    if CHANNEL_CONFIG.get("upload_to_youtube", False):
+        video_url = upload_short_to_youtube(
+            video_path=final_short_path,
+            script_data=script_data,
+            timeline_meta=timeline_meta,
+            publish_at_iso=slot_iso,
+        )
+        used_paths = {seg["video_path"] for seg in timeline_meta}
+        history_data["vault_queue"] = [
+            v for v in history_data.get("vault_queue", [])
+            if v.get("vault_path") not in used_paths
         ]
+        for vp in used_paths:
+            if os.path.exists(vp):
+                try:
+                    os.remove(vp)
+                except Exception:
+                    pass
 
-        for wave_label, hm_take, vod_take in wave_configs:
-            if len(history_data.get("vault_queue", [])) >= target_vault_clips:
-                print(
-                    f"[Vault Ready] Already have {len(history_data['vault_queue'])} banked clips -> Stopping harvest early!",
-                    flush=True,
-                )
-                break
+        if slot_iso:
+            history_data.setdefault("scheduled_slots", []).append(slot_iso)
 
-            # If Wave 3 still needs more candidates, run a fresh deep search pass
-            if wave_label.startswith("Wave 3") and hm_cursor >= len(heatmap_peaks) and vod_cursor >= len(fresh_vods):
-                print("[Wave 3 Expand] Pool exhausted -> Running deep worldwide expansion scan...", flush=True)
-                extra_disc = discover_equal_weight_original_streams()
-                seen_ids = {d["video_id"] for d in discovered}
-                new_only = [d for d in extra_disc if d["video_id"] not in seen_ids]
-                if new_only:
-                    extra_hm, extra_vod = scan_heatmaps_in_parallel(new_only, history_data, max_inspect=50)
-                    heatmap_peaks.extend(extra_hm)
-                    fresh_vods.extend(extra_vod)
-
-            hm_batch = heatmap_peaks[hm_cursor : hm_cursor + hm_take]
-            hm_cursor += len(hm_batch)
-
-            vod_batch = fresh_vods[vod_cursor : vod_cursor + vod_take]
-            vod_cursor += len(vod_batch)
-
-            if not hm_batch and not vod_batch:
-                break
-
-            print(
-                f"[{wave_label}] Harvesting {len(hm_batch)} heatmap peaks + {len(vod_batch)} VOD samples "
-                f"(Vault={len(history_data.get('vault_queue', []))}/{target_vault_clips})...",
-                flush=True,
-            )
-            candidates = harvest_26s_climax_slices(hm_batch, max_slices=len(hm_batch))
-            if vod_batch:
-                candidates.extend(harvest_fresh_official_vods(vod_batch, max_samples=len(vod_batch)))
-
-            if candidates:
-                winners = rate_gta6_candidates(candidates)
-                if winners:
-                    bank_winners_into_vault(winners, history_data)
-                    save_history(history_data)
-
-            # Clean up temp wave slices before starting next wave
-            cleanup_temp_workspace()
-
+        history_data.setdefault("uploads", []).append({
+            "title": script_data.get("title", ""),
+            "url": video_url,
+            "clip_count": len(timeline_meta),
+            "duration_sec": round(final_dur, 2),
+            "scheduled_for": slot_iso or "immediate",
+            "uploaded_at": datetime.now(timezone.utc).isoformat(),
+        })
         save_history(history_data)
-
-        # ------------------------------------------------------------------
-        # STAGE 2: T-MINUS 1 HOUR TOP-5 COMPILER & SLOT SCHEDULER
-        # ------------------------------------------------------------------
-        should_compile, target_slot_iso = check_compile_trigger_and_slot(history_data)
-        if not should_compile:
-            print(f"[Complete] Harvest-only run finished in {time.time() - t0:.1f}s.", flush=True)
-            return
-
-        short_plan = build_top5_plan_from_vault(history_data)
-        if not short_plan:
-            print(f"[Complete] No banked clips ready to compile ({time.time() - t0:.1f}s).", flush=True)
-            return
-
-        script_data = generate_scene_grounded_script(short_plan, history_data)
-        stitched_vid, timeline_meta = render_vertical_segments_and_concat(short_plan)
-        mixed_vid, vo_tracks = mix_three_act_audio_master(
-            stitched_vid, timeline_meta, script_data
-        )
-        final_mp4 = burn_banner_and_english_captions(
-            mixed_vid, timeline_meta, script_data, vo_tracks
-        )
-        thumb_jpg = extract_short_thumbnail(final_mp4)
-
-        uploaded_id = None
-        final_title = script_data["title"]
-        if CHANNEL_CONFIG["upload_to_youtube"]:
-            uploaded_id, final_title = upload_and_schedule_youtube_short(
-                final_mp4, thumb_jpg, script_data, timeline_meta, publish_at_iso=target_slot_iso
-            )
-            commit_compiled_clips_to_history(
-                history_data, timeline_meta, final_title, uploaded_id, target_slot_iso
-            )
-        else:
-            print(
-                f"[Test Mode] upload_to_youtube=False -> Saved '{final_mp4}' for artifact preview "
-                f"(Vault clips kept intact until live upload).",
-                flush=True,
-            )
-
-        save_history(history_data)
-        print(f"[Complete] 2-Stage pipeline finished cleanly in {time.time() - t0:.1f}s!", flush=True)
-    finally:
-        cleanup_temp_workspace()
+        print(f"[Live Success] Uploaded & scheduled: {video_url}", flush=True)
+    else:
+        print("[Test Mode] upload_to_youtube=False — keeping vault clips intact for inspection.", flush=True)
 
 
 if __name__ == "__main__":
-    run_master_pipeline()
-    
+    main()
