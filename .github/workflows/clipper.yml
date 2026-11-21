@@ -35,12 +35,15 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
-      - name: Install FFmpeg & Deno Runtime
+      - name: Install FFmpeg & Fonts
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
-          curl -fsSL https://deno.land | sh
-          echo "$HOME/.deno/bin" >> $GITHUB_PATH
+
+      - name: Set Up Deno Runtime
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
 
       - name: Install Python Dependencies
         run: |
