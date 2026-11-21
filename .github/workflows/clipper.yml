@@ -39,12 +39,15 @@ jobs:
       # ==============================================================================
       # WORKFLOW PART 2: SYSTEM TOOLS, MODEL CACHE & PYTHON DEPENDENCIES
       # ==============================================================================
-      - name: 2.1 Install System FFmpeg, Fonts & Deno JS Runtime
+      - name: 2.1 Install System FFmpeg & Fonts
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg fonts-dejavu-core unzip
-          curl -fsSL https://deno.land | sh
-          echo "$HOME/.deno/bin" >> $GITHUB_PATH
+          sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
+
+      - name: 2.1b Set Up Deno JS Runtime (For yt-dlp YouTube Solver)
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
 
       - name: 2.2 Cache OpenCLIP & Faster-Whisper Models
         uses: actions/cache@v4
