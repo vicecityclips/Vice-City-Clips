@@ -219,11 +219,11 @@ def get_media_duration(media_path):
 
 # ==============================================================================
 # PART 6 OF 30: YT-DLP COOKIE & DENO EJS CHALLENGE CONFIGURATION
-# Subheading: Authenticated Session Loader & Remote YouTube Player JS Solver
+# Subheading: Netscape Cookie Auto-Repair & Remote YouTube Player JS Solver
 # Code Title: _yt_dlp_base_opts Session Builder
 # ==============================================================================
 def _yt_dlp_base_opts():
-    """Builds clean yt-dlp options with Deno EJS solver & optional cookie auth."""
+    """Builds clean yt-dlp options with Deno EJS solver & valid Netscape cookie file."""
     opts = {
         "quiet": True,
         "no_warnings": True,
@@ -232,9 +232,11 @@ def _yt_dlp_base_opts():
         "remote_components": ["ejs:github"],
     }
     cookie_txt = os.environ.get("YOUTUBE_COOKIES_TXT", "").strip()
-    if cookie_txt:
+    if cookie_txt and "\t" in cookie_txt:
+        if not cookie_txt.startswith("# Netscape HTTP Cookie File"):
+            cookie_txt = "# Netscape HTTP Cookie File\n" + cookie_txt
         with open("yt_cookies.txt", "w", encoding="utf-8") as cf:
-            cf.write(cookie_txt)
+            cf.write(cookie_txt + "\n")
         opts["cookiefile"] = "yt_cookies.txt"
     return opts
 
@@ -285,58 +287,130 @@ def is_strictly_original_gta6_stream(raw_title):
     return has_gta6 and not has_blocked
 
 # ==============================================================================
-# PART 8 OF 30: EQUAL-WEIGHT RANDOM ORIGINAL CREATOR DISCOVERY ENGINE
-# Subheading: Zero-Bias Parallel Rotation Across Official Creator Channels Only
+# PART 8 OF 30: OPEN WORLDWIDE + EQUAL-WEIGHT CREATOR DISCOVERY ENGINE
+# Subheading: Open Global YouTube Search + Official Creator Channels (Zero Clippers)
 # Code Title: discover_equal_weight_original_streams
 # ==============================================================================
+WORLDWIDE_GTA6_QUERIES = (
+    "GTA 6 gameplay",
+    "Grand Theft Auto VI gameplay",
+    "GTA 6 live stream",
+    "GTA VI Vice City gameplay",
+    "Grand Theft Auto 6 stream",
+    "GTA 6 Hindi live",
+)
+
+BLOCKED_CLIPPER_CHANNEL_WORDS = (
+    "clips",
+    "clipper",
+    "highlights",
+    "moments",
+    "compilation",
+    "shorts",
+    "gaming edits",
+    "fan",
+    "daily",
+    "vault",
+)
+
+
+def _is_original_creator_channel(channel_name):
+    ch = str(channel_name or "").lower()
+    return not any(w in ch for w in BLOCKED_CLIPPER_CHANNEL_WORDS)
+
+
 def discover_equal_weight_original_streams():
     """
-    Randomly shuffles all verified strike-safe original creators with 100% equal priority (1.0)
-    and concurrently inspects their official /@handle/streams and /@handle/videos tabs.
+    Discovers strictly GTA 6 streams & full gameplay videos worldwide using:
+    1) Open Worldwide YouTube Search (across all global & Indian creators)
+    2) Equal-weight random rotation of verified strike-safe official creators
+    Strictly blocks 2nd/3rd-party clippers and compilation channels.
     """
     discovered = {}
+    base_yt = "https://youtube.com"
+
+    # 1) Open Worldwide YouTube Search (3 rotating global queries x 20 results = 60 candidates)
+    queries = list(WORLDWIDE_GTA6_QUERIES)
+    random.shuffle(queries)
+
+    def _run_open_search(q):
+        opts = _yt_dlp_base_opts()
+        opts["extract_flat"] = "in_playlist"
+        found = []
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                res = ydl.extract_info(f"ytsearch20:{q}", download=False)
+            for entry in (res or {}).get("entries") or []:
+                if not entry or not entry.get("id"):
+                    continue
+                vid_id = str(entry["id"]).strip()
+                if len(vid_id) != 11:
+                    continue
+                dur = float(entry.get("duration") or 0)
+                # Require full gameplay/stream (>= 4 mins) so 2nd-party short clips are skipped
+                if dur and dur < 240:
+                    continue
+                title_str = str(entry.get("title") or "").strip()
+                uploader = str(entry.get("uploader") or entry.get("channel") or "").strip()
+                if not is_strictly_original_gta6_stream(title_str):
+                    continue
+                if not _is_original_creator_channel(uploader):
+                    continue
+                found.append({
+                    "video_id": vid_id,
+                    "url": f"{base_yt}/watch?v={vid_id}",
+                    "title": title_str,
+                    "channel_name": uploader or "YouTube Creator",
+                    "weight": 1.0,
+                })
+        except Exception as e:
+            print(f"[Open Search Warning] '{q}': {e}", flush=True)
+        return found
+
+    # 2) Equal-Weight Random Official Creator Tabs (10 shuffled creators x /streams + /videos)
     pool = list(VERIFIED_ORIGINAL_CREATORS)
     random.shuffle(pool)
 
     def _fetch_creator_tab(creator, tab):
         raw_h = str(creator["handle"]).strip().lstrip("/")
         clean_h = raw_h if raw_h.startswith("@") else f"@{raw_h}"
-        tab_url = f"https://youtube.com{clean_h}/{tab}"
-
+        tab_url = f"{base_yt}/{clean_h}/{tab}"
         opts = _yt_dlp_base_opts()
         opts["extract_flat"] = "in_playlist"
-        opts["playlistend"] = 20
-
-        found_local = []
+        opts["playlistend"] = 15
+        found = []
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(tab_url, download=False)
             for entry in (info or {}).get("entries") or []:
                 if not entry or not entry.get("id"):
                     continue
-                vid_id = str(entry["id"])
+                vid_id = str(entry["id"]).strip()
                 if len(vid_id) != 11:
                     continue
                 dur = float(entry.get("duration") or 0)
-                if dur and dur < 120:
+                if dur and dur < 180:
                     continue
                 title_str = str(entry.get("title") or "").strip()
                 if not is_strictly_original_gta6_stream(title_str):
                     continue
-                found_local.append({
+                found.append({
                     "video_id": vid_id,
-                    "url": "https://youtube.comwatch?v=" + vid_id,
+                    "url": f"{base_yt}/watch?v={vid_id}",
                     "title": title_str,
                     "channel_name": creator["name"],
                     "weight": 1.0,
                 })
         except Exception:
             pass
-        return found_local
+        return found
 
-    tasks = [(c, tab) for c in pool for tab in ("streams", "videos")]
     with ThreadPoolExecutor(max_workers=6) as executor:
-        futures = [executor.submit(_fetch_creator_tab, c, t) for (c, t) in tasks]
+        futures = [executor.submit(_run_open_search, q) for q in queries[:3]]
+        for c in pool[:10]:
+            futures.append(executor.submit(_fetch_creator_tab, c, "streams"))
+            futures.append(executor.submit(_fetch_creator_tab, c, "videos"))
+
         for fut in as_completed(futures):
             for item in fut.result() or []:
                 if item["video_id"] not in discovered:
@@ -345,7 +419,7 @@ def discover_equal_weight_original_streams():
     items = list(discovered.values())
     random.shuffle(items)
     print(
-        f"[Original Discovery] Found {len(items)} official GTA 6 streams/VODs across {len(pool)} creators (equal 1.0 weight).",
+        f"[Worldwide Discovery] Found {len(items)} original GTA 6 streams/VODs worldwide (zero 2nd-party clippers).",
         flush=True,
     )
     return items
