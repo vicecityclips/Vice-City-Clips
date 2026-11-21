@@ -800,6 +800,15 @@ def build_top5_plan_from_vault(history_data):
     if not vault:
         return None
 
+    is_test_mode = not bool(CHANNEL_CONFIG.get("upload_to_youtube", False))
+    if is_test_mode:
+        untested = [v for v in vault if int(v.get("test_rendered_count", 0)) == 0]
+        if not untested:
+            print("[Test Standby] All clips in vault were already test-rendered. Waiting for new harvest.", flush=True)
+            return None
+        vault = untested
+
+    random.shuffle(vault)
     vault.sort(
         key=lambda x: (
             int(x.get("test_rendered_count", 0)),
