@@ -242,7 +242,7 @@ def _prepare_cookies_file():
         if os.path.exists(candidate_path) and os.path.getsize(candidate_path) > 40:
             return candidate_path
 
-    for env_name in ("YT_COOKIES_TXT", "YOUTUBE_COOKIES", "YT_COOKIES", "COOKIES_TXT"):
+    for env_name in ("YOUTUBE_COOKIES_TXT", "YT_COOKIES_TXT", "YOUTUBE_COOKIES", "YT_COOKIES", "COOKIES_TXT"):
         raw_val = os.environ.get(env_name, "").strip()
         if len(raw_val) > 40:
             out_cookie = "yt_cookies.txt"
