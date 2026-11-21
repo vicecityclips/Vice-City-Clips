@@ -233,31 +233,52 @@ def discover_gta6_candidates(history_data):
 
 
 # ==============================================================================
-# PART 7 OF 30: CANDIDATE VIDEO DOWNLOADER (720P MP4)
-# Subheading: Downloads Candidate Gameplay Clip With Safe Format & Size Caps
+# PART 7 OF 30: CANDIDATE VIDEO DOWNLOADER (720P MP4 + DENO/COOKIES BYPASS)
+# Subheading: Downloads Candidate Gameplay Clip With Deno Runtime & Client Fallbacks
 # Code Title: download_candidate_video
 # ==============================================================================
 def download_candidate_video(candidate, out_path):
     if os.path.exists(out_path):
         os.remove(out_path)
 
-    url = candidate["url"]
-    cmd = [
-        "yt-dlp",
-        "-f", "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best",
-        "--merge-output-format", "mp4",
-        "--no-playlist",
-        "--max-filesize", "180M",
-        "-o", out_path,
-        url,
-    ]
-    res = run_cmd_safe(cmd, label=f"Download_{candidate['video_id']}", timeout_sec=150, check=False)
-    if res.returncode == 0 and os.path.exists(out_path) and get_media_duration(out_path) >= 20.0:
-        return True
-    if os.path.exists(out_path):
-        os.remove(out_path)
-    return False
+    cookies_file = "yt_cookies.txt"
+    raw_cookies = os.environ.get("YT_COOKIES_TXT", "").strip()
+    if raw_cookies and not os.path.exists(cookies_file):
+        with open(cookies_file, "w", encoding="utf-8") as cf:
+            cf.write(raw_cookies + "\n")
 
+    url = candidate["url"]
+    client_profiles = (
+        "youtube:player_client=tv_embedded,android_vr",
+        "youtube:player_client=web,mweb",
+    )
+
+    for idx, extractor_arg in enumerate(client_profiles):
+        cmd = [
+            "yt-dlp",
+            "--js-runtimes", "deno",
+            "--extractor-args", extractor_arg,
+            "-f", "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best[height<=720]/best",
+            "--merge-output-format", "mp4",
+            "--no-playlist",
+            "--max-filesize", "220M",
+            "-o", out_path,
+            url,
+        ]
+        if os.path.exists(cookies_file) and os.path.getsize(cookies_file) > 20:
+            cmd.extend(["--cookies", cookies_file])
+
+        res = run_cmd_safe(cmd, label=f"Download_{candidate['video_id']}_{idx}", timeout_sec=160, check=False)
+        if res.returncode == 0 and os.path.exists(out_path) and get_media_duration(out_path) >= 20.0:
+            print(f"[Downloaded] {candidate['video_id']} ({candidate['channel_name']})", flush=True)
+            return True
+
+        err_msg = (res.stderr or res.stdout or "").strip().splitlines()[-1:]
+        print(f"[Download Retry {idx+1}] {candidate['video_id']}: {err_msg}", flush=True)
+        if os.path.exists(out_path):
+            os.remove(out_path)
+
+    return False
 
 # ==============================================================================
 # PART 8 OF 30: AUDIO-ENERGY CLIMAX PEAK DETECTOR
