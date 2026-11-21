@@ -1295,7 +1295,8 @@
           "end": 39.46
         }
       ],
-      "harvested_at": "2026-11-21T17:40:00.550743+00:00"
+      "harvested_at": "2026-11-21T17:40:00.550743+00:00",
+      "test_rendered_count": 1
     },
     {
       "vault_path": "clip_vault/9UIQS0Cimdg_p1_726s.mp4",
