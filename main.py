@@ -248,7 +248,7 @@ def download_candidate_video(candidate, out_path):
         with open(cookies_file, "w", encoding="utf-8") as cf:
             cf.write(raw_cookies + "\n")
 
-    url = "https://" + "://youtube.com" + "?v=" + str(candidate["video_id"]).strip()
+    vid_id = str(candidate["video_id"]).strip()
     client_profiles = (
         "youtube:player_client=tv_embedded,android_vr",
         "youtube:player_client=web,mweb",
@@ -264,7 +264,8 @@ def download_candidate_video(candidate, out_path):
             "--no-playlist",
             "--max-filesize", "220M",
             "-o", out_path,
-            url,
+            "--",
+            vid_id,
         ]
         if os.path.exists(cookies_file) and os.path.getsize(cookies_file) > 20:
             cmd.extend(["--cookies", cookies_file])
