@@ -591,5 +591,66 @@
       "created_at": "2026-11-21T12:59:45Z"
     }
   ],
-  "vault_queue": []
+  "vault_queue": [
+    {
+      "vault_path": "clip_vault/vault_20261121_132718_6E2cBXFCDyQ_553.mp4",
+      "video_id": "6E2cBXFCDyQ",
+      "channel_name": "TmarTn2",
+      "source_title": "GTA 6 - Stealing a Jet From the Military Base",
+      "source_type": "YouTube-FreshVOD",
+      "heatmap_score": 0.0,
+      "viral_score": 8.45,
+      "audio_peak": 25.5,
+      "origin_peak_sec": 552.9304250850194,
+      "added_epoch": 1795267638.99549
+    },
+    {
+      "vault_path": "clip_vault/vault_20261121_133104_dAsKZbcnH3Q_501.mp4",
+      "video_id": "dAsKZbcnH3Q",
+      "channel_name": "GTA 6 Legacy",
+      "source_title": "GTA 6 Beach Exploration \ud83c\udf0a\ud83c\udf34 | Realistic Vice City Gameplay PS5 4K",
+      "source_type": "YouTube-FreshVOD",
+      "heatmap_score": 0.0,
+      "viral_score": 9.23,
+      "audio_peak": 4.75,
+      "origin_peak_sec": 501.11805590418925,
+      "added_epoch": 1795267864.382088
+    },
+    {
+      "vault_path": "clip_vault/vault_20261121_133104_dArOteXFT2Y_7544.mp4",
+      "video_id": "dArOteXFT2Y",
+      "channel_name": "BattleKing",
+      "source_title": "GTA-6 LIVE STREAM | Grand Theft Auto VI | Hindi Gameplay 4K - 4",
+      "source_type": "YouTube-FreshVOD",
+      "heatmap_score": 0.0,
+      "viral_score": 8.18,
+      "audio_peak": 22.5,
+      "origin_peak_sec": 7544.027097770597,
+      "added_epoch": 1795267864.386224
+    },
+    {
+      "vault_path": "clip_vault/vault_20261121_133104_eFMv_LH_k8M_242.mp4",
+      "video_id": "eFMv_LH_k8M",
+      "channel_name": "GTA Series Videos",
+      "source_title": "GTA 6 Mission #8 - Hey Arnold! (Chapter 1) [Full Walkthrough - PS5 4K]",
+      "source_type": "YouTube-FreshVOD",
+      "heatmap_score": 0.0,
+      "viral_score": 7.51,
+      "audio_peak": 42.25,
+      "origin_peak_sec": 242.29803124148148,
+      "added_epoch": 1795267864.3921525
+    },
+    {
+      "vault_path": "clip_vault/vault_20261121_133104_QQV-0OUGxGs_668.mp4",
+      "video_id": "QQV-0OUGxGs",
+      "channel_name": "MrBeast Gaming",
+      "source_title": "Whatever You Steal in GTA 6, You Keep!",
+      "source_type": "YouTube-FreshVOD",
+      "heatmap_score": 0.0,
+      "viral_score": 7.51,
+      "audio_peak": 9.5,
+      "origin_peak_sec": 668.398993390017,
+      "added_epoch": 1795267864.3966846
+    }
+  ]
 }
