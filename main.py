@@ -2126,7 +2126,7 @@ def main():
     # ------------------------------------------------------------------
     # PHASE 1: HOURLY HARVEST (Discover -> Download -> Action Filter -> Vault)
     # ------------------------------------------------------------------
-    candidates = discover_gta6_candidates(history_data)
+    candidates = rate_gta6_candidates(history_data)
     print(f"[Discovery] Found {len(candidates)} candidate GTA 6 videos.", flush=True)
 
     newly_vaulted = 0
