@@ -167,10 +167,45 @@ def should_trigger_publish_window(history_data, force_flag=False):
     return (is_publish_hour and vault_ready), slot_iso
 
 # ==============================================================================
-# PART 6 OF 30: FRESH GTA 6 CANDIDATE DISCOVERY
-# Subheading: Searches Recent Gameplay Streams & Filters Already-Used Video IDs
+# PART 6 OF 30: ORIGINAL CREATOR STREAM & VOD DISCOVERY
+# Subheading: Excludes Clippers & Compilations; Targets Original Creator Gameplay
 # Code Title: discover_gta6_candidates
 # ==============================================================================
+BLOCKED_CLIPPER_TERMS = (
+    "red arcade",
+    "daily dose",
+    "compilation",
+    "compilations",
+    "best moments",
+    "funny moments",
+    "top 10",
+    "top 5",
+    "highlights",
+    "clip",
+    "clips",
+    "clipper",
+    "vault",
+    "montage",
+    "fails",
+    "twitch moments",
+    "streamers react",
+    "gaming central",
+    "gamology",
+    "ign",
+    "gamespot",
+)
+
+
+def is_compilation_or_clipper(channel_name, video_title):
+    ch_low = str(channel_name or "").strip().lower()
+    ti_low = str(video_title or "").strip().lower()
+    if any(term in ch_low for term in BLOCKED_CLIPPER_TERMS):
+        return True
+    if any(term in ti_low for term in ("compilation", "best moments", "funny moments", "top 10", "top 5", "clips", "montage", "ft.", "feat.")):
+        return True
+    return False
+
+
 def discover_gta6_candidates(history_data):
     used_ids = {
         str(x.get("video_id", "")).strip()
@@ -184,18 +219,24 @@ def discover_gta6_candidates(history_data):
     }
     skip_ids = used_ids | vault_ids
 
-    queries = list(CHANNEL_CONFIG["search_queries"])
-    random.shuffle(queries)
+    original_queries = [
+        "GTA 6 full gameplay playthrough",
+        "Grand Theft Auto 6 livestream VOD",
+        "GTA 6 live stream gameplay",
+        "Grand Theft Auto VI playthrough part",
+        "GTA 6 story mode gameplay",
+    ]
+    random.shuffle(original_queries)
     found = []
     seen_now = set()
 
-    for q in queries[:2]:
+    for q in original_queries[:2]:
         cmd = [
             "yt-dlp",
             "--dump-json",
             "--flat-playlist",
             "--no-warnings",
-            f"ytsearch10:{q}",
+            f"ytsearch12:{q}",
         ]
         res = run_cmd_safe(cmd, label="YtDlpSearch", timeout_sec=45, check=False)
         for line in (res.stdout or "").splitlines():
@@ -209,14 +250,16 @@ def discover_gta6_candidates(history_data):
             vid_id = str(info.get("id", "")).strip()
             dur = float(info.get("duration") or 0)
             title = str(info.get("title", "")).strip()
-            uploader = str(info.get("uploader") or info.get("channel") or "GTA 6 Creator").strip()
+            uploader = str(info.get("uploader") or info.get("channel") or "").strip()
 
-            if not vid_id or vid_id in skip_ids or vid_id in seen_now:
-                continue
-            # Prefer real gameplay videos (45s to 45 mins) and skip vertical Shorts
-            if dur < 45 or dur > 2700:
+            if not vid_id or not uploader or vid_id in skip_ids or vid_id in seen_now:
                 continue
             if "#shorts" in title.lower():
+                continue
+            if is_compilation_or_clipper(uploader, title):
+                continue
+            # Require >= 8 min (480s) original gameplay/VODs up to 2.5 hrs so short clip dumps are excluded
+            if dur < 480 or dur > 9000:
                 continue
 
             seen_now.add(vid_id)
@@ -227,7 +270,6 @@ def discover_gta6_candidates(history_data):
                 "channel_name": uploader,
                 "duration": dur,
             })
-
 
     random.shuffle(found)
     return found[:8]
@@ -668,19 +710,29 @@ def detect_verified_webcam_box(video_path, start_s, end_s):
     return None
 
 # ==============================================================================
-# PART 14 OF 30: VAULT HOUSEKEEPING & STALE FILE CLEANER
-# Subheading: Caps Vault Size To Best 18 Clips & Removes Orphaned Temp Files
+# PART 14 OF 30: VAULT HOUSEKEEPING & COMPILATION PURGE
+# Subheading: Removes Compilation Clips, Caps Vault To Best 18 & Cleans Stale Files
 # Code Title: prune_vault_and_temp_files
 # ==============================================================================
 def prune_vault_and_temp_files(history_data, max_vault_items=18):
-    vault = [
-        item for item in history_data.get("vault_queue", [])
-        if item.get("vault_path") and os.path.exists(item["vault_path"])
-    ]
-    vault.sort(key=lambda x: float(x.get("viral_score", 0.0)), reverse=True)
+    valid_vault = []
+    for item in history_data.get("vault_queue", []):
+        vp = item.get("vault_path", "")
+        if not vp or not os.path.exists(vp):
+            continue
+        if is_compilation_or_clipper(item.get("channel_name", ""), item.get("source_title", "")):
+            print(f"[Vault Purge] Removed compilation clip from {item.get('channel_name')}: {vp}", flush=True)
+            try:
+                os.remove(vp)
+            except Exception:
+                pass
+            continue
+        valid_vault.append(item)
 
-    keep = vault[:max_vault_items]
-    discard = vault[max_vault_items:]
+    valid_vault.sort(key=lambda x: float(x.get("viral_score", 0.0)), reverse=True)
+
+    keep = valid_vault[:max_vault_items]
+    discard = valid_vault[max_vault_items:]
     for old_item in discard:
         vp = old_item.get("vault_path", "")
         if vp and os.path.exists(vp):
