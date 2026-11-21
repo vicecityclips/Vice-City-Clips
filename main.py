@@ -619,8 +619,13 @@ def detect_verified_webcam_box(video_path, start_s, end_s):
         cap.release()
         return None
 
-    cascade_path = os.path.join(cv2.data.haarcascades, "haarcascade_frontalface_default.xml")
-    face_cascade = cv2.CascadeClassifier(cascade_path)
+    cascade_cls = getattr(cv2, "CascadeClassifier", None)
+    data_mod = getattr(cv2, "data", None)
+    if cascade_cls is None or data_mod is None:
+        cap.release()
+        return None
+    cascade_path = os.path.join(data_mod.haarcascades, "haarcascade_frontalface_default.xml")
+    face_cascade = cascade_cls(cascade_path)
     if face_cascade.empty():
         cap.release()
         return None
@@ -920,7 +925,7 @@ def generate_scene_grounded_script(short_plan, history_data):
             api_key=api_key,
             http_options=types.HttpOptions(timeout=45000),
         )
-        for model_id in ("gemini-2.5-flash", "gemini-2.5-flash-lite"):
+        for model_id in ("gemini-2.5-flash", "gemini-3.5-flash-lite", "gemini-2.5-pro"):
             try:
                 resp = client.models.generate_content(
                     model=model_id,
