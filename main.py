@@ -222,11 +222,12 @@ def discover_gta6_candidates(history_data):
             seen_now.add(vid_id)
             found.append({
                 "video_id": vid_id,
-                "url": f"https://youtube.com{vid_id}",
+                "url": "https://" + "://youtube.com" + "?v=" + vid_id,
                 "title": title,
                 "channel_name": uploader,
                 "duration": dur,
             })
+
 
     random.shuffle(found)
     return found[:8]
@@ -247,7 +248,7 @@ def download_candidate_video(candidate, out_path):
         with open(cookies_file, "w", encoding="utf-8") as cf:
             cf.write(raw_cookies + "\n")
 
-    url = candidate["url"]
+    url = "https://" + "://youtube.com" + "?v=" + str(candidate["video_id"]).strip()
     client_profiles = (
         "youtube:player_client=tv_embedded,android_vr",
         "youtube:player_client=web,mweb",
@@ -1581,7 +1582,7 @@ def main():
 
     stitched_video, timeline_meta = render_vertical_segments_and_concat(short_plan)
 
-    final_short_path = "final_vice_city_short.mp4"
+    final_short_path = "final_short_vice_city.mp4"
     compose_final_short_with_captions_and_audio(
         stitched_video=stitched_video,
         timeline_meta=timeline_meta,
@@ -1590,9 +1591,9 @@ def main():
     )
 
     if not os.path.exists(final_short_path):
-        raise RuntimeError("Final Short render failed — final_vice_city_short.mp4 missing.")
+        raise RuntimeError("Final Short render failed — final_short_vice_city.mp4 missing.")
 
-    export_short_cover_thumbnail(final_short_path, out_jpg="short_cover.jpg")
+    export_short_cover_thumbnail(final_short_path, out_jpg="thumb_vice_city.jpg")
     final_dur = get_media_duration(final_short_path)
     print(f"[Ready] Rendered {final_short_path} ({final_dur:.2f}s | {len(timeline_meta)} clip(s)).", flush=True)
 
