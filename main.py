@@ -1268,6 +1268,7 @@ def generate_scene_grounded_script(short_plan, history_data):
             f'5. "outro_vo": Punchy 1-sentence English closing question (8-11 words) after the #1 climax.\n'
         )
 
+    banner_example = "CRAZIEST VICE CITY MOMENT" if count == 1 else f"TOP {count} VICE CITY MOMENTS"
     prompt_text = (
         f"You are writing transformative commentary and metadata for {CHANNEL_CONFIG['channel_name']} "
         f"({CHANNEL_CONFIG['channel_handle']}), a Grand Theft Auto VI Shorts channel.\n"
@@ -1276,7 +1277,7 @@ def generate_scene_grounded_script(short_plan, history_data):
         + f"\nAvoid repeating any of these recent titles: {recent_titles}\n\n"
         f"Return STRICT valid JSON with these exact 6 keys:\n"
         f'1. "title": Catchy English YouTube Shorts title describing the wildest moment (max 68 chars, 1 emoji, no #Shorts tag).\n'
-        f'2. "banner": Short 3-to-5 word UPPERCASE top banner (e.g. {"\"CRAZIEST VICE CITY MOMENT\"" if count == 1 else f"\"TOP {count} VICE CITY MOMENTS\""}).\n'
+        f'2. "banner": Short 3-to-5 word UPPERCASE top banner (e.g. "{banner_example}").\n'
         + mode_instructions
         + f'6. "tags": List of 8 relevant English tags including "GTA 6", "Grand Theft Auto 6", "Vice City", and creator names.\n'
     )
