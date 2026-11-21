@@ -309,7 +309,7 @@ def discover_wide_youtube_videos():
     for creator in selected_creators:
         handle = creator["handle"]
         for tab in ("streams", "videos"):
-            url = f"https://youtube.com{handle}/{tab}"
+            url = f"https://youtube.com/{handle}/{tab}"
             try:
                 with yt_dlp.YoutubeDL(flat_opts) as ydl:
                     info = ydl.extract_info(url, download=False)
@@ -327,7 +327,7 @@ def discover_wide_youtube_videos():
                         continue
                     discovered[vid_id] = {
                         "video_id": vid_id,
-                        "url": f"https://youtube.comwatch?v={vid_id}",
+                        "url": "https://youtube.com" + "/watch?v=" + str(vid_id),
                         "title": entry.get("title") or "GTA 6 Stream",
                         "channel_name": creator["name"],
                         "region": creator["region"],
@@ -364,7 +364,7 @@ def discover_wide_youtube_videos():
                     )
                     discovered[vid_id] = {
                         "video_id": vid_id,
-                        "url": f"https://youtube.comwatch?v={vid_id}",
+                        "url": "https://youtube.com" + "/watch?v=" + str(vid_id),
                         "title": entry.get("title") or "GTA 6 Gameplay",
                         "channel_name": entry.get("uploader") or entry.get("channel") or "YouTube Creator",
                         "region": "IN" if is_indian else "GLOBAL",
