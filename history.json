@@ -2413,7 +2413,8 @@
           "end": 49.99
         }
       ],
-      "harvested_at": "2026-11-21T17:53:53.076879+00:00"
+      "harvested_at": "2026-11-21T17:53:53.076879+00:00",
+      "test_rendered_count": 1
     },
     {
       "vault_path": "clip_vault/6E2cBXFCDyQ_p1_326s.mp4",
