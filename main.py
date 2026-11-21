@@ -284,7 +284,6 @@ def _yt_dlp_base_opts():
         "no_warnings": True,
         "ignoreerrors": True,
         "nocheckcertificate": True,
-        "extractor_args": {"youtube": {"player_client": ["tv", "mweb", "web_safari"]}},
     }
     cookie_txt = os.environ.get("YOUTUBE_COOKIES_TXT", "").strip()
     if cookie_txt:
