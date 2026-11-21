@@ -69,7 +69,7 @@ CHANNEL_CONFIG = {
     # 6-Hour Slot Schedule (UTC): 02:00, 08:00, 14:00, 20:00 UTC
     # Compiler runs 1 hour earlier at: 01:00, 07:00, 13:00, 19:00 UTC
     "slot_hours_utc": (2, 8, 14, 20),
-    "compile_offset_hours": 1,
+    "compile_offset_hours": 0.65,
 
     # Vault & Compilation Quality Rules
     "slice_duration_sec": 26.0,          # Raw 26s buffer harvested per heatmap peak
