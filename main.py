@@ -1272,64 +1272,73 @@ def generate_scene_grounded_script(short_plan, history_data):
 
 # ==============================================================================
 # PART 20 OF 30: VERIFIED WEBCAM CORNER DETECTOR
-# Subheading: OpenCV Haar Face Verification for Splitcam vs. Cinema Framing
+# Subheading: Safe OpenCV Face Verification for Splitcam vs. Cinema Framing
 # Code Title: detect_verified_webcam_box
 # ==============================================================================
 def detect_verified_webcam_box(video_path, start_sec, end_sec):
     """
-    Checks 5 frames in [start_sec, end_sec] for a consistent streamer facecam in
-    one of the 4 corners. Returns (x, y, w, h) in source pixels or None.
+    Safely checks 5 frames in [start_sec, end_sec] for a consistent streamer facecam
+    in one of the 4 corners. Returns (x, y, w, h) in source pixels or None.
     """
-    cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
+    try:
+        cascade_cls = getattr(cv2, "CascadeClassifier", None)
+        cv2_data = getattr(cv2, "data", None)
+        if cascade_cls is None or cv2_data is None:
+            return None
+
+        cascade_path = cv2_data.haarcascades + "haarcascade_frontalface_default.xml"
+        face_cascade = cascade_cls(cascade_path)
+        if face_cascade.empty():
+            return None
+
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            return None
+
+        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+        src_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 1920)
+        src_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 1080)
+
+        sample_ts = np.linspace(start_sec + 0.5, max(start_sec + 1.0, end_sec - 0.5), num=5)
+        hits = []
+
+        for ts in sample_ts:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, int(ts * fps))
+            ok, frame = cap.read()
+            if not ok or frame is None:
+                continue
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.15, minNeighbors=5, minSize=(48, 48))
+            for (fx, fy, fw, fh) in faces:
+                cx = (fx + fw * 0.5) / src_w
+                cy = (fy + fh * 0.5) / src_h
+                in_left = cx <= 0.28
+                in_right = cx >= 0.72
+                in_top_or_bot = cy <= 0.36 or cy >= 0.64
+                if (in_left or in_right) and in_top_or_bot:
+                    hits.append((cx, cy, fx, fy, fw, fh))
+                    break
+
+        cap.release()
+
+        if len(hits) < 3:
+            return None
+
+        xs = [cx for (cx, _, _, _, _, _) in hits]
+        ys = [cy for (_, cy, _, _, _, _) in hits]
+        if (max(xs) - min(xs)) > 0.08 or (max(ys) - min(ys)) > 0.08:
+            return None
+
+        med_cx = float(np.median(xs)) * src_w
+        med_cy = float(np.median(ys)) * src_h
+        cam_w = int(src_w * 0.26)
+        cam_h = int(src_h * 0.28)
+
+        box_x = int(max(0, min(src_w - cam_w, med_cx - cam_w * 0.5)))
+        box_y = int(max(0, min(src_h - cam_h, med_cy - cam_h * 0.5)))
+        return (box_x, box_y, cam_w, cam_h)
+    except Exception:
         return None
-
-    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
-    src_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 1920)
-    src_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 1080)
-
-    cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-    face_cascade = cv2.CascadeClassifier(cascade_path)
-
-    sample_ts = np.linspace(start_sec + 0.5, max(start_sec + 1.0, end_sec - 0.5), num=5)
-    hits = []
-
-    for ts in sample_ts:
-        cap.set(cv2.CAP_PROP_POS_FRAMES, int(ts * fps))
-        ok, frame = cap.read()
-        if not ok or frame is None:
-            continue
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.15, minNeighbors=5, minSize=(48, 48))
-        for (fx, fy, fw, fh) in faces:
-            cx = (fx + fw * 0.5) / src_w
-            cy = (fy + fh * 0.5) / src_h
-            # Must sit in left/right edge zone and not dead-center gameplay
-            in_left = cx <= 0.28
-            in_right = cx >= 0.72
-            in_top_or_bot = cy <= 0.36 or cy >= 0.64
-            if (in_left or in_right) and in_top_or_bot:
-                hits.append((cx, cy, fx, fy, fw, fh))
-                break
-
-    cap.release()
-
-    if len(hits) < 3:
-        return None
-
-    xs = [cx for (cx, _, _, _, _, _) in hits]
-    ys = [cy for (_, cy, _, _, _, _) in hits]
-    if (max(xs) - min(xs)) > 0.08 or (max(ys) - min(ys)) > 0.08:
-        return None
-
-    med_cx = float(np.median(xs)) * src_w
-    med_cy = float(np.median(ys)) * src_h
-    cam_w = int(src_w * 0.26)
-    cam_h = int(src_h * 0.28)
-
-    box_x = int(max(0, min(src_w - cam_w, med_cx - cam_w * 0.5)))
-    box_y = int(max(0, min(src_h - cam_h, med_cy - cam_h * 0.5)))
-    return (box_x, box_y, cam_w, cam_h)
 
 # ==============================================================================
 # PART 21 OF 30: 1080X1920 VERTICAL LAYOUT RENDERER
