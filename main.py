@@ -286,52 +286,61 @@ def is_strictly_original_gta6_stream(raw_title):
 
 # ==============================================================================
 # PART 8 OF 30: EQUAL-WEIGHT RANDOM ORIGINAL CREATOR DISCOVERY ENGINE
-# Subheading: Zero-Bias Random Rotation Across Official Creator Channels Only
+# Subheading: Zero-Bias Parallel Rotation Across Official Creator Channels Only
 # Code Title: discover_equal_weight_original_streams
 # ==============================================================================
 def discover_equal_weight_original_streams():
     """
     Randomly shuffles all verified strike-safe original creators with 100% equal priority (1.0)
-    and inspects their official /streams and /videos tabs for GTA 6 broadcasts/VODs.
+    and concurrently inspects their official /@handle/streams and /@handle/videos tabs.
     """
     discovered = {}
-    flat_opts = _yt_dlp_base_opts()
-    flat_opts["extract_flat"] = "in_playlist"
-    flat_opts["playlistend"] = 10
-
     pool = list(VERIFIED_ORIGINAL_CREATORS)
     random.shuffle(pool)
 
-    for creator in pool:
-        handle = creator["handle"]
-        official_name = creator["name"]
-        for tab in ("streams", "videos"):
-            tab_url = f"https://youtube.com{handle}/{tab}"
-            try:
-                with yt_dlp.YoutubeDL(flat_opts) as ydl:
-                    info = ydl.extract_info(tab_url, download=False)
-                entries = (info or {}).get("entries") or []
-                for entry in entries:
-                    if not entry or not entry.get("id"):
-                        continue
-                    vid_id = str(entry["id"])
-                    dur = float(entry.get("duration") or 0)
-                    if dur and dur < 120:
-                        continue
-                    title_str = str(entry.get("title") or "").strip()
-                    if not is_strictly_original_gta6_stream(title_str):
-                        continue
-                    if vid_id not in discovered:
-                        discovered[vid_id] = {
-                            "video_id": vid_id,
-                            "url": "https://youtube.com" + "/watch?v=" + vid_id,
-                            "title": title_str,
-                            "channel_name": official_name,
-                            "weight": 1.0,
-                        }
-            except Exception:
-                pass
-            time.sleep(0.2)
+    def _fetch_creator_tab(creator, tab):
+        raw_h = str(creator["handle"]).strip().lstrip("/")
+        clean_h = raw_h if raw_h.startswith("@") else f"@{raw_h}"
+        tab_url = f"https://youtube.com{clean_h}/{tab}"
+
+        opts = _yt_dlp_base_opts()
+        opts["extract_flat"] = "in_playlist"
+        opts["playlistend"] = 20
+
+        found_local = []
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(tab_url, download=False)
+            for entry in (info or {}).get("entries") or []:
+                if not entry or not entry.get("id"):
+                    continue
+                vid_id = str(entry["id"])
+                if len(vid_id) != 11:
+                    continue
+                dur = float(entry.get("duration") or 0)
+                if dur and dur < 120:
+                    continue
+                title_str = str(entry.get("title") or "").strip()
+                if not is_strictly_original_gta6_stream(title_str):
+                    continue
+                found_local.append({
+                    "video_id": vid_id,
+                    "url": "https://youtube.comwatch?v=" + vid_id,
+                    "title": title_str,
+                    "channel_name": creator["name"],
+                    "weight": 1.0,
+                })
+        except Exception:
+            pass
+        return found_local
+
+    tasks = [(c, tab) for c in pool for tab in ("streams", "videos")]
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        futures = [executor.submit(_fetch_creator_tab, c, t) for (c, t) in tasks]
+        for fut in as_completed(futures):
+            for item in fut.result() or []:
+                if item["video_id"] not in discovered:
+                    discovered[item["video_id"]] = item
 
     items = list(discovered.values())
     random.shuffle(items)
