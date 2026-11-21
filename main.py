@@ -284,18 +284,13 @@ def _yt_dlp_base_opts():
         "no_warnings": True,
         "ignoreerrors": True,
         "nocheckcertificate": True,
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["tv", "mweb", "web_safari"],
-            }
-        },
+        "extractor_args": {"youtube": {"player_client": ["tv", "mweb", "web_safari"]}},
     }
     cookie_txt = os.environ.get("YOUTUBE_COOKIES_TXT", "").strip()
     if cookie_txt:
-        cookie_file = "yt_cookies.txt"
-        with open(cookie_file, "w", encoding="utf-8") as cf:
+        with open("yt_cookies.txt", "w", encoding="utf-8") as cf:
             cf.write(cookie_txt)
-        opts["cookiefile"] = cookie_file
+        opts["cookiefile"] = "yt_cookies.txt"
     return opts
 
 def discover_wide_youtube_videos():
