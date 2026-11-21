@@ -60,7 +60,7 @@ CHANNEL_CONFIG = {
     "watermark_text": "@Vice-City_ClipsVault",
 
     # --- PEAK PUBLISHING SLOTS (IST Hours converted cleanly in Part 5) ---
-    "peak_hours_utc":,
+    "peak_hours_utc": (14, 16, 18, 20, 22, 0),
     "history_file": "history.json",
 }
 
@@ -933,8 +933,9 @@ def detect_verified_webcam_box(video_path, peak_sec):
         if len(hits) < 2:
             return None
 
-        xs = [item for item in hits]
-        ys = [item for item in hits]
+        xs = [cx for (cx, _, _, _, _, _) in hits]
+        ys = [cy for (_, cy, _, _, _, _) in hits]
+        
         if (max(xs) - min(xs)) > 55 or (max(ys) - min(ys)) > 55:
             return None
 
@@ -1026,7 +1027,7 @@ def build_short_plan(scored_winners):
         # Ascending order so rank #3 plays first, #2 second, and #1 climax plays LAST!
         ordered_321 = list(reversed(distinct_winners[:3]))
         durations = [11.0, 12.5, 14.5]
-        ranks = [3, 2, 1]
+        ranks = (3, 2, 1)
         specs = []
         for rank_num, cand, seg_dur in zip(ranks, ordered_321, durations):
             clip_dur = get_media_duration(cand["video_path"])
