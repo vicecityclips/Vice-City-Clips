@@ -1255,6 +1255,61 @@
         }
       ],
       "harvested_at": "2026-11-23T04:59:22.166370+00:00"
+    },
+    {
+      "vault_path": "clip_vault/ARwju5Gyk64_664s.mp4",
+      "video_id": "ARwju5Gyk64",
+      "channel_name": "AFGuidesHD",
+      "source_title": "Grand Theft Auto VI Gameplay Walkthrough Part 1 - No Commentary (GTA 6 PS5 Gameplay)",
+      "source_total_dur": 2846.42,
+      "source_start_sec": 664.0,
+      "duration_sec": 28.07,
+      "local_peak_sec": 11.0,
+      "viral_score": 8.7,
+      "transcript_en": "You're saying grand. Yeah, I ran. I mean...",
+      "word_events": [
+        {
+          "word": "You're",
+          "start": 23.98,
+          "end": 24.44
+        },
+        {
+          "word": "saying",
+          "start": 24.44,
+          "end": 24.54
+        },
+        {
+          "word": "grand.",
+          "start": 24.54,
+          "end": 25.0
+        },
+        {
+          "word": "Yeah,",
+          "start": 25.7,
+          "end": 25.94
+        },
+        {
+          "word": "I",
+          "start": 26.2,
+          "end": 26.22
+        },
+        {
+          "word": "ran.",
+          "start": 26.22,
+          "end": 26.48
+        },
+        {
+          "word": "I",
+          "start": 27.3,
+          "end": 27.4
+        },
+        {
+          "word": "mean...",
+          "start": 27.4,
+          "end": 27.96
+        }
+      ],
+      "harvested_at": "2026-11-23T19:52:34.316873+00:00"
     }
   ],
   "scheduled_slots": [
@@ -1297,6 +1352,17 @@
         [
           550.0,
           578.0
+        ]
+      ]
+    },
+    "ARwju5Gyk64": {
+      "title": "Grand Theft Auto VI Gameplay Walkthrough Part 1 - No Commentary (GTA 6 PS5 Gameplay)",
+      "channel_name": "AFGuidesHD",
+      "duration": 2846.42,
+      "checked_ranges": [
+        [
+          664.0,
+          692.1
         ]
       ]
     }
