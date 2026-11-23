@@ -1569,6 +1569,413 @@ def cleanup_scratch_render_files():
                 pass
 
 # ==============================================================================
+# PART 31 OF 30: WEEKLY YOUTUBE ANALYTICS SELF-TUNING LOOP
+# Subheading: Evaluates Real Views/Engagement Weekly & Saves Winning Patterns
+# Code Title: run_weekly_analytics_tuning
+# ==============================================================================
+def run_weekly_analytics_tuning(history_data):
+    """
+    Runs once per ISO week (Sundays IST). Queries YouTube Data API v3 for real
+    views, likes, and comments on uploaded videos, ranks top performers, and
+    stores winning title/hook patterns in history.json["winning_patterns"].
+    """
+    now_ist = datetime.now(IST_TZ)
+    iso_year, iso_week, _ = now_ist.isocalendar()
+    week_key = f"{iso_year}-W{iso_week:02d}"
+
+    last_tuned = str(history_data.get("last_tuned_week", "")).strip()
+    if now_ist.weekday() != 6 or last_tuned == week_key:
+        return False
+
+    uploads = history_data.get("uploads", [])
+    vid_ids = []
+    for u in uploads[-35:]:
+        url = str(u.get("url", "")).strip()
+        if "/shorts/" in url:
+            vid_ids.append(url.split("/shorts/")[-1].split("?")[0].strip())
+        elif "v=" in url:
+            vid_ids.append(url.split("v=")[-1].split("&")[0].strip())
+
+    vid_ids = [v for v in dict.fromkeys(vid_ids) if len(v) >= 8]
+    if not vid_ids:
+        history_data["last_tuned_week"] = week_key
+        save_history(history_data)
+        return False
+
+    try:
+        youtube = get_youtube_service()
+        resp = youtube.videos().list(
+            part="snippet,statistics",
+            id=",".join(vid_ids[:30]),
+        ).execute()
+
+        scored_videos = []
+        for item in resp.get("items", []):
+            snip = item.get("snippet", {})
+            stats = item.get("statistics", {})
+            views = int(stats.get("viewCount", 0) or 0)
+            likes = int(stats.get("likeCount", 0) or 0)
+            comments = int(stats.get("commentCount", 0) or 0)
+            eng_score = views + (likes * 12) + (comments * 25)
+            scored_videos.append({
+                "video_id": item.get("id", ""),
+                "title": snip.get("title", ""),
+                "views": views,
+                "likes": likes,
+                "comments": comments,
+                "eng_score": eng_score,
+            })
+
+        scored_videos.sort(key=lambda x: x["eng_score"], reverse=True)
+        top_winners = scored_videos[:5]
+        history_data["winning_patterns"] = [
+            f"{w['title']} ({w['views']} views, {w['likes']} likes)"
+            for w in top_winners
+            if w.get("title")
+        ]
+        history_data["last_tuned_week"] = week_key
+        save_history(history_data)
+        print(f"[Weekly Analytics] Tuned {week_key}: Top {len(top_winners)} winners saved.", flush=True)
+        return True
+    except Exception as e:
+        print(f"[Weekly Analytics Warning] {e}", flush=True)
+        return False
+        
+# ==============================================================================
+# PART 32A OF 30: WEEKLY 16:9 LONG-FORM CLIP COLLECTOR & SEGMENT RENDERER
+# Subheading: Collects 8-9 Distinct-Creator Clips & Renders 1920x1080 Ranked Segments
+# Code Title: _prepare_weekly_long_segments
+# ==============================================================================
+def _fmt_chapter_ts(sec):
+    sec = max(0, int(round(float(sec))))
+    m = sec // 60
+    s = sec % 60
+    return f"{m:02d}:{s:02d}"
+
+
+def _prepare_weekly_long_segments(history_data):
+    """
+    Collects 8-9 distinct-creator GTA 6 clips (~60s each) from vault + fresh
+    harvesting and renders each to 1920x1080 landscape with #N -> #1 lower-third
+    creator badges and TTS commentary cues.
+    """
+    os.makedirs("long_pool", exist_ok=True)
+    pool_items = []
+    seen_creators = set()
+
+    for v in sorted(
+        history_data.get("vault_queue", []),
+        key=lambda x: float(x.get("viral_score", 0.0)),
+        reverse=True,
+    ):
+        vp = v.get("vault_path", "")
+        ch = str(v.get("channel_name", "")).strip()
+        if vp and os.path.exists(vp) and ch and ch.lower() not in seen_creators:
+            if get_media_duration(vp) >= 35.0:
+                seen_creators.add(ch.lower())
+                pool_items.append({
+                    "path": vp,
+                    "channel_name": ch,
+                    "title": v.get("source_title", "GTA 6 Gameplay"),
+                    "viral_score": float(v.get("viral_score", 7.8)),
+                })
+        if len(pool_items) >= 9:
+            break
+
+    if len(pool_items) < 8:
+        extra_cands = discover_gta6_candidates(history_data)
+        for cand in extra_cands:
+            if len(pool_items) >= 9:
+                break
+            ch = str(cand.get("channel_name", "")).strip()
+            if not ch or ch.lower() in seen_creators:
+                continue
+            vid_id = cand["video_id"]
+            raw_tmp = f"raw_long_{vid_id}.mp4"
+            slice_tmp = os.path.join("long_pool", f"long_{vid_id}.mp4")
+            try:
+                if not download_candidate_video(cand, raw_tmp):
+                    continue
+                peaks = detect_audio_video_peaks(raw_tmp, max_peaks=1)
+                if not peaks:
+                    continue
+                peak_s = float(next(iter(peaks)))
+                tot_d = get_media_duration(raw_tmp)
+                span = min(62.0, tot_d)
+                st = max(0.0, min(tot_d - span, peak_s - 25.0))
+                run_cmd_safe(
+                    [
+                        "ffmpeg", "-y", "-ss", f"{st:.2f}", "-t", f"{span:.2f}",
+                        "-i", raw_tmp, "-r", "30",
+                        "-c:v", "libx264", "-preset", "veryfast", "-crf", "21",
+                        "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-ac", "2",
+                        slice_tmp,
+                    ],
+                    label=f"LongSlice_{vid_id}",
+                    timeout_sec=120,
+                )
+                if get_media_duration(slice_tmp) >= 35.0 and verify_action_motion_and_quality(slice_tmp):
+                    seen_creators.add(ch.lower())
+                    pool_items.append({
+                        "path": slice_tmp,
+                        "channel_name": ch,
+                        "title": cand.get("title", "GTA 6 Gameplay"),
+                        "viral_score": 8.0,
+                    })
+                    history_data.setdefault("used_clips", []).append({
+                        "video_id": vid_id,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    })
+            except Exception as e:
+                print(f"[Long Harvest Warning] {vid_id}: {e}", flush=True)
+            finally:
+                if os.path.exists(raw_tmp):
+                    os.remove(raw_tmp)
+
+    if len(pool_items) < 6:
+        return None
+
+    pool_items.sort(key=lambda x: x["viral_score"])
+    selected = pool_items[-9:]
+    total_clips = len(selected)
+    font_bold = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+    wm_label = _escape_drawtext(CHANNEL_CONFIG["watermark_text"])
+
+    rendered_segs = []
+    seg_durs = []
+    chapters = ["00:00 Intro & Weekly Vice City Countdown"]
+    vo_events = []
+    cum_t = 0.0
+    xfade_d = 0.45
+
+    for idx, item in enumerate(selected):
+        rank_num = total_clips - idx
+        seg_out = f"long_seg_{idx}.mp4"
+        dur_use = min(60.0, get_media_duration(item["path"]))
+        clean_ch, clean_ti = sanitize_creator_and_title(item["channel_name"], item["title"])
+        ch_esc = _escape_drawtext(f"#{rank_num}  |  Credit: {clean_ch}")
+        badge_col = "#FF1744" if rank_num == 1 else "#00E5FF"
+
+        vf = (
+            f"scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,"
+            f"drawbox=x=48:y=42:w=135:h=68:color={badge_col}@0.92:t=fill,"
+            f"drawtext=fontfile={font_bold}:text='#{rank_num}':fontsize=40:fontcolor=white:x=76:y=56,"
+            f"drawbox=x=48:y=965:w=740:h=62:color=black@0.75:t=fill,"
+            f"drawtext=fontfile={font_bold}:text='{ch_esc}':fontsize=28:fontcolor=#FFD54F:x=72:y=982,"
+            f"drawtext=fontfile={font_bold}:text='{wm_label}':fontsize=26:fontcolor=white@0.85:x=w-text_w-48:y=48"
+        )
+        run_cmd_safe(
+            [
+                "ffmpeg", "-y", "-ss", "0", "-t", f"{dur_use:.2f}",
+                "-i", item["path"], "-vf", vf,
+                "-r", "30", "-c:v", "libx264", "-preset", "veryfast", "-crf", "21",
+                "-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-ac", "2",
+                seg_out,
+            ],
+            label=f"LongSegRender_{idx}",
+            timeout_sec=150,
+        )
+        actual_d = get_media_duration(seg_out)
+        rendered_segs.append(seg_out)
+        seg_durs.append(actual_d)
+
+        chapters.append(f"{_fmt_chapter_ts(cum_t)} #{rank_num} - {clean_ch}: {clean_ti[:48]}")
+        hook_line = (
+            f"Coming in at number {rank_num}, watch {clean_ch} survive absolute chaos in Vice City!"
+            if rank_num > 1
+            else f"And taking our number 1 spot this week, {clean_ch} pulls off the wildest moment in GTA 6!"
+        )
+        vo_mp3 = f"long_vo_{idx}.mp3"
+        vd = synthesize_voiceover_mp3(hook_line, vo_mp3)
+        if vd > 0.4 and os.path.exists(vo_mp3):
+            vo_events.append({
+                "path": vo_mp3,
+                "start": round(cum_t + 0.5, 2),
+                "end": round(cum_t + 0.5 + vd, 2),
+                "text": hook_line,
+            })
+
+        cum_t += actual_d - (xfade_d if idx < total_clips - 1 else 0.0)
+
+    return {
+        "rendered_segs": rendered_segs,
+        "seg_durs": seg_durs,
+        "chapters": chapters,
+        "vo_events": vo_events,
+        "total_clips": total_clips,
+        "xfade_d": xfade_d,
+    }
+
+# ==============================================================================
+# PART 32B OF 30: WEEKLY 16:9 STITCHER, THUMBNAIL & YOUTUBE PUBLISHER
+# Subheading: Stitches 1080p Segments, Mixes Voiceovers, Sets Cover & Uploads
+# Code Title: build_and_publish_weekly_long_video
+# ==============================================================================
+def build_and_publish_weekly_long_video(history_data):
+    """
+    Runs once per ISO week on Sunday evening (>= 18:00 IST) when upload_to_youtube
+    is True. Publishes an 8-11 minute 1920x1080 compilation with chapters and a
+    custom 1280x720 thumbnail.
+    """
+    now_ist = datetime.now(IST_TZ)
+    iso_year, iso_week, _ = now_ist.isocalendar()
+    week_key = f"{iso_year}-W{iso_week:02d}"
+
+    if now_ist.weekday() != 6 or now_ist.hour < 18:
+        return False
+    if str(history_data.get("last_long_video_week", "")).strip() == week_key:
+        return False
+    if not CHANNEL_CONFIG.get("upload_to_youtube", False):
+        return False
+
+    print(f"[Weekly Long-Form] Starting 16:9 Sunday compilation for {week_key}...", flush=True)
+    bundle = _prepare_weekly_long_segments(history_data)
+    if not bundle:
+        print("[Weekly Long-Form] Not enough distinct clips ready yet; will retry next hour.", flush=True)
+        return False
+
+    rendered_segs = bundle["rendered_segs"]
+    seg_durs = bundle["seg_durs"]
+    chapters = bundle["chapters"]
+    vo_events = bundle["vo_events"]
+    total_clips = bundle["total_clips"]
+    xfade_d = bundle["xfade_d"]
+    font_bold = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+
+    stitched_long = "long_stitched.mp4"
+    _, *rest_s = rendered_segs
+    first_d, *rest_d = seg_durs
+    cmd = ["ffmpeg", "-y"]
+    for rs in rendered_segs:
+        cmd.extend(["-i", rs])
+
+    fc = []
+    c_pos = first_d
+    pv, pa = "[0:v]", "[0:a]"
+    for i, d_val in enumerate(rest_d, start=1):
+        off = max(1.0, round(c_pos - xfade_d, 3))
+        last = i == len(rest_d)
+        ov = "[vf]" if last else f"[v{i}]"
+        oa = "[af]" if last else f"[a{i}]"
+        fc.append(f"{pv}[{i}:v]xfade=transition=fadeblack:duration={xfade_d}:offset={off}{ov}")
+        fc.append(f"{pa}[{i}:a]acrossfade=d={xfade_d}{oa}")
+        c_pos = off + d_val
+        pv, pa = ov, oa
+
+    run_cmd_safe(
+        cmd + [
+            "-filter_complex", ";".join(fc),
+            "-map", "[vf]", "-map", "[af]",
+            "-r", "30", "-c:v", "libx264", "-preset", "veryfast", "-crf", "21",
+            "-c:a", "aac", "-b:a", "192k", stitched_long,
+        ],
+        label="StitchLongVideo",
+        timeout_sec=300,
+    )
+
+    final_long_mp4 = "final_weekly_gta6_long.mp4"
+    mix_cmd = ["ffmpeg", "-y", "-i", stitched_long]
+    for ve in vo_events:
+        mix_cmd.extend(["-i", ve["path"]])
+
+    if vo_events:
+        d_cond = "+".join(f"between(t,{v['start']},{v['end']})" for v in vo_events)
+        m_fc = [f"[0:a]volume='if(gt({d_cond},0),0.40,0.92)':eval=frame[ga]"]
+        m_lbls = ["[ga]"]
+        for i, ve in enumerate(vo_events, start=1):
+            ms = int(round(ve["start"] * 1000))
+            m_fc.append(f"[{i}:a]adelay={ms}|{ms},volume=1.35[lv{i}]")
+            m_lbls.append(f"[lv{i}]")
+        m_fc.append(f"{''.join(m_lbls)}amix=inputs={len(m_lbls)}:duration=first:normalize=0[aout]")
+        run_cmd_safe(
+            mix_cmd + [
+                "-filter_complex", ";".join(m_fc),
+                "-map", "0:v", "-map", "[aout]",
+                "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", final_long_mp4,
+            ],
+            label="MixLongMaster",
+            timeout_sec=180,
+        )
+    else:
+        shutil.copy2(stitched_long, final_long_mp4)
+
+    thumb_long = "thumb_weekly_long.jpg"
+    tot_long_d = get_media_duration(final_long_mp4)
+    run_cmd_safe(
+        [
+            "ffmpeg", "-y", "-ss", f"{max(5.0, tot_long_d * 0.92):.2f}",
+            "-i", final_long_mp4, "-vframes", "1",
+            "-vf", f"scale=1280:720,drawtext=fontfile={font_bold}:text='TOP {total_clips} GTA 6 MOMENTS':fontsize=64:fontcolor=#FFD54F:x=(w-text_w)/2:y=580:shadowcolor=black:shadowx=4:shadowy=4",
+            thumb_long,
+        ],
+        label="LongThumb",
+        timeout_sec=30,
+        check=False,
+    )
+
+    youtube = get_youtube_service()
+    long_title = f"Top {total_clips} Craziest GTA 6 Moments Of The Week! (Vice City Chaos)"
+    long_desc = (
+        f"{long_title}\n\n"
+        f"Every week on {CHANNEL_CONFIG['channel_name']} ({CHANNEL_CONFIG['channel_handle']}), "
+        f"we round up the wildest Grand Theft Auto 6 moments with full creator credits and commentary!\n\n"
+        f"Chapters:\n" + "\n".join(chapters) + "\n\n"
+        f"#GTA6 #GrandTheftAuto6 #ViceCity #GTAVI #Gaming"
+    )
+
+    req = youtube.videos().insert(
+        part="snippet,status",
+        body={
+            "snippet": {
+                "title": long_title[:98],
+                "description": long_desc,
+                "tags": ["GTA 6", "Grand Theft Auto 6", "Vice City", "GTA 6 Best Moments", "GTA VI"],
+                "categoryId": "20",
+                "defaultLanguage": "en",
+                "defaultAudioLanguage": "en",
+            },
+            "status": {"privacyStatus": "public", "selfDeclaredMadeForKids": False},
+        },
+        media_body=MediaFileUpload(final_long_mp4, chunksize=-1, resumable=True),
+    )
+    resp = None
+    while resp is None:
+        _, resp = req.next_chunk()
+
+    long_vid_id = resp.get("id", "")
+    if long_vid_id and os.path.exists(thumb_long):
+        try:
+            youtube.thumbnails().set(
+                videoId=long_vid_id,
+                media_body=MediaFileUpload(thumb_long),
+            ).execute()
+        except Exception as e:
+            print(f"[Thumbnail Warning] {e}", flush=True)
+
+    long_url = "https://" + "://youtube.com" + "?v=" + long_vid_id
+    history_data["last_long_video_week"] = week_key
+    history_data.setdefault("uploads", []).append({
+        "title": long_title,
+        "url": long_url,
+        "type": "long_16x9",
+        "clip_count": total_clips,
+        "duration_sec": round(tot_long_d, 2),
+        "uploaded_at": datetime.now(timezone.utc).isoformat(),
+    })
+    save_history(history_data)
+
+    shutil.rmtree("long_pool", ignore_errors=True)
+    for fn in os.listdir("."):
+        if fn.startswith(("long_seg_", "long_vo_")) or fn in (stitched_long, final_long_mp4, thumb_long):
+            try:
+                os.remove(fn)
+            except Exception:
+                pass
+
+    print(f"[Weekly Long-Form Live] Published {tot_long_d/60:.1f} min 16:9 video: {long_url}", flush=True)
+    return True
+
+# ==============================================================================
 # PART 30 OF 30: MAIN 24/7 HARVEST + DYNAMIC 1-TO-5 VAULT ORCHESTRATOR
 # Subheading: Runs Hourly Harvest, Builds Dynamic 1-5 Clip Short, Renders & Schedules
 # Code Title: main
