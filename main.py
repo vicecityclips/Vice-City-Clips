@@ -305,9 +305,9 @@ def download_candidate_video(candidate, out_path):
     # Attempt 1: Authenticated web client (works best with full extension cookies)
     # Attempt 2 & 3: Cookieless TV/VR/iOS clients (prevents storyboard-only lockouts)
     attempts = [
-        {"client": "youtube:player_client=web,mweb", "use_cookies": True, "fmt": "bv*[height<=720]+ba/b[height<=720]/b"},
-        {"client": "youtube:player_client=tv_embedded,android_vr", "use_cookies": False, "fmt": "b[height<=720]/bv*[height<=720]+ba/b"},
-        {"client": "youtube:player_client=ios,mweb", "use_cookies": False, "fmt": "b/bv*+ba"},
+        {"client": "youtube:player_client=tv_embedded,web,mweb", "use_cookies": True, "fmt": "bv*[height<=720]+ba/b[height<=720]/bv*+ba/b"},
+        {"client": "youtube:player_client=web_safari,mweb", "use_cookies": True, "fmt": "b/bv*+ba"},
+        {"client": "youtube:player_client=tv_embedded,android_vr", "use_cookies": False, "fmt": "b/bv*+ba"},
     ]
 
     for idx, cfg in enumerate(attempts):
