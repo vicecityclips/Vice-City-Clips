@@ -305,8 +305,8 @@ def download_candidate_video(candidate, out_path):
 
     vid_id = str(candidate["video_id"]).strip()
     client_profiles = (
-        "youtube:player_client=mediaconnect,android_vr",
-        "youtube:player_client=tv_embedded,mweb",
+        "youtube:player_client=web,mweb",
+        "youtube:player_client=tv_embedded,android_vr",
     )
 
     for idx, extractor_arg in enumerate(client_profiles):
