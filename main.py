@@ -98,6 +98,26 @@ def get_media_duration(file_path):
     except Exception:
         return 0.0
 
+def has_audio_stream(file_path):
+    if not file_path or not os.path.exists(file_path):
+        return False
+    try:
+        res = run_cmd_safe(
+            [
+                "ffprobe", "-v", "error",
+                "-select_streams", "a:0",
+                "-show_entries", "stream=codec_type",
+                "-of", "default=noprint_wrappers=1:nokey=1",
+                file_path,
+            ],
+            label="FFprobeAudio",
+            timeout_sec=15,
+            check=False,
+        )
+        return "audio" in (res.stdout or "").lower()
+    except Exception:
+        return False
+
 # ==============================================================================
 # PART 4 OF 40: AI BRAIN MEMORY & COMPACT JSON STATE MANAGER
 # Subheading: Stores Revisit Pool, Exhausted Streams & Self-Tuning AI Decisions
@@ -110,7 +130,7 @@ def _default_ai_brain():
     return {
         "shorts_per_day": 3,
         "longs_per_week": 2,
-        "long_weekdays":,     # Wednesday (2) & Sunday (6) initially
+        "long_weekdays": [2, 6],     # Wednesday (2) & Sunday (6) initially
         "top_hours_ist": [],         # Empty initially -> 100% random exploration
         "winning_patterns": [],
         "winning_hook_styles": ["shock", "question", "countdown", "challenge"],
@@ -323,7 +343,7 @@ def discover_gta6_candidates(history_data):
                 seen_now.add(vid_id)
                 found.append({
                     "video_id": vid_id,
-                    "url": "https://" + "://youtube.com" + "?v=" + vid_id,
+                    "url": f"https://youtube.com{vid_id}",
                     "title": meta.get("title", "GTA 6 Gameplay"),
                     "channel_name": meta.get("channel_name", "GTA 6 Creator"),
                     "duration": float(meta.get("duration", 1200)),
@@ -1456,21 +1476,25 @@ def render_vertical_segments_and_concat(short_plan):
         text_chain += "[vout]"
         full_fc = f"{base_graph};{text_chain}"
 
-        run_cmd_safe(
-            [
-                "ffmpeg", "-y",
-                "-ss", f"{start_s:.2f}", "-t", f"{dur_s:.2f}",
-                "-i", seg["video_path"],
-                "-filter_complex", full_fc,
-                "-map", "[vout]", "-map", "0:a?",
-                "-r", "30",
-                "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-                "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-ac", "2",
-                seg_out,
-            ],
-            label=f"RenderSeg_{idx}",
-            timeout_sec=140,
-        )
+        seg_has_audio = has_audio_stream(seg["video_path"])
+        seg_cmd = [
+            "ffmpeg", "-y",
+            "-ss", f"{start_s:.2f}", "-t", f"{dur_s:.2f}",
+            "-i", seg["video_path"],
+        ]
+        if not seg_has_audio:
+            seg_cmd.extend(["-f", "lavfi", "-t", f"{dur_s:.2f}", "-i", "anullsrc=r=44100:cl=stereo"])
+
+        seg_cmd.extend([
+            "-filter_complex", full_fc,
+            "-map", "[vout]",
+            "-map", "0:a:0" if seg_has_audio else "1:a:0",
+            "-r", "30",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+            "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-ac", "2",
+            seg_out,
+        ])
+        run_cmd_safe(seg_cmd, label=f"RenderSeg_{idx}", timeout_sec=140)
 
         actual_d = get_media_duration(seg_out)
         rendered_files.append(seg_out)
@@ -2360,17 +2384,20 @@ def _render_and_stitch_long_video(selected_items, script_data):
             f"drawtext=fontfile={font_bold}:text='{ch_esc}':fontsize=28:fontcolor=#FFD54F:x=72:y=982,"
             f"drawtext=fontfile={font_bold}:text='{wm_label}':fontsize=26:fontcolor=white@0.85:x=w-text_w-48:y=48"
         )
-        run_cmd_safe(
-            [
-                "ffmpeg", "-y", "-ss", "0", "-t", f"{dur_use:.2f}",
-                "-i", item["path"], "-vf", vf,
-                "-r", "30", "-c:v", "libx264", "-preset", "veryfast", "-crf", "21",
-                "-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-ac", "2",
-                seg_out,
-            ],
-            label=f"LongSegRender_{idx}",
-            timeout_sec=150,
-        )
+        l_has_audio = has_audio_stream(item["path"])
+        l_cmd = ["ffmpeg", "-y", "-ss", "0", "-t", f"{dur_use:.2f}", "-i", item["path"]]
+        if not l_has_audio:
+            l_cmd.extend(["-f", "lavfi", "-t", f"{dur_use:.2f}", "-i", "anullsrc=r=44100:cl=stereo"])
+        l_cmd.extend([
+            "-vf", vf,
+            "-map", "0:v:0",
+            "-map", "0:a:0" if l_has_audio else "1:a:0",
+            "-r", "30", "-c:v", "libx264", "-preset", "veryfast", "-crf", "21",
+            "-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-ac", "2",
+            seg_out,
+        ])
+        run_cmd_safe(l_cmd, label=f"LongSegRender_{idx}", timeout_sec=150)
+
         actual_d = get_media_duration(seg_out)
         rendered_segs.append(seg_out)
         seg_durs.append(actual_d)
@@ -2560,7 +2587,7 @@ def build_and_publish_weekly_long_video(history_data):
         except Exception as e:
             print(f"[Thumbnail Upload Warning] {e}", flush=True)
 
-    long_url = "https://" + "://youtube.com" + "?v=" + long_vid_id
+    long_url = f"https://youtube.com{long_vid_id}"
     brain = history_data.setdefault("ai_brain", _default_ai_brain())
     brain.setdefault("longs_published_this_week", []).append(today_tag)
 
