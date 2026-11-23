@@ -711,10 +711,10 @@ def detect_verified_webcam_box(video_path, start_s, end_s):
 
 # ==============================================================================
 # PART 14 OF 30: VAULT HOUSEKEEPING, STALE EXPIRY & COMPILATION PURGE
-# Subheading: Purges Clips > 36h Old, Compilations & Keeps Top 18 Fresh Clips
+# Subheading: Purges Stale >24h Clips, Legacy Files & Compilations; Keeps Top 18
 # Code Title: prune_vault_and_temp_files
 # ==============================================================================
-def prune_vault_and_temp_files(history_data, max_vault_items=18, max_age_hours=36):
+def prune_vault_and_temp_files(history_data, max_vault_items=18, max_age_hours=24):
     now_utc = datetime.now(timezone.utc)
     valid_vault = []
 
@@ -723,9 +723,15 @@ def prune_vault_and_temp_files(history_data, max_vault_items=18, max_age_hours=3
         if not vp or not os.path.exists(vp):
             continue
 
+        fname = os.path.basename(vp)
         ch_name = str(item.get("channel_name", "")).strip()
-        if not ch_name or ch_name.lower() == "gta 6 creator" or is_compilation_or_clipper(ch_name, item.get("source_title", "")):
-            print(f"[Vault Purge] Removed unverified/compilation clip ({ch_name}): {vp}", flush=True)
+        if (
+            fname.startswith("vault_20261121_")
+            or not ch_name
+            or ch_name.lower() == "gta 6 creator"
+            or is_compilation_or_clipper(ch_name, item.get("source_title", ""))
+        ):
+            print(f"[Vault Purge] Removed legacy/compilation clip ({ch_name}): {vp}", flush=True)
             try:
                 os.remove(vp)
             except Exception:
@@ -733,18 +739,25 @@ def prune_vault_and_temp_files(history_data, max_vault_items=18, max_age_hours=3
             continue
 
         raw_ts = str(item.get("harvested_at", "")).strip()
-        if raw_ts:
+        if not raw_ts:
+            print(f"[Vault Purge] Removed undated clip: {vp}", flush=True)
             try:
-                h_dt = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
-                if (now_utc - h_dt).total_seconds() > max_age_hours * 3600:
-                    print(f"[Vault Expiry] Removed stale clip (> {max_age_hours}h): {vp}", flush=True)
-                    try:
-                        os.remove(vp)
-                    except Exception:
-                        pass
-                    continue
+                os.remove(vp)
             except Exception:
                 pass
+            continue
+
+        try:
+            h_dt = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+            if (now_utc - h_dt).total_seconds() > max_age_hours * 3600:
+                print(f"[Vault Expiry] Removed stale clip (> {max_age_hours}h): {vp}", flush=True)
+                try:
+                    os.remove(vp)
+                except Exception:
+                    pass
+                continue
+        except Exception:
+            pass
 
         valid_vault.append(item)
 
@@ -762,17 +775,17 @@ def prune_vault_and_temp_files(history_data, max_vault_items=18, max_age_hours=3
 
     history_data["vault_queue"] = keep
 
-        tracked_paths = {os.path.abspath(v["vault_path"]) for v in keep if v.get("vault_path")}
+    tracked_paths = {os.path.abspath(v["vault_path"]) for v in keep if v.get("vault_path")}
     vault_dir = CHANNEL_CONFIG.get("vault_dir", "clip_vault")
     if os.path.isdir(vault_dir):
         for fname in os.listdir(vault_dir):
             fpath = os.path.abspath(os.path.join(vault_dir, fname))
             if os.path.isfile(fpath) and fpath not in tracked_paths:
+                print(f"[Vault Orphan Clean] Deleted untracked file: {fname}", flush=True)
                 try:
                     os.remove(fpath)
                 except Exception:
                     pass
-
 
     if len(history_data.get("used_clips", [])) > 400:
         history_data["used_clips"] = history_data["used_clips"][-400:]
@@ -2018,6 +2031,7 @@ def main():
 
     cleanup_scratch_render_files()
     history_data = load_history()
+    prune_vault_and_temp_files(history_data)
     os.makedirs(CHANNEL_CONFIG.get("vault_dir", "clip_vault"), exist_ok=True)
 
     # ------------------------------------------------------------------
