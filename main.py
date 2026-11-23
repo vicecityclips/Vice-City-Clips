@@ -275,8 +275,8 @@ def discover_gta6_candidates(history_data):
     return found[:8]
 
 # ==============================================================================
-# PART 7 OF 30: CANDIDATE VIDEO DOWNLOADER (COOKIE + COOKIELESS CLIENT FALLBACK)
-# Subheading: Tries Authenticated Web Client First, Then Cookieless TV/VR Fallback
+# PART 7 OF 30: CANDIDATE VIDEO DOWNLOADER (EJS SOLVER + COOKIE AUTH)
+# Subheading: Uses Deno + EJS Challenge Solver & Cookie-Safe Player Clients
 # Code Title: download_candidate_video
 # ==============================================================================
 def _prepare_cookies_file():
@@ -302,12 +302,11 @@ def download_candidate_video(candidate, out_path):
     cookies_file = _prepare_cookies_file()
     vid_id = str(candidate["video_id"]).strip()
 
-    # Attempt 1: Authenticated web client (works best with full extension cookies)
-    # Attempt 2 & 3: Cookieless TV/VR/iOS clients (prevents storyboard-only lockouts)
+    # Never send cookies to tv_embedded (triggers "This content isn't available")
     attempts = [
-        {"client": "youtube:player_client=tv_embedded,web,mweb", "use_cookies": True, "fmt": "bv*[height<=720]+ba/b[height<=720]/bv*+ba/b"},
-        {"client": "youtube:player_client=web_safari,mweb", "use_cookies": True, "fmt": "b/bv*+ba"},
-        {"client": "youtube:player_client=tv_embedded,android_vr", "use_cookies": False, "fmt": "b/bv*+ba"},
+        {"client": "youtube:player_client=web,mweb", "use_cookies": True, "fmt": "bv*[height<=720]+ba/b[height<=720]/b"},
+        {"client": "youtube:player_client=web_safari", "use_cookies": True, "fmt": "b/bv*+ba"},
+        {"client": "youtube:player_client=android_vr,mweb", "use_cookies": False, "fmt": "b[height<=720]/bv*[height<=720]+ba/b"},
     ]
 
     for idx, cfg in enumerate(attempts):
@@ -317,6 +316,7 @@ def download_candidate_video(candidate, out_path):
         cmd = [
             "yt-dlp",
             "--js-runtimes", "deno",
+            "--remote-components", "ejs:github",
             "--extractor-args", cfg["client"],
             "-f", cfg["fmt"],
             "--merge-output-format", "mp4",
@@ -333,8 +333,8 @@ def download_candidate_video(candidate, out_path):
             print(f"[Downloaded] {vid_id} ({candidate['channel_name']}) via attempt {idx+1}", flush=True)
             return True
 
-        err_msg = (res.stderr or res.stdout or "").strip().splitlines()[-1:]
-        print(f"[Download Retry {idx+1}] {vid_id}: {err_msg}", flush=True)
+        err_lines = (res.stderr or res.stdout or "").strip().splitlines()[-2:]
+        print(f"[Download Retry {idx+1}] {vid_id}: {err_lines}", flush=True)
         if os.path.exists(out_path):
             os.remove(out_path)
 
