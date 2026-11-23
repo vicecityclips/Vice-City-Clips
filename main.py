@@ -762,6 +762,18 @@ def prune_vault_and_temp_files(history_data, max_vault_items=18, max_age_hours=3
 
     history_data["vault_queue"] = keep
 
+        tracked_paths = {os.path.abspath(v["vault_path"]) for v in keep if v.get("vault_path")}
+    vault_dir = CHANNEL_CONFIG.get("vault_dir", "clip_vault")
+    if os.path.isdir(vault_dir):
+        for fname in os.listdir(vault_dir):
+            fpath = os.path.abspath(os.path.join(vault_dir, fname))
+            if os.path.isfile(fpath) and fpath not in tracked_paths:
+                try:
+                    os.remove(fpath)
+                except Exception:
+                    pass
+
+
     if len(history_data.get("used_clips", [])) > 400:
         history_data["used_clips"] = history_data["used_clips"][-400:]
 
