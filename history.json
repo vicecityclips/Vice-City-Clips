@@ -31,9 +31,1077 @@
     {
       "video_id": "ys_3h2nuNCY",
       "timestamp": "2026-11-21T18:21:44.641757+00:00"
+    },
+    {
+      "video_id": "RVpApoEkOao",
+      "timestamp": "2026-11-23T02:48:08.816192+00:00"
     }
   ],
-  "vault_queue": [],
+  "vault_queue": [
+    {
+      "vault_path": "clip_vault/RVpApoEkOao_p0_738s.mp4",
+      "video_id": "RVpApoEkOao",
+      "channel_name": "TmarTn2",
+      "source_title": "Grand Theft Auto 6 - Part 1 - The Beginning",
+      "source_start_sec": 738.0,
+      "duration_sec": 50.0,
+      "local_peak_sec": 23.0,
+      "viral_score": 9.25,
+      "transcript_en": "And now the cops have been called we're gonna be in trouble and there's somebody right across the street perfect It's okay Ex -Jumper Claw. We got L3 to sprint now. Oh, she's stashed it Go go go go go go Stay up on the rooftops I'm not sure where you want me to go Where do you want me to go lose the cops? Shoot just keep going just keep going bro. This is terrifying. Oh my god. I don't know how this works yet Keep going keep going keep going just get out of this zone. Uh, there's water. Well, this is not ideal trevv I'm gonna try going back this way along the Don't",
+      "word_events": [
+        {
+          "word": "And",
+          "start": 0.43,
+          "end": 1.01
+        },
+        {
+          "word": "now",
+          "start": 1.01,
+          "end": 1.17
+        },
+        {
+          "word": "the",
+          "start": 1.17,
+          "end": 1.69
+        },
+        {
+          "word": "cops",
+          "start": 1.69,
+          "end": 1.91
+        },
+        {
+          "word": "have",
+          "start": 1.91,
+          "end": 2.07
+        },
+        {
+          "word": "been",
+          "start": 2.07,
+          "end": 2.19
+        },
+        {
+          "word": "called",
+          "start": 2.19,
+          "end": 2.33
+        },
+        {
+          "word": "we're",
+          "start": 2.33,
+          "end": 2.47
+        },
+        {
+          "word": "gonna",
+          "start": 2.47,
+          "end": 2.59
+        },
+        {
+          "word": "be",
+          "start": 2.59,
+          "end": 2.73
+        },
+        {
+          "word": "in",
+          "start": 2.73,
+          "end": 2.81
+        },
+        {
+          "word": "trouble",
+          "start": 2.81,
+          "end": 2.89
+        },
+        {
+          "word": "and",
+          "start": 2.89,
+          "end": 3.07
+        },
+        {
+          "word": "there's",
+          "start": 3.07,
+          "end": 3.29
+        },
+        {
+          "word": "somebody",
+          "start": 3.29,
+          "end": 3.43
+        },
+        {
+          "word": "right",
+          "start": 3.43,
+          "end": 3.65
+        },
+        {
+          "word": "across",
+          "start": 3.65,
+          "end": 3.87
+        },
+        {
+          "word": "the",
+          "start": 3.87,
+          "end": 4.09
+        },
+        {
+          "word": "street",
+          "start": 4.09,
+          "end": 4.25
+        },
+        {
+          "word": "perfect",
+          "start": 4.25,
+          "end": 4.89
+        },
+        {
+          "word": "It's",
+          "start": 4.89,
+          "end": 5.27
+        },
+        {
+          "word": "okay",
+          "start": 11.13,
+          "end": 11.67
+        },
+        {
+          "word": "Ex",
+          "start": 11.67,
+          "end": 12.29
+        },
+        {
+          "word": "-Jumper",
+          "start": 12.29,
+          "end": 12.67
+        },
+        {
+          "word": "Claw.",
+          "start": 12.67,
+          "end": 12.87
+        },
+        {
+          "word": "We",
+          "start": 12.93,
+          "end": 12.95
+        },
+        {
+          "word": "got",
+          "start": 12.95,
+          "end": 13.09
+        },
+        {
+          "word": "L3",
+          "start": 13.09,
+          "end": 13.45
+        },
+        {
+          "word": "to",
+          "start": 13.45,
+          "end": 13.59
+        },
+        {
+          "word": "sprint",
+          "start": 13.59,
+          "end": 13.77
+        },
+        {
+          "word": "now.",
+          "start": 13.77,
+          "end": 14.47
+        },
+        {
+          "word": "Oh,",
+          "start": 14.47,
+          "end": 14.81
+        },
+        {
+          "word": "she's",
+          "start": 14.81,
+          "end": 15.07
+        },
+        {
+          "word": "stashed",
+          "start": 15.07,
+          "end": 15.31
+        },
+        {
+          "word": "it",
+          "start": 15.31,
+          "end": 15.49
+        },
+        {
+          "word": "Go",
+          "start": 17.41,
+          "end": 17.77
+        },
+        {
+          "word": "go",
+          "start": 17.77,
+          "end": 18.13
+        },
+        {
+          "word": "go",
+          "start": 18.13,
+          "end": 18.45
+        },
+        {
+          "word": "go",
+          "start": 18.45,
+          "end": 18.61
+        },
+        {
+          "word": "go",
+          "start": 18.61,
+          "end": 18.69
+        },
+        {
+          "word": "go",
+          "start": 18.69,
+          "end": 18.83
+        },
+        {
+          "word": "Stay",
+          "start": 19.29,
+          "end": 19.65
+        },
+        {
+          "word": "up",
+          "start": 19.65,
+          "end": 19.79
+        },
+        {
+          "word": "on",
+          "start": 19.79,
+          "end": 19.83
+        },
+        {
+          "word": "the",
+          "start": 19.83,
+          "end": 19.91
+        },
+        {
+          "word": "rooftops",
+          "start": 19.91,
+          "end": 20.51
+        },
+        {
+          "word": "I'm",
+          "start": 21.81,
+          "end": 22.17
+        },
+        {
+          "word": "not",
+          "start": 22.17,
+          "end": 22.33
+        },
+        {
+          "word": "sure",
+          "start": 22.33,
+          "end": 22.47
+        },
+        {
+          "word": "where",
+          "start": 22.47,
+          "end": 22.61
+        },
+        {
+          "word": "you",
+          "start": 22.61,
+          "end": 22.73
+        },
+        {
+          "word": "want",
+          "start": 22.73,
+          "end": 22.79
+        },
+        {
+          "word": "me",
+          "start": 22.79,
+          "end": 22.83
+        },
+        {
+          "word": "to",
+          "start": 22.83,
+          "end": 22.93
+        },
+        {
+          "word": "go",
+          "start": 22.93,
+          "end": 23.33
+        },
+        {
+          "word": "Where",
+          "start": 24.63,
+          "end": 24.99
+        },
+        {
+          "word": "do",
+          "start": 24.99,
+          "end": 25.35
+        },
+        {
+          "word": "you",
+          "start": 25.35,
+          "end": 25.35
+        },
+        {
+          "word": "want",
+          "start": 25.35,
+          "end": 25.45
+        },
+        {
+          "word": "me",
+          "start": 25.45,
+          "end": 25.47
+        },
+        {
+          "word": "to",
+          "start": 25.47,
+          "end": 25.65
+        },
+        {
+          "word": "go",
+          "start": 25.65,
+          "end": 25.81
+        },
+        {
+          "word": "lose",
+          "start": 25.81,
+          "end": 26.03
+        },
+        {
+          "word": "the",
+          "start": 26.03,
+          "end": 26.21
+        },
+        {
+          "word": "cops?",
+          "start": 26.21,
+          "end": 26.75
+        },
+        {
+          "word": "Shoot",
+          "start": 29.15,
+          "end": 29.51
+        },
+        {
+          "word": "just",
+          "start": 29.51,
+          "end": 29.87
+        },
+        {
+          "word": "keep",
+          "start": 29.87,
+          "end": 30.03
+        },
+        {
+          "word": "going",
+          "start": 30.03,
+          "end": 30.87
+        },
+        {
+          "word": "just",
+          "start": 32.24,
+          "end": 32.62
+        },
+        {
+          "word": "keep",
+          "start": 32.62,
+          "end": 32.78
+        },
+        {
+          "word": "going",
+          "start": 32.78,
+          "end": 33.12
+        },
+        {
+          "word": "bro.",
+          "start": 33.12,
+          "end": 33.32
+        },
+        {
+          "word": "This",
+          "start": 33.34,
+          "end": 33.5
+        },
+        {
+          "word": "is",
+          "start": 33.5,
+          "end": 33.74
+        },
+        {
+          "word": "terrifying.",
+          "start": 33.74,
+          "end": 34.06
+        },
+        {
+          "word": "Oh",
+          "start": 34.24,
+          "end": 34.44
+        },
+        {
+          "word": "my",
+          "start": 34.44,
+          "end": 34.58
+        },
+        {
+          "word": "god.",
+          "start": 34.58,
+          "end": 35.08
+        },
+        {
+          "word": "I",
+          "start": 35.38,
+          "end": 35.74
+        },
+        {
+          "word": "don't",
+          "start": 35.74,
+          "end": 35.84
+        },
+        {
+          "word": "know",
+          "start": 35.84,
+          "end": 35.98
+        },
+        {
+          "word": "how",
+          "start": 35.98,
+          "end": 36.06
+        },
+        {
+          "word": "this",
+          "start": 36.06,
+          "end": 36.24
+        },
+        {
+          "word": "works",
+          "start": 36.24,
+          "end": 36.46
+        },
+        {
+          "word": "yet",
+          "start": 36.46,
+          "end": 36.9
+        },
+        {
+          "word": "Keep",
+          "start": 37.7,
+          "end": 38.08
+        },
+        {
+          "word": "going",
+          "start": 38.08,
+          "end": 38.26
+        },
+        {
+          "word": "keep",
+          "start": 38.26,
+          "end": 38.42
+        },
+        {
+          "word": "going",
+          "start": 38.42,
+          "end": 38.6
+        },
+        {
+          "word": "keep",
+          "start": 38.6,
+          "end": 38.72
+        },
+        {
+          "word": "going",
+          "start": 38.72,
+          "end": 39.5
+        },
+        {
+          "word": "just",
+          "start": 39.5,
+          "end": 40.28
+        },
+        {
+          "word": "get",
+          "start": 40.28,
+          "end": 40.4
+        },
+        {
+          "word": "out",
+          "start": 40.4,
+          "end": 40.7
+        },
+        {
+          "word": "of",
+          "start": 40.7,
+          "end": 40.86
+        },
+        {
+          "word": "this",
+          "start": 40.86,
+          "end": 40.98
+        },
+        {
+          "word": "zone.",
+          "start": 40.98,
+          "end": 41.36
+        },
+        {
+          "word": "Uh,",
+          "start": 41.9,
+          "end": 41.9
+        },
+        {
+          "word": "there's",
+          "start": 41.92,
+          "end": 42.3
+        },
+        {
+          "word": "water.",
+          "start": 42.3,
+          "end": 42.68
+        },
+        {
+          "word": "Well,",
+          "start": 43.16,
+          "end": 43.26
+        },
+        {
+          "word": "this",
+          "start": 43.36,
+          "end": 43.5
+        },
+        {
+          "word": "is",
+          "start": 43.5,
+          "end": 43.72
+        },
+        {
+          "word": "not",
+          "start": 43.72,
+          "end": 43.84
+        },
+        {
+          "word": "ideal",
+          "start": 43.84,
+          "end": 44.12
+        },
+        {
+          "word": "trevv",
+          "start": 44.12,
+          "end": 44.34
+        },
+        {
+          "word": "I'm",
+          "start": 45.7,
+          "end": 46.08
+        },
+        {
+          "word": "gonna",
+          "start": 46.08,
+          "end": 46.18
+        },
+        {
+          "word": "try",
+          "start": 46.18,
+          "end": 46.34
+        },
+        {
+          "word": "going",
+          "start": 46.34,
+          "end": 46.5
+        },
+        {
+          "word": "back",
+          "start": 46.5,
+          "end": 46.7
+        },
+        {
+          "word": "this",
+          "start": 46.7,
+          "end": 46.9
+        },
+        {
+          "word": "way",
+          "start": 46.9,
+          "end": 47.02
+        },
+        {
+          "word": "along",
+          "start": 47.02,
+          "end": 47.2
+        },
+        {
+          "word": "the",
+          "start": 47.2,
+          "end": 47.42
+        },
+        {
+          "word": "Don't",
+          "start": 47.42,
+          "end": 47.94
+        }
+      ],
+      "harvested_at": "2026-11-23T02:46:19.673653+00:00"
+    },
+    {
+      "vault_path": "clip_vault/RVpApoEkOao_p1_860s.mp4",
+      "video_id": "RVpApoEkOao",
+      "channel_name": "TmarTn2",
+      "source_title": "Grand Theft Auto 6 - Part 1 - The Beginning",
+      "source_start_sec": 860.0,
+      "duration_sec": 50.0,
+      "local_peak_sec": 23.0,
+      "viral_score": 9.25,
+      "transcript_en": "Well, you lost cars, they're still looking for you. So it's teaching us about the new, the new, what's it called? Like police things. Oh my god. Show. Bro, what the fudge? Run! They had a die pack on the cast and it. OK. OK. I got to get back to the coffee shop. It's right there. I got to get back to the coffee shop. No, worst criminal at all times. No, no, wait. I got to get back there. I don't think there's anything we could have done.",
+      "word_events": [
+        {
+          "word": "Well,",
+          "start": 0.0,
+          "end": 0.18
+        },
+        {
+          "word": "you",
+          "start": 0.24,
+          "end": 0.24
+        },
+        {
+          "word": "lost",
+          "start": 0.24,
+          "end": 0.42
+        },
+        {
+          "word": "cars,",
+          "start": 0.42,
+          "end": 0.66
+        },
+        {
+          "word": "they're",
+          "start": 0.74,
+          "end": 0.88
+        },
+        {
+          "word": "still",
+          "start": 0.88,
+          "end": 1.04
+        },
+        {
+          "word": "looking",
+          "start": 1.04,
+          "end": 1.28
+        },
+        {
+          "word": "for",
+          "start": 1.28,
+          "end": 1.54
+        },
+        {
+          "word": "you.",
+          "start": 1.54,
+          "end": 1.72
+        },
+        {
+          "word": "So",
+          "start": 1.9,
+          "end": 1.9
+        },
+        {
+          "word": "it's",
+          "start": 1.9,
+          "end": 2.56
+        },
+        {
+          "word": "teaching",
+          "start": 2.56,
+          "end": 2.82
+        },
+        {
+          "word": "us",
+          "start": 2.82,
+          "end": 3.06
+        },
+        {
+          "word": "about",
+          "start": 3.06,
+          "end": 3.28
+        },
+        {
+          "word": "the",
+          "start": 3.28,
+          "end": 3.44
+        },
+        {
+          "word": "new,",
+          "start": 3.44,
+          "end": 4.72
+        },
+        {
+          "word": "the",
+          "start": 6.9,
+          "end": 7.18
+        },
+        {
+          "word": "new,",
+          "start": 7.18,
+          "end": 7.36
+        },
+        {
+          "word": "what's",
+          "start": 7.36,
+          "end": 7.58
+        },
+        {
+          "word": "it",
+          "start": 7.58,
+          "end": 7.66
+        },
+        {
+          "word": "called?",
+          "start": 7.66,
+          "end": 7.96
+        },
+        {
+          "word": "Like",
+          "start": 8.76,
+          "end": 8.88
+        },
+        {
+          "word": "police",
+          "start": 8.88,
+          "end": 9.14
+        },
+        {
+          "word": "things.",
+          "start": 9.14,
+          "end": 9.66
+        },
+        {
+          "word": "Oh",
+          "start": 10.1,
+          "end": 10.16
+        },
+        {
+          "word": "my",
+          "start": 10.16,
+          "end": 10.3
+        },
+        {
+          "word": "god.",
+          "start": 10.3,
+          "end": 10.82
+        },
+        {
+          "word": "Show.",
+          "start": 13.46,
+          "end": 13.7
+        },
+        {
+          "word": "Bro,",
+          "start": 19.77,
+          "end": 19.93
+        },
+        {
+          "word": "what",
+          "start": 20.07,
+          "end": 20.35
+        },
+        {
+          "word": "the",
+          "start": 20.35,
+          "end": 20.63
+        },
+        {
+          "word": "fudge?",
+          "start": 20.63,
+          "end": 21.39
+        },
+        {
+          "word": "Run!",
+          "start": 27.42,
+          "end": 27.66
+        },
+        {
+          "word": "They",
+          "start": 33.56,
+          "end": 33.92
+        },
+        {
+          "word": "had",
+          "start": 33.92,
+          "end": 34.06
+        },
+        {
+          "word": "a",
+          "start": 34.06,
+          "end": 34.28
+        },
+        {
+          "word": "die",
+          "start": 34.28,
+          "end": 34.46
+        },
+        {
+          "word": "pack",
+          "start": 34.46,
+          "end": 34.7
+        },
+        {
+          "word": "on",
+          "start": 34.7,
+          "end": 34.94
+        },
+        {
+          "word": "the",
+          "start": 34.94,
+          "end": 35.08
+        },
+        {
+          "word": "cast",
+          "start": 35.08,
+          "end": 35.34
+        },
+        {
+          "word": "and",
+          "start": 35.34,
+          "end": 35.58
+        },
+        {
+          "word": "it.",
+          "start": 35.58,
+          "end": 36.1
+        },
+        {
+          "word": "OK.",
+          "start": 38.6,
+          "end": 38.94
+        },
+        {
+          "word": "OK.",
+          "start": 39.6,
+          "end": 39.62
+        },
+        {
+          "word": "I",
+          "start": 40.4,
+          "end": 40.4
+        },
+        {
+          "word": "got",
+          "start": 40.4,
+          "end": 40.6
+        },
+        {
+          "word": "to",
+          "start": 40.6,
+          "end": 40.66
+        },
+        {
+          "word": "get",
+          "start": 40.66,
+          "end": 40.78
+        },
+        {
+          "word": "back",
+          "start": 40.78,
+          "end": 40.94
+        },
+        {
+          "word": "to",
+          "start": 40.94,
+          "end": 41.06
+        },
+        {
+          "word": "the",
+          "start": 41.06,
+          "end": 41.28
+        },
+        {
+          "word": "coffee",
+          "start": 41.28,
+          "end": 41.48
+        },
+        {
+          "word": "shop.",
+          "start": 41.48,
+          "end": 41.72
+        },
+        {
+          "word": "It's",
+          "start": 41.88,
+          "end": 41.96
+        },
+        {
+          "word": "right",
+          "start": 41.96,
+          "end": 42.08
+        },
+        {
+          "word": "there.",
+          "start": 42.08,
+          "end": 42.5
+        },
+        {
+          "word": "I",
+          "start": 42.9,
+          "end": 42.92
+        },
+        {
+          "word": "got",
+          "start": 42.92,
+          "end": 43.12
+        },
+        {
+          "word": "to",
+          "start": 43.12,
+          "end": 43.86
+        },
+        {
+          "word": "get",
+          "start": 43.86,
+          "end": 44.0
+        },
+        {
+          "word": "back",
+          "start": 44.0,
+          "end": 44.14
+        },
+        {
+          "word": "to",
+          "start": 44.14,
+          "end": 44.18
+        },
+        {
+          "word": "the",
+          "start": 44.18,
+          "end": 44.18
+        },
+        {
+          "word": "coffee",
+          "start": 44.18,
+          "end": 44.18
+        },
+        {
+          "word": "shop.",
+          "start": 44.18,
+          "end": 44.18
+        },
+        {
+          "word": "No,",
+          "start": 44.18,
+          "end": 44.56
+        },
+        {
+          "word": "worst",
+          "start": 45.06,
+          "end": 45.06
+        },
+        {
+          "word": "criminal",
+          "start": 45.06,
+          "end": 45.58
+        },
+        {
+          "word": "at",
+          "start": 45.58,
+          "end": 45.9
+        },
+        {
+          "word": "all",
+          "start": 45.9,
+          "end": 46.04
+        },
+        {
+          "word": "times.",
+          "start": 46.04,
+          "end": 46.38
+        },
+        {
+          "word": "No,",
+          "start": 46.92,
+          "end": 46.92
+        },
+        {
+          "word": "no,",
+          "start": 47.12,
+          "end": 47.12
+        },
+        {
+          "word": "wait.",
+          "start": 47.4,
+          "end": 47.4
+        },
+        {
+          "word": "I",
+          "start": 47.6,
+          "end": 47.72
+        },
+        {
+          "word": "got",
+          "start": 47.72,
+          "end": 47.82
+        },
+        {
+          "word": "to",
+          "start": 47.82,
+          "end": 47.86
+        },
+        {
+          "word": "get",
+          "start": 47.86,
+          "end": 48.04
+        },
+        {
+          "word": "back",
+          "start": 48.04,
+          "end": 48.32
+        },
+        {
+          "word": "there.",
+          "start": 48.32,
+          "end": 48.5
+        },
+        {
+          "word": "I",
+          "start": 48.6,
+          "end": 48.74
+        },
+        {
+          "word": "don't",
+          "start": 48.74,
+          "end": 48.82
+        },
+        {
+          "word": "think",
+          "start": 48.82,
+          "end": 48.94
+        },
+        {
+          "word": "there's",
+          "start": 48.94,
+          "end": 49.14
+        },
+        {
+          "word": "anything",
+          "start": 49.14,
+          "end": 49.28
+        },
+        {
+          "word": "we",
+          "start": 49.28,
+          "end": 49.48
+        },
+        {
+          "word": "could",
+          "start": 49.48,
+          "end": 49.62
+        },
+        {
+          "word": "have",
+          "start": 49.62,
+          "end": 49.78
+        },
+        {
+          "word": "done.",
+          "start": 49.78,
+          "end": 49.88
+        }
+      ],
+      "harvested_at": "2026-11-23T02:46:22.932741+00:00"
+    }
+  ],
   "scheduled_slots": [
     "2026-11-23T02:00:00Z"
   ],
