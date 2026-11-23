@@ -36,7 +36,7 @@ CHANNEL_CONFIG = {
     "channel_name": "Vice City Clips Vault",
     "channel_handle": "@Vice-City_ClipsVault",
     "watermark_text": "@Vice-City_ClipsVault",
-    "upload_to_youtube": False,  
+    "upload_to_youtube": True,  
     "vault_dir": "clip_vault",
     "history_file": "history.json",
     "max_clips_per_short": 5,
