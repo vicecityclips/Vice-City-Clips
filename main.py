@@ -304,17 +304,16 @@ def download_candidate_video(candidate, out_path):
         print("[Cookies Warning] No YouTube cookies secret found in env (YT_COOKIES_TXT / YOUTUBE_COOKIES).", flush=True)
 
     vid_id = str(candidate["video_id"]).strip()
-    client_profiles = (
+     client_profiles = (
         "youtube:player_client=web,mweb",
-        "youtube:player_client=tv_embedded,android_vr",
+        "default",
     )
 
     for idx, extractor_arg in enumerate(client_profiles):
         cmd = [
             "yt-dlp",
             "--js-runtimes", "deno",
-            "--extractor-args", extractor_arg,
-            "-f", "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best[height<=720]/best",
+            "-f", "bv*[height<=720]+ba/b[height<=720]/bv*+ba/b",
             "--merge-output-format", "mp4",
             "--no-playlist",
             "--max-filesize", "220M",
