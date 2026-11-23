@@ -304,7 +304,7 @@ def download_candidate_video(candidate, out_path):
         print("[Cookies Warning] No YouTube cookies secret found in env (YT_COOKIES_TXT / YOUTUBE_COOKIES).", flush=True)
 
     vid_id = str(candidate["video_id"]).strip()
-     client_profiles = (
+    client_profiles = (
         "youtube:player_client=web,mweb",
         "default",
     )
