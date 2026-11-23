@@ -710,23 +710,42 @@ def detect_verified_webcam_box(video_path, start_s, end_s):
     return None
 
 # ==============================================================================
-# PART 14 OF 30: VAULT HOUSEKEEPING & COMPILATION PURGE
-# Subheading: Removes Compilation Clips, Caps Vault To Best 18 & Cleans Stale Files
+# PART 14 OF 30: VAULT HOUSEKEEPING, STALE EXPIRY & COMPILATION PURGE
+# Subheading: Purges Clips > 36h Old, Compilations & Keeps Top 18 Fresh Clips
 # Code Title: prune_vault_and_temp_files
 # ==============================================================================
-def prune_vault_and_temp_files(history_data, max_vault_items=18):
+def prune_vault_and_temp_files(history_data, max_vault_items=18, max_age_hours=36):
+    now_utc = datetime.now(timezone.utc)
     valid_vault = []
+
     for item in history_data.get("vault_queue", []):
         vp = item.get("vault_path", "")
         if not vp or not os.path.exists(vp):
             continue
-        if is_compilation_or_clipper(item.get("channel_name", ""), item.get("source_title", "")):
-            print(f"[Vault Purge] Removed compilation clip from {item.get('channel_name')}: {vp}", flush=True)
+
+        ch_name = str(item.get("channel_name", "")).strip()
+        if not ch_name or ch_name.lower() == "gta 6 creator" or is_compilation_or_clipper(ch_name, item.get("source_title", "")):
+            print(f"[Vault Purge] Removed unverified/compilation clip ({ch_name}): {vp}", flush=True)
             try:
                 os.remove(vp)
             except Exception:
                 pass
             continue
+
+        raw_ts = str(item.get("harvested_at", "")).strip()
+        if raw_ts:
+            try:
+                h_dt = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+                if (now_utc - h_dt).total_seconds() > max_age_hours * 3600:
+                    print(f"[Vault Expiry] Removed stale clip (> {max_age_hours}h): {vp}", flush=True)
+                    try:
+                        os.remove(vp)
+                    except Exception:
+                        pass
+                    continue
+            except Exception:
+                pass
+
         valid_vault.append(item)
 
     valid_vault.sort(key=lambda x: float(x.get("viral_score", 0.0)), reverse=True)
