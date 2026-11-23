@@ -343,7 +343,7 @@ def discover_gta6_candidates(history_data):
                 seen_now.add(vid_id)
                 found.append({
                     "video_id": vid_id,
-                    "url": "https://youtube.com" + "watch?v=" + vid_id,
+                    "url": "https://youtube.com/" + "watch?v=" + vid_id,
                     "title": meta.get("title", "GTA 6 Gameplay"),
                     "channel_name": meta.get("channel_name", "GTA 6 Creator"),
                     "duration": float(meta.get("duration", 1200)),
@@ -390,7 +390,7 @@ def discover_gta6_candidates(history_data):
             seen_now.add(vid_id)
             found.append({
                 "video_id": vid_id,
-                "url": "https://youtube.com" + "watch?v=" + vid_id,
+                "url": "https://youtube.com/" + "watch?v=" + vid_id,
                 "title": title,
                 "channel_name": uploader,
                 "duration": dur,
@@ -1957,7 +1957,8 @@ def upload_short_to_youtube(video_path, script_data, timeline_meta, publish_at_i
         _, response = request.next_chunk()
 
     vid_id = response.get("id", "")
-    return "https://youtube.com" + "shorts/" + vid_id
+    return "https://youtube.com/" + "shorts/" + vid_id
+    
 # ==============================================================================
 # PART 29 OF 40: SCRATCH RENDER & THUMBNAIL WORKSPACE CLEANER
 # Subheading: Deletes Temporary Render Files So GitHub Runner & Repo Stay Clean
@@ -2586,7 +2587,7 @@ def build_and_publish_weekly_long_video(history_data):
         except Exception as e:
             print(f"[Thumbnail Upload Warning] {e}", flush=True)
 
-    long_url = "https://youtube.com" + "watch?v=" + long_vid_id
+    long_url = "https://youtube.com/" + "watch?v=" + long_vid_id
     brain = history_data.setdefault("ai_brain", _default_ai_brain())
     brain.setdefault("longs_published_this_week", []).append(today_tag)
 
