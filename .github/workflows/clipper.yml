@@ -48,7 +48,7 @@ jobs:
       - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -U yt-dlp google-genai faster-whisper edge-tts opencv-python-headless numpy pillow google-api-python-client google-auth-oauthlib google-auth-httplib2
+          pip install -U "yt-dlp[default]" google-genai faster-whisper edge-tts opencv-python-headless numpy pillow google-api-python-client google-auth-oauthlib google-auth-httplib2
 
       - name: Run 2-Stage GTA 6 Auto-Clipper Pipeline
         env:
