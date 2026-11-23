@@ -275,8 +275,8 @@ def discover_gta6_candidates(history_data):
     return found[:8]
 
 # ==============================================================================
-# PART 7 OF 30: CANDIDATE VIDEO DOWNLOADER (720P MP4 + COOKIES & CLIENT BYPASS)
-# Subheading: Loads YouTube Cookies From Any Configured Secret & Downloads 720p MP4
+# PART 7 OF 30: CANDIDATE VIDEO DOWNLOADER (COOKIE + COOKIELESS CLIENT FALLBACK)
+# Subheading: Tries Authenticated Web Client First, Then Cookieless TV/VR Fallback
 # Code Title: download_candidate_video
 # ==============================================================================
 def _prepare_cookies_file():
@@ -300,32 +300,37 @@ def download_candidate_video(candidate, out_path):
         os.remove(out_path)
 
     cookies_file = _prepare_cookies_file()
-    if not cookies_file:
-        print("[Cookies Warning] No YouTube cookies secret found in env (YT_COOKIES_TXT / YOUTUBE_COOKIES).", flush=True)
-
     vid_id = str(candidate["video_id"]).strip()
-    client_profiles = (
-        "youtube:player_client=web,mweb",
-        "default",
-    )
 
-    for idx, extractor_arg in enumerate(client_profiles):
+    # Attempt 1: Authenticated web client (works best with full extension cookies)
+    # Attempt 2 & 3: Cookieless TV/VR/iOS clients (prevents storyboard-only lockouts)
+    attempts = [
+        {"client": "youtube:player_client=web,mweb", "use_cookies": True, "fmt": "bv*[height<=720]+ba/b[height<=720]/b"},
+        {"client": "youtube:player_client=tv_embedded,android_vr", "use_cookies": False, "fmt": "b[height<=720]/bv*[height<=720]+ba/b"},
+        {"client": "youtube:player_client=ios,mweb", "use_cookies": False, "fmt": "b/bv*+ba"},
+    ]
+
+    for idx, cfg in enumerate(attempts):
+        if cfg["use_cookies"] and not cookies_file:
+            continue
+
         cmd = [
             "yt-dlp",
             "--js-runtimes", "deno",
-            "-f", "bv*[height<=720]+ba/b[height<=720]/bv*+ba/b",
+            "--extractor-args", cfg["client"],
+            "-f", cfg["fmt"],
             "--merge-output-format", "mp4",
             "--no-playlist",
             "--max-filesize", "220M",
             "-o", out_path,
         ]
-        if cookies_file:
+        if cfg["use_cookies"] and cookies_file:
             cmd.extend(["--cookies", cookies_file])
         cmd.extend(["--", vid_id])
 
         res = run_cmd_safe(cmd, label=f"Download_{vid_id}_{idx}", timeout_sec=160, check=False)
         if res.returncode == 0 and os.path.exists(out_path) and get_media_duration(out_path) >= 20.0:
-            print(f"[Downloaded] {vid_id} ({candidate['channel_name']})", flush=True)
+            print(f"[Downloaded] {vid_id} ({candidate['channel_name']}) via attempt {idx+1}", flush=True)
             return True
 
         err_msg = (res.stderr or res.stdout or "").strip().splitlines()[-1:]
