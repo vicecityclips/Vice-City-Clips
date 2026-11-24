@@ -685,7 +685,7 @@ def discover_gta6_candidates(history_data):
                 continue
             if "#shorts" in title.lower() or is_compilation_or_clipper(uploader, title):
                 continue
-            if dur < 360 or dur > 14400:
+            if dur < 360 or dur > 21600:
                 continue
 
             seen_now.add(vid_id)
@@ -702,13 +702,13 @@ def discover_gta6_candidates(history_data):
     return found[:8]
 
 # ==============================================================================
-# PART 7 OF 40: AUTHENTICATED & EJS-ENABLED CANDIDATE VIDEO DOWNLOADER
-# Subheading: Downloads 720p MP4 Source Streams Using Deno Challenge Solver
+# PART 7 OF 40: SMART HEATMAP SCOUT & SECTION-ONLY STREAM DOWNLOADER
+# Subheading: Finds YouTube Most-Replayed Heatmap Peaks & Downloads Only 45s
 # What This Code Does:
-#   - Loads YOUTUBE_COOKIES_TXT from GitHub Secrets so datacenter IPs pass
-#     YouTube bot verification cleanly.
-#   - Uses Deno + remote ejs:github challenge solver scripts with cookie-safe
-#     player clients (web,mweb and web_safari) plus a cookieless fallback.
+#   - Fetches stream metadata & YouTube's Most Replayed Heatmap BEFORE downloading
+#     any video, avoiding 3-hour VOD timeouts completely.
+#   - Picks the highest unvisited heatmap spike (or smart unvisited segment on
+#     brand-new streams) and downloads ONLY a 45s window via --download-sections.
 # ==============================================================================
 def _prepare_cookies_file():
     for candidate_path in ("yt_cookies.txt", "cookies.txt"):
@@ -725,7 +725,95 @@ def _prepare_cookies_file():
             return out_cookie
     return None
 
-def download_candidate_video(candidate, out_path):
+
+def _is_range_blocked(ts_mid, blocked_ranges, pad=22.0):
+    for rng in (blocked_ranges or []):
+        if isinstance(rng, (list, tuple)) and len(rng) >= 2:
+            b0, b1 = float(rng[0]), float(rng[1])
+            if (b0 - pad) <= ts_mid <= (b1 + pad):
+                return True
+    return False
+
+
+def find_smart_stream_window(vid_id, fallback_dur=1200.0, blocked_ranges=None):
+    cookies_file = _prepare_cookies_file()
+    cmd = [
+        "yt-dlp",
+        "--js-runtimes", "deno",
+        "--remote-components", "ejs:github",
+        "--extractor-args", "youtube:player_client=default,-tv_downgraded,tv",
+        "--dump-single-json",
+        "--no-warnings",
+        "--skip-download",
+    ]
+    if cookies_file:
+        cmd.extend(["--cookies", cookies_file])
+    cmd.extend(["--", vid_id])
+
+    res = run_cmd_safe(cmd, label=f"HeatmapProbe_{vid_id}", timeout_sec=35, check=False)
+    info = {}
+    for line in (res.stdout or "").splitlines():
+        line = line.strip()
+        if line.startswith("{"):
+            try:
+                info = json.loads(line)
+                break
+            except Exception:
+                pass
+
+    true_dur = float(info.get("duration") or fallback_dur or 0.0)
+    if true_dur < 45.0:
+        return None, 0.0
+
+    # 1. Check YouTube's Most Replayed Heatmap peaks first
+    heatmap = info.get("heatmap") or []
+    ranked_peaks = []
+    for entry in heatmap:
+        if not isinstance(entry, dict):
+            continue
+        st = float(entry.get("start_time", 0.0))
+        en = float(entry.get("end_time", st + 5.0))
+        val = float(entry.get("value", 0.0))
+        mid = (st + en) / 2.0
+        if mid < 15.0 or mid > (true_dur - 15.0):
+            continue
+        if not _is_range_blocked(mid, blocked_ranges, pad=25.0):
+            ranked_peaks.append((val, mid))
+
+    if ranked_peaks:
+        ranked_peaks.sort(key=lambda x: x[0], reverse=True)
+        best_val, best_mid = next(iter(ranked_peaks))
+        w_start = max(0.0, round(best_mid - 22.0, 1))
+        w_end = min(true_dur, round(w_start + 46.0, 1))
+        print(
+            f"[Heatmap Hit] {vid_id}: peak={best_val:.2f} @ {best_mid:.1f}s -> downloading {w_start}s-{w_end}s",
+            flush=True,
+        )
+        return (w_start, w_end), true_dur
+
+    # 2. Fallback for brand-new streams without heatmap: pick an unvisited 46s zone
+    step = 65.0
+    candidate_mids = []
+    cursor = 35.0
+    while cursor < (true_dur - 35.0):
+        if not _is_range_blocked(cursor, blocked_ranges, pad=25.0):
+            candidate_mids.append(cursor)
+        cursor += step
+
+    if not candidate_mids:
+        return None, true_dur
+
+    chosen_mid = random.choice(candidate_mids)
+    w_start = max(0.0, round(chosen_mid - 22.0, 1))
+    w_end = min(true_dur, round(w_start + 46.0, 1))
+    print(
+        f"[Smart Scan] {vid_id}: no heatmap yet -> sampling {w_start}s-{w_end}s of {true_dur:.0f}s stream",
+        flush=True,
+    )
+    return (w_start, w_end), true_dur
+
+
+def download_candidate_video(candidate, out_path, target_window=None):
     if os.path.exists(out_path):
         os.remove(out_path)
 
@@ -749,15 +837,19 @@ def download_candidate_video(candidate, out_path):
             "-f", cfg["fmt"],
             "--merge-output-format", "mp4",
             "--no-playlist",
-            "--max-filesize", "120M",
-            "-o", out_path,
         ]
+        if target_window and len(target_window) == 2:
+            w0, w1 = float(target_window[0]), float(target_window[1])
+            cmd.extend(["--download-sections", f"*{w0:.1f}-{w1:.1f}", "--force-keyframes-at-cuts"])
+        else:
+            cmd.extend(["--max-filesize", "120M"])
+
         if cfg["use_cookies"] and cookies_file:
             cmd.extend(["--cookies", cookies_file])
-        cmd.extend(["--", vid_id])
+        cmd.extend(["-o", out_path, "--", vid_id])
 
-        res = run_cmd_safe(cmd, label=f"Download_{vid_id}_{idx}", timeout_sec=90, check=False)
-        if res.returncode == 0 and os.path.exists(out_path) and get_media_duration(out_path) >= 20.0:
+        res = run_cmd_safe(cmd, label=f"Download_{vid_id}_{idx}", timeout_sec=75, check=False)
+        if res.returncode == 0 and os.path.exists(out_path) and get_media_duration(out_path) >= 18.0:
             print(f"[Downloaded] {vid_id} ({candidate['channel_name']}) via attempt {idx+1}", flush=True)
             return True
 
@@ -3372,101 +3464,163 @@ def build_and_publish_weekly_long_video(history_data):
     return True
 
 # ==============================================================================
-# PART 36 OF 40: HOURLY HARVEST & STREAM EXHAUSTION ENGINE
-# Subheading: Harvests 1 Watchable 6.8+ Clip Per Stream & Retires Exhausted Streams
+# PART 7 OF 40: SMART HEATMAP SCOUT & SECTION-ONLY STREAM DOWNLOADER
+# Subheading: Finds YouTube Most-Replayed Heatmap Peaks & Downloads Only 45s
 # What This Code Does:
-#   - Passes history_data into compute_clip_viral_score so the 2-AI Human Rubric
-#     and negative avoid_patterns filter out every mid (< 6.8) clip.
-#   - Deduplicates checked_ranges in revisit_pool cleanly.
+#   - Fetches stream metadata & YouTube's Most Replayed Heatmap BEFORE downloading
+#     any video, avoiding 3-hour VOD timeouts completely.
+#   - Picks the highest unvisited heatmap spike (or smart unvisited segment on
+#     brand-new streams) and downloads ONLY a 45s window via --download-sections.
 # ==============================================================================
-def run_hourly_harvest_phase(history_data):
-    candidates = discover_gta6_candidates(history_data)
-    print(f"[Discovery] Found {len(candidates)} candidate GTA 6 streams.", flush=True)
+def _prepare_cookies_file():
+    for candidate_path in ("yt_cookies.txt", "cookies.txt"):
+        if os.path.exists(candidate_path) and os.path.getsize(candidate_path) > 40:
+            return candidate_path
 
-    rpool = history_data.setdefault("revisit_pool", {})
-    exhausted = history_data.setdefault("exhausted_ids", [])
-    newly_vaulted = 0
+    for env_name in ("YOUTUBE_COOKIES_TXT", "YT_COOKIES_TXT", "YOUTUBE_COOKIES", "YT_COOKIES", "COOKIES_TXT"):
+        raw_val = os.environ.get(env_name, "").strip()
+        if len(raw_val) > 40:
+            out_cookie = "yt_cookies.txt"
+            with open(out_cookie, "w", encoding="utf-8") as cf:
+                cf.write(raw_val + "\n")
+            print(f"[Cookies] Loaded {len(raw_val)} bytes from {env_name}.", flush=True)
+            return out_cookie
+    return None
 
-    for cand in candidates:
-        if newly_vaulted >= int(CHANNEL_CONFIG.get("max_new_clips_per_run", 3)):
-            break
 
-        vid_id = cand["video_id"]
-        raw_path = f"raw_{vid_id}.mp4"
-        prev_ranges = rpool.get(vid_id, {}).get("checked_ranges", [])
+def _is_range_blocked(ts_mid, blocked_ranges, pad=22.0):
+    for rng in (blocked_ranges or []):
+        if isinstance(rng, (list, tuple)) and len(rng) >= 2:
+            b0, b1 = float(rng[0]), float(rng[1])
+            if (b0 - pad) <= ts_mid <= (b1 + pad):
+                return True
+    return False
 
-        try:
-            downloaded = download_candidate_video(cand, raw_path)
-            if not downloaded or not os.path.exists(raw_path):
-                continue
 
-            tot_dur = get_media_duration(raw_path)
-            peaks = detect_audio_video_peaks(raw_path, max_peaks=2, blocked_ranges=prev_ranges)
+def find_smart_stream_window(vid_id, fallback_dur=1200.0, blocked_ranges=None):
+    cookies_file = _prepare_cookies_file()
+    cmd = [
+        "yt-dlp",
+        "--js-runtimes", "deno",
+        "--remote-components", "ejs:github",
+        "--extractor-args", "youtube:player_client=default,-tv_downgraded,tv",
+        "--dump-single-json",
+        "--no-warnings",
+        "--skip-download",
+    ]
+    if cookies_file:
+        cmd.extend(["--cookies", cookies_file])
+    cmd.extend(["--", vid_id])
 
-            if not peaks:
-                print(f"[Stream Exhausted] All climax moments scanned in {vid_id}. Retiring permanently.", flush=True)
-                if vid_id not in exhausted:
-                    exhausted.append(vid_id)
-                rpool.pop(vid_id, None)
-                continue
+    res = run_cmd_safe(cmd, label=f"HeatmapProbe_{vid_id}", timeout_sec=35, check=False)
+    info = {}
+    for line in (res.stdout or "").splitlines():
+        line = line.strip()
+        if line.startswith("{"):
+            try:
+                info = json.loads(line)
+                break
+            except Exception:
+                pass
 
-            slices = harvest_climax_slices_to_vault(raw_path, cand, peaks)
-            if not slices:
-                continue
+    true_dur = float(info.get("duration") or fallback_dur or 0.0)
+    if true_dur < 45.0:
+        return None, 0.0
 
-            item = next(iter(slices))
-            st = float(item.get("source_start_sec", 0.0))
-            en = st + float(item.get("duration_sec", 28.0))
-            rng_pair = [round(st, 1), round(en, 1)]
+    # 1. Check YouTube's Most Replayed Heatmap peaks first
+    heatmap = info.get("heatmap") or []
+    ranked_peaks = []
+    for entry in heatmap:
+        if not isinstance(entry, dict):
+            continue
+        st = float(entry.get("start_time", 0.0))
+        en = float(entry.get("end_time", st + 5.0))
+        val = float(entry.get("value", 0.0))
+        mid = (st + en) / 2.0
+        if mid < 15.0 or mid > (true_dur - 15.0):
+            continue
+        if not _is_range_blocked(mid, blocked_ranges, pad=25.0):
+            ranked_peaks.append((val, mid))
 
-            entry = rpool.setdefault(vid_id, {
-                "title": cand.get("title", "GTA 6 Gameplay"),
-                "channel_name": cand.get("channel_name", "GTA 6 Creator"),
-                "duration": round(tot_dur, 2),
-                "checked_ranges": [],
-            })
-            if rng_pair not in entry["checked_ranges"]:
-                entry["checked_ranges"].append(rng_pair)
+    if ranked_peaks:
+        ranked_peaks.sort(key=lambda x: x[0], reverse=True)
+        best_val, best_mid = next(iter(ranked_peaks))
+        w_start = max(0.0, round(best_mid - 22.0, 1))
+        w_end = min(true_dur, round(w_start + 46.0, 1))
+        print(
+            f"[Heatmap Hit] {vid_id}: peak={best_val:.2f} @ {best_mid:.1f}s -> downloading {w_start}s-{w_end}s",
+            flush=True,
+        )
+        return (w_start, w_end), true_dur
 
-            if not verify_action_motion_and_quality(item["vault_path"]):
-                print(f"[Filter] Rejected low-motion clip {item['vault_path']}.", flush=True)
-                if os.path.exists(item["vault_path"]):
-                    os.remove(item["vault_path"])
-                entry["last_deleted_at"] = datetime.now(timezone.utc).isoformat()
-                continue
+    # 2. Fallback for brand-new streams without heatmap: pick an unvisited 46s zone
+    step = 65.0
+    candidate_mids = []
+    cursor = 35.0
+    while cursor < (true_dur - 35.0):
+        if not _is_range_blocked(cursor, blocked_ranges, pad=25.0):
+            candidate_mids.append(cursor)
+        cursor += step
 
-            tx_en, w_events = transcribe_and_translate_clip(item["vault_path"])
-            w_score = compute_clip_viral_score(item["vault_path"], tx_en, history_data=history_data)
-            min_score = float(CHANNEL_CONFIG.get("min_human_clip_score", 6.8))
-            if w_score < min_score:
-                if os.path.exists(item["vault_path"]):
-                    os.remove(item["vault_path"])
-                entry["last_deleted_at"] = datetime.now(timezone.utc).isoformat()
-                continue
+    if not candidate_mids:
+        return None, true_dur
 
-            item["transcript_en"] = tx_en
-            item["word_events"] = w_events
-            item["viral_score"] = w_score
-            entry.pop("last_deleted_at", None)
+    chosen_mid = random.choice(candidate_mids)
+    w_start = max(0.0, round(chosen_mid - 22.0, 1))
+    w_end = min(true_dur, round(w_start + 46.0, 1))
+    print(
+        f"[Smart Scan] {vid_id}: no heatmap yet -> sampling {w_start}s-{w_end}s of {true_dur:.0f}s stream",
+        flush=True,
+    )
+    return (w_start, w_end), true_dur
 
-            history_data.setdefault("vault_queue", []).append(item)
-            newly_vaulted += 1
-            print(
-                f"[Vault Queued] {item['vault_path']} (score={w_score}, vault_count={len(history_data['vault_queue'])})",
-                flush=True,
-            )
-        except Exception as e:
-            print(f"[Harvest Error] {vid_id}: {e}", flush=True)
-        finally:
-            if os.path.exists(raw_path):
-                try:
-                    os.remove(raw_path)
-                except Exception:
-                    pass
 
-    prune_vault_and_temp_files(history_data)
-    save_history(history_data)
-    return newly_vaulted
+def download_candidate_video(candidate, out_path, target_window=None):
+    if os.path.exists(out_path):
+        os.remove(out_path)
+
+    cookies_file = _prepare_cookies_file()
+    vid_id = str(candidate["video_id"]).strip()
+
+    attempts = [
+        {"client": "youtube:player_client=default,-tv_downgraded,tv", "use_cookies": True, "fmt": "b[height<=720]/bv*[height<=720]+ba/b"},
+        {"client": "youtube:player_client=tv,web", "use_cookies": True, "fmt": "bv*[height<=720]+ba/b[height<=720]/b"},
+    ]
+
+    for idx, cfg in enumerate(attempts):
+        if cfg["use_cookies"] and not cookies_file:
+            continue
+
+        cmd = [
+            "yt-dlp",
+            "--js-runtimes", "deno",
+            "--remote-components", "ejs:github",
+            "--extractor-args", cfg["client"],
+            "-f", cfg["fmt"],
+            "--merge-output-format", "mp4",
+            "--no-playlist",
+        ]
+        if target_window and len(target_window) == 2:
+            w0, w1 = float(target_window[0]), float(target_window[1])
+            cmd.extend(["--download-sections", f"*{w0:.1f}-{w1:.1f}", "--force-keyframes-at-cuts"])
+        else:
+            cmd.extend(["--max-filesize", "120M"])
+
+        if cfg["use_cookies"] and cookies_file:
+            cmd.extend(["--cookies", cookies_file])
+        cmd.extend(["-o", out_path, "--", vid_id])
+
+        res = run_cmd_safe(cmd, label=f"Download_{vid_id}_{idx}", timeout_sec=75, check=False)
+        if res.returncode == 0 and os.path.exists(out_path) and get_media_duration(out_path) >= 18.0:
+            print(f"[Downloaded] {vid_id} ({candidate['channel_name']}) via attempt {idx+1}", flush=True)
+            return True
+
+        err_lines = (res.stderr or res.stdout or "").strip().splitlines()[-2:]
+        print(f"[Download Retry {idx+1}] {vid_id}: {err_lines}", flush=True)
+        if os.path.exists(out_path):
+            os.remove(out_path)
+
+    return False
 
 # ==============================================================================
 # PART 37 OF 40: MULTI-CLIP SHORT BUILDER & HUMAN QA ORCHESTRATOR
