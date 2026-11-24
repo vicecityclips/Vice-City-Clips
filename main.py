@@ -734,9 +734,9 @@ def download_candidate_video(candidate, out_path):
     vid_id = str(candidate["video_id"]).strip()
 
     attempts = [
-        {"client": "youtube:player_client=web,mweb", "use_cookies": True, "fmt": "bv*[height<=720]+ba/b[height<=720]/b"},
-        {"client": "youtube:player_client=web_safari", "use_cookies": True, "fmt": "b/bv*+ba"},
-        {"client": "youtube:player_client=android_vr,mweb", "use_cookies": False, "fmt": "b[height<=720]/bv*[height<=720]+ba/b"},
+        {"client": "youtube:player_client=tv_embedded,web", "use_cookies": True, "fmt": "bv*[height<=720]+ba/b[height<=720]/b"},
+        {"client": "youtube:player_client=web_creator,web", "use_cookies": True, "fmt": "bv*[height<=720]+ba/b[height<=720]/b"},
+        {"client": "youtube:player_client=android_vr,tv_embedded", "use_cookies": False, "fmt": "b[height<=720]/bv*[height<=720]+ba/b"},
     ]
 
     for idx, cfg in enumerate(attempts):
