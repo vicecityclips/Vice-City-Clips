@@ -50,7 +50,7 @@ CHANNEL_CONFIG = {
     "channel_handle": "@Vice-City_ClipsVault",
     "watermark_text": "@Vice-City_ClipsVault",
     "niche_query_topic": "GTA 6",
-    "upload_to_youtube": False,
+    "upload_to_youtube": True,
 
     # --- Storage & Clip Selection Dials ---
     "vault_dir": "clip_vault",
