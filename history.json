@@ -517,6 +517,18 @@
         ]
       ],
       "last_deleted_at": "2026-11-24T17:48:04.851626+00:00"
+    },
+    "6E2cBXFCDyQ": {
+      "title": "GTA 6 - Stealing a Jet From the Military Base",
+      "channel_name": "TmarTn2",
+      "duration": 797.0,
+      "checked_ranges": [
+        [
+          543.0,
+          571.1
+        ]
+      ],
+      "last_deleted_at": "2026-11-24T18:43:39.974837+00:00"
     }
   },
   "exhausted_ids": [
@@ -533,10 +545,10 @@
     "winning_patterns": [],
     "avoid_patterns": [],
     "daily_hook_trends": [
-      "[Game] WTF and [Adjective] Moments! #X",
-      "[Person] Finds A [Adjective] [Noun] In [Game] 😱",
-      "[Game] just [verb] the entire internet..",
-      "[Number] NEW [Noun] In [Game]!"
+      "CRAZY [high-stakes action] at [specific location]!",
+      "WTF and Funny Moments! #[number]",
+      "[Creator/character] Finds A [unexpected creature] In [game] 😱",
+      "[Game] just broke the entire internet.."
     ],
     "feature_requests": [
       "[v1.1] Python/FFmpeg auto-tuner that analyzes motion_mean/peak per clip and dynamically adjusts zoom_scale, color_vibrancy, and contrast_boost to match viral benchmarks, then renders with"
@@ -582,7 +594,7 @@
       "creative_directive": "Start immediately mid-action in the first 1.5 seconds. Keep commentary razor-sharp, natural, and focused on the absurd payoff."
     },
     "pending_target_slot": "2026-11-25T04:55:00Z",
-    "last_hook_scout_date": "2026-11-24",
+    "last_hook_scout_date": "2026-11-25",
     "last_style_evolved_at": "2026-11-24T15:08:39.310812+00:00",
     "last_tuned_week": "",
     "longs_published_this_week": []
