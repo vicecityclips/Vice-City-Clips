@@ -263,7 +263,7 @@ def call_council_text_ai(role, system_prompt, user_prompt, expect_json=True, tem
                 if expect_json:
                     body["response_format"] = {"type": "json_object"}
                 res = _http_post_json(
-                    "https://groq.com",
+                    "https://api.groq.com/openai/v1/chat/completions",
                     {"Authorization": f"Bearer {groq_key}"},
                     body,
                 )
@@ -280,7 +280,7 @@ def call_council_text_ai(role, system_prompt, user_prompt, expect_json=True, tem
                     "temperature": temperature,
                 }
                 res = _http_post_json(
-                    "https://openrouter.ai",
+                    "https://openrouter.ai/api/v1/chat/completions",
                     {
                         "Authorization": f"Bearer {or_key}",
                         "HTTP-Referer": "https://github.com",
@@ -294,7 +294,7 @@ def call_council_text_ai(role, system_prompt, user_prompt, expect_json=True, tem
             elif prov == "cloudflare" and cf_token and cf_acct:
                 cf_model = cfg.get("cloudflare_qa_model", "@cf/meta/llama-4-scout-17b-16e-instruct")
                 res = _http_post_json(
-                    f"https://cloudflare.com{cf_acct}/ai/run/{cf_model}",
+                    f"https://api.cloudflare.com/client/v4/accounts/{cf_acct}/ai/run/{cf_model}",
                     {"Authorization": f"Bearer {cf_token}"},
                     {
                         "messages": [
@@ -344,7 +344,7 @@ def _default_ai_brain():
     return {
         "shorts_per_day": int(CHANNEL_CONFIG.get("default_shorts_per_day", 3)),
         "longs_per_week": int(CHANNEL_CONFIG.get("default_longs_per_week", 2)),
-        "long_weekdays":,
+        "long_weekdays":[2, 6],
         "top_hours_ist": [],
         "winning_patterns": [],
         "avoid_patterns": [],
