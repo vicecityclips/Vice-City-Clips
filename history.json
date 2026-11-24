@@ -118,10 +118,6 @@
         [
           550.0,
           578.0
-        ],
-        [
-          550.0,
-          578.0
         ]
       ],
       "last_deleted_at": "2026-11-23T20:44:47.782767+00:00"
@@ -131,10 +127,6 @@
       "channel_name": "AFGuidesHD",
       "duration": 2846.42,
       "checked_ranges": [
-        [
-          664.0,
-          692.1
-        ],
         [
           664.0,
           692.1
@@ -162,10 +154,6 @@
         [
           750.0,
           778.0
-        ],
-        [
-          750.0,
-          778.0
         ]
       ],
       "last_deleted_at": "2026-11-24T03:49:44.121039+00:00"
@@ -175,10 +163,6 @@
       "channel_name": "GTA Series Videos",
       "duration": 1068.0,
       "checked_ranges": [
-        [
-          758.0,
-          786.0
-        ],
         [
           758.0,
           786.0
@@ -194,10 +178,6 @@
         [
           724.0,
           752.0
-        ],
-        [
-          724.0,
-          752.0
         ]
       ],
       "last_deleted_at": "2026-11-24T03:49:44.121592+00:00"
@@ -210,10 +190,6 @@
         [
           2068.0,
           2096.0
-        ],
-        [
-          2068.0,
-          2096.0
         ]
       ],
       "last_deleted_at": "2026-11-24T09:58:51.267677+00:00"
@@ -223,10 +199,6 @@
       "channel_name": "Maya",
       "duration": 1263.98,
       "checked_ranges": [
-        [
-          392.0,
-          420.0
-        ],
         [
           392.0,
           420.0
@@ -247,6 +219,16 @@
     ],
     "top_hours_ist": [],
     "winning_patterns": [],
+    "avoid_patterns": [],
+    "daily_hook_trends": [
+      "[Game] WTF and [Adjective] Moments! #X",
+      "[Person] Finds A [Adjective] [Noun] In [Game] 😱",
+      "[Game] just [verb] the entire internet..",
+      "[Number] NEW [Noun] In [Game]!"
+    ],
+    "feature_requests": [
+      "[v1.1] Python/FFmpeg auto-tuner that analyzes motion_mean/peak per clip and dynamically adjusts zoom_scale, color_vibrancy, and contrast_boost to match viral benchmarks, then renders with"
+    ],
     "winning_hook_styles": [
       "shock",
       "question",
@@ -254,6 +236,42 @@
       "challenge"
     ],
     "cadence_experiments": [],
+    "qa_failures": [],
+    "style_dna": {
+      "version": "v1.1",
+      "champion_version": "v1.0",
+      "champion_median_reach": 0.0,
+      "climax_zoom_scale": 1.12,
+      "color_vibrancy": 1.16,
+      "contrast_boost": 1.09,
+      "caption_words_per_chunk": 3,
+      "caption_margin_v": 340,
+      "duck_game_volume": 0.34,
+      "climax_vo_breathing_sec": 1.8,
+      "weight_audio_chaos": 0.35,
+      "weight_visual_action": 0.35,
+      "weight_humor_twist": 0.3,
+      "creative_directive": "Start immediately mid-action within 1.5s, then execute a 1.2x climax zoom at the absurd payoff point with visual emphasis and preserved action audio."
+    },
+    "previous_style_dna": {
+      "version": "v1.0",
+      "champion_version": "v1.0",
+      "champion_median_reach": 0.0,
+      "climax_zoom_scale": 1.1,
+      "color_vibrancy": 1.14,
+      "contrast_boost": 1.08,
+      "caption_words_per_chunk": 3,
+      "caption_margin_v": 340,
+      "duck_game_volume": 0.36,
+      "climax_vo_breathing_sec": 1.8,
+      "weight_audio_chaos": 0.35,
+      "weight_visual_action": 0.35,
+      "weight_humor_twist": 0.3,
+      "creative_directive": "Start immediately mid-action in the first 1.5 seconds. Keep commentary razor-sharp, natural, and focused on the absurd payoff."
+    },
+    "pending_target_slot": "2026-11-25T04:55:00Z",
+    "last_hook_scout_date": "2026-11-24",
+    "last_style_evolved_at": "2026-11-24T15:08:39.310812+00:00",
     "last_tuned_week": "",
     "longs_published_this_week": []
   }
