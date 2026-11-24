@@ -80,7 +80,7 @@ CHANNEL_CONFIG = {
 
     # --- 5-AI Creative & QA Council (Auto-Fallback Across Active Keys) ---
     "ai_council": {
-        "vision_model": "gemini-2.5-flash",
+        "vision_model": "gemini-3.0-flash",
         "groq_critic_model": "openai/gpt-oss-120b",
         "groq_copywriter_model": "llama-3.3-70b-versatile",
         "openrouter_creative_model": "openrouter/free",
@@ -725,7 +725,6 @@ def _prepare_cookies_file():
             return out_cookie
     return None
 
-
 def download_candidate_video(candidate, out_path):
     if os.path.exists(out_path):
         os.remove(out_path)
@@ -734,9 +733,8 @@ def download_candidate_video(candidate, out_path):
     vid_id = str(candidate["video_id"]).strip()
 
     attempts = [
-        {"client": "", "use_cookies": True, "fmt": "bv*[height<=720]+ba/b[height<=720]/b"},
-        {"client": "youtube:player_client=tv,web", "use_cookies": True, "fmt": "bv*[height<=720]+ba/b[height<=720]/b"},
         {"client": "youtube:player_client=default,-tv_downgraded,tv", "use_cookies": True, "fmt": "b[height<=720]/bv*[height<=720]+ba/b"},
+        {"client": "youtube:player_client=tv,web", "use_cookies": True, "fmt": "bv*[height<=720]+ba/b[height<=720]/b"},
     ]
 
     for idx, cfg in enumerate(attempts):
@@ -751,14 +749,14 @@ def download_candidate_video(candidate, out_path):
             "-f", cfg["fmt"],
             "--merge-output-format", "mp4",
             "--no-playlist",
-            "--max-filesize", "220M",
+            "--max-filesize", "120M",
             "-o", out_path,
         ]
         if cfg["use_cookies"] and cookies_file:
             cmd.extend(["--cookies", cookies_file])
         cmd.extend(["--", vid_id])
 
-        res = run_cmd_safe(cmd, label=f"Download_{vid_id}_{idx}", timeout_sec=160, check=False)
+        res = run_cmd_safe(cmd, label=f"Download_{vid_id}_{idx}", timeout_sec=90, check=False)
         if res.returncode == 0 and os.path.exists(out_path) and get_media_duration(out_path) >= 20.0:
             print(f"[Downloaded] {vid_id} ({candidate['channel_name']}) via attempt {idx+1}", flush=True)
             return True
@@ -3064,7 +3062,7 @@ def _generate_long_form_script(selected_items, history_data):
         try:
             client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=35000))
             resp = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.0-flash",
                 contents=[prompt],
                 config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.8),
             )
