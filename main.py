@@ -1708,7 +1708,7 @@ def _describe_clip_frames_with_vision(segments):
                 + visual_notes
             )
             resp = client.models.generate_content(
-                model=CHANNEL_CONFIG["ai_council"]["vision_model"],
+                model=CHANNEL_CONFIG["ai_council"].get("vision_model", "gemini-3.5-flash-lite"),
                 contents=prompt_parts + [v_prompt],
                 config=types.GenerateContentConfig(temperature=0.2),
             )
@@ -3166,7 +3166,7 @@ def _generate_long_form_script(selected_items, history_data):
         try:
             client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=35000))
             resp = client.models.generate_content(
-                model="gemini-3.0-flash",
+                model=CHANNEL_CONFIG["ai_council"].get("vision_model", "gemini-3.5-flash-lite"),
                 contents=[prompt],
                 config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.8),
             )
