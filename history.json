@@ -41,319 +41,14 @@
       "timestamp": "2026-11-23T04:59:34.059527+00:00"
     }
   ],
-  "vault_queue": [
-    {
-      "vault_path": "clip_vault/Is0geNyXdRc_392s.mp4",
-      "video_id": "Is0geNyXdRc",
-      "channel_name": "Maya",
-      "source_title": "we need to talk about animals in GTA 6",
-      "source_total_dur": 1263.98,
-      "source_start_sec": 392.0,
-      "duration_sec": 28.0,
-      "local_peak_sec": 11.0,
-      "viral_score": 9.15,
-      "transcript_en": "I'll give him that. Also he apologized to me before the action we take those. What the... What the... What? What, what happened to your... Oh. It's not as full your honor. It's not as full. vanilla Mace! vanilla Mace loves cats.",
-      "word_events": [
-        {
-          "word": "I'll",
-          "start": 0.0,
-          "end": 0.9
-        },
-        {
-          "word": "give",
-          "start": 0.9,
-          "end": 1.02
-        },
-        {
-          "word": "him",
-          "start": 1.02,
-          "end": 1.2
-        },
-        {
-          "word": "that.",
-          "start": 1.2,
-          "end": 1.5
-        },
-        {
-          "word": "Also",
-          "start": 1.8,
-          "end": 2.08
-        },
-        {
-          "word": "he",
-          "start": 2.08,
-          "end": 2.88
-        },
-        {
-          "word": "apologized",
-          "start": 2.88,
-          "end": 3.4
-        },
-        {
-          "word": "to",
-          "start": 3.4,
-          "end": 3.76
-        },
-        {
-          "word": "me",
-          "start": 3.76,
-          "end": 3.9
-        },
-        {
-          "word": "before",
-          "start": 3.9,
-          "end": 4.2
-        },
-        {
-          "word": "the",
-          "start": 4.2,
-          "end": 4.46
-        },
-        {
-          "word": "action",
-          "start": 4.46,
-          "end": 4.92
-        },
-        {
-          "word": "we",
-          "start": 4.92,
-          "end": 5.32
-        },
-        {
-          "word": "take",
-          "start": 5.32,
-          "end": 5.58
-        },
-        {
-          "word": "those.",
-          "start": 5.58,
-          "end": 5.9
-        },
-        {
-          "word": "What",
-          "start": 14.3,
-          "end": 14.44
-        },
-        {
-          "word": "the...",
-          "start": 14.44,
-          "end": 15.66
-        },
-        {
-          "word": "What",
-          "start": 15.66,
-          "end": 15.88
-        },
-        {
-          "word": "the...",
-          "start": 15.88,
-          "end": 16.66
-        },
-        {
-          "word": "What?",
-          "start": 16.66,
-          "end": 16.66
-        },
-        {
-          "word": "What,",
-          "start": 16.66,
-          "end": 16.82
-        },
-        {
-          "word": "what",
-          "start": 16.96,
-          "end": 16.96
-        },
-        {
-          "word": "happened",
-          "start": 16.96,
-          "end": 17.2
-        },
-        {
-          "word": "to",
-          "start": 17.2,
-          "end": 17.38
-        },
-        {
-          "word": "your...",
-          "start": 17.38,
-          "end": 17.56
-        },
-        {
-          "word": "Oh.",
-          "start": 17.56,
-          "end": 18.36
-        },
-        {
-          "word": "It's",
-          "start": 19.56,
-          "end": 19.9
-        },
-        {
-          "word": "not",
-          "start": 19.9,
-          "end": 20.1
-        },
-        {
-          "word": "as",
-          "start": 20.1,
-          "end": 20.34
-        },
-        {
-          "word": "full",
-          "start": 20.34,
-          "end": 20.54
-        },
-        {
-          "word": "your",
-          "start": 20.54,
-          "end": 20.86
-        },
-        {
-          "word": "honor.",
-          "start": 20.86,
-          "end": 21.24
-        },
-        {
-          "word": "It's",
-          "start": 21.66,
-          "end": 21.84
-        },
-        {
-          "word": "not",
-          "start": 21.84,
-          "end": 22.02
-        },
-        {
-          "word": "as",
-          "start": 22.02,
-          "end": 22.2
-        },
-        {
-          "word": "full.",
-          "start": 22.2,
-          "end": 22.58
-        },
-        {
-          "word": "vanilla",
-          "start": 22.82,
-          "end": 23.0
-        },
-        {
-          "word": "Mace!",
-          "start": 23.0,
-          "end": 23.62
-        },
-        {
-          "word": "vanilla",
-          "start": 23.96,
-          "end": 24.18
-        },
-        {
-          "word": "Mace",
-          "start": 24.18,
-          "end": 24.48
-        },
-        {
-          "word": "loves",
-          "start": 24.48,
-          "end": 24.98
-        },
-        {
-          "word": "cats.",
-          "start": 24.98,
-          "end": 25.22
-        }
-      ],
-      "harvested_at": "2026-11-24T08:17:05.055429+00:00"
-    },
-    {
-      "vault_path": "clip_vault/ys_3h2nuNCY_2068s.mp4",
-      "video_id": "ys_3h2nuNCY",
-      "channel_name": "GameRiot",
-      "source_title": "GTA 6 Gameplay Walkthrough Part 1 - INTRO (PS5 PRO 4K)",
-      "source_total_dur": 2980.77,
-      "source_start_sec": 2068.0,
-      "duration_sec": 28.0,
-      "local_peak_sec": 11.0,
-      "viral_score": 8.7,
-      "transcript_en": "I'll be interested in the sandwich. And we're flying, let's go! We're going.",
-      "word_events": [
-        {
-          "word": "I'll",
-          "start": 0.75,
-          "end": 1.33
-        },
-        {
-          "word": "be",
-          "start": 1.33,
-          "end": 1.37
-        },
-        {
-          "word": "interested",
-          "start": 1.37,
-          "end": 1.57
-        },
-        {
-          "word": "in",
-          "start": 1.57,
-          "end": 1.77
-        },
-        {
-          "word": "the",
-          "start": 1.77,
-          "end": 2.03
-        },
-        {
-          "word": "sandwich.",
-          "start": 2.03,
-          "end": 2.03
-        },
-        {
-          "word": "And",
-          "start": 7.12,
-          "end": 7.64
-        },
-        {
-          "word": "we're",
-          "start": 7.64,
-          "end": 7.84
-        },
-        {
-          "word": "flying,",
-          "start": 7.84,
-          "end": 8.2
-        },
-        {
-          "word": "let's",
-          "start": 8.24,
-          "end": 8.6
-        },
-        {
-          "word": "go!",
-          "start": 8.6,
-          "end": 9.22
-        },
-        {
-          "word": "We're",
-          "start": 13.9,
-          "end": 14.12
-        },
-        {
-          "word": "going.",
-          "start": 14.12,
-          "end": 14.2
-        }
-      ],
-      "harvested_at": "2026-11-24T05:48:40.226910+00:00"
-    }
-  ],
+  "vault_queue": [],
   "scheduled_slots": [
     "2026-11-23T02:00:00Z",
     "2026-11-23T14:00:00Z",
     "2026-11-23T20:00:00Z",
     "2026-11-24T14:55:00Z",
-    "2026-11-24T05:45:00Z"
+    "2026-11-24T05:45:00Z",
+    "2026-11-25T08:05:00Z"
   ],
   "uploads": [
     {
@@ -401,6 +96,17 @@
       "publish_hour_ist": 11,
       "scheduled_for": "2026-11-24T05:45:00Z",
       "uploaded_at": "2026-11-24T03:49:44.122038+00:00"
+    },
+    {
+      "title": "GTA 6 Pilot Takes Off Straight Into A Massive Storm! 🌩️",
+      "url": "https://youtube.com/shorts/nP38opyZMOA",
+      "type": "short",
+      "clip_count": 2,
+      "duration_sec": 55.19,
+      "hook_style": "shock",
+      "publish_hour_ist": 13,
+      "scheduled_for": "2026-11-25T08:05:00Z",
+      "uploaded_at": "2026-11-24T09:58:51.267732+00:00"
     }
   ],
   "revisit_pool": {
@@ -504,8 +210,13 @@
         [
           2068.0,
           2096.0
+        ],
+        [
+          2068.0,
+          2096.0
         ]
-      ]
+      ],
+      "last_deleted_at": "2026-11-24T09:58:51.267677+00:00"
     },
     "Is0geNyXdRc": {
       "title": "we need to talk about animals in GTA 6",
@@ -515,8 +226,13 @@
         [
           392.0,
           420.0
+        ],
+        [
+          392.0,
+          420.0
         ]
-      ]
+      ],
+      "last_deleted_at": "2026-11-24T09:58:51.267197+00:00"
     }
   },
   "exhausted_ids": [
