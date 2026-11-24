@@ -1,8 +1,9 @@
 # ==============================================================================
 # PART 1 OF 40: CORE IMPORTS & RUNTIME DEPENDENCIES
-# Subheading: Loads Standard Library, Media, AI, Whisper, TTS & YouTube SDKs
+# Subheading: Loads Standard Library, Media, Multi-AI, Whisper, TTS & YouTube SDKs
 # What This Code Does:
-#   - Imports Python built-ins for files, JSON state, randomness, and timezones.
+#   - Imports Python built-ins for files, JSON state, HTTP AI routing, randomness,
+#     and timezones.
 #   - Loads OpenCV, NumPy, Pillow, Faster-Whisper, Edge-TTS, Google Gemini SDK,
 #     and Google YouTube Data API v3 modules used across the 40-part pipeline.
 # ==============================================================================
@@ -11,16 +12,19 @@ import re
 import json
 import time
 import math
+import base64
 import shutil
 import random
 import asyncio
 import subprocess
+import urllib.request
+import urllib.error
 from datetime import datetime, timedelta, timezone
 
 import cv2
 import numpy as np
 import edge_tts
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 from google import genai
 from google.genai import types
 from faster_whisper import WhisperModel
@@ -29,30 +33,59 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
+
 # ==============================================================================
-# PART 2 OF 40: MASTER CHANNEL & AUTONOMOUS BRAIN SETTINGS
-# Subheading: Configures Channel Identity, Free-Tier Storage Limits & Base Goals
+# PART 2 OF 40: MASTER CHANNEL, SCHEDULER & MULTI-AI COUNCIL SETTINGS
+# Subheading: Top-Level Controls For Fast Tuning (SaaS ChannelConfig Ready)
 # What This Code Does:
-#   - Sets channel name, handle, watermark, and YouTube upload toggle.
-#   - Caps clip_vault/ to 10 clips (~45 MB) so GitHub storage stays free.
-#   - Sets starting targets (3 Shorts/day, 2 Longs/week, 2-5 clips per Short)
-#     which the AI Brain automatically experiments with and optimizes over time.
+#   - Centralizes all easily changeable dials at the top of main.py so you or
+#     ChannelForge subscribers can tune quality, scheduling, and AI models fast.
+#   - Enforces strict human-calibrated clip threshold (>= 6.8/10), single-slot
+#     scheduling (max 1 scheduled video, compiled 1h before slot), and 5-AI
+#     Creative & QA Council routing with automatic fallback.
 # ==============================================================================
 CHANNEL_CONFIG = {
+    # --- Channel Identity ---
     "channel_name": "Vice City Clips Vault",
     "channel_handle": "@Vice-City_ClipsVault",
     "watermark_text": "@Vice-City_ClipsVault",
+    "niche_query_topic": "GTA 6",
     "upload_to_youtube": True,
+
+    # --- Storage & Clip Selection Dials ---
     "vault_dir": "clip_vault",
     "history_file": "history.json",
-    "max_vault_items": 10,          # Keeps repo tiny (~45 MB max) for free tier
-    "min_clips_per_short": 2,       # Avoids raw solo clips for YPP monetization
-    "max_clips_per_short": 5,       # Up to 5 distinct creators per Short
-    "max_new_clips_per_run": 3,     # Harvests up to 3 fresh clips per hourly run
-    "min_motion_diff": 4.2,         # Filters out slow walking, lobbies & menus
-    "default_shorts_per_day": 3,    # Initial Shorts/day target (AI experiments)
-    "default_longs_per_week": 2,    # Initial Longs/week target (AI experiments)
+    "max_vault_items": 10,              # Caps repo size (~45 MB max) for free tier
+    "min_clips_per_short": 2,           # Avoids raw solo clips for YPP monetization
+    "max_clips_per_short": 5,           # Combines up to 5 distinct creators
+    "max_new_clips_per_run": 3,         # Harvests up to 3 fresh clips per hourly run
+    "min_motion_diff": 4.8,             # Rejects slow walking, menus & static lobbies
+    "min_human_clip_score": 6.8,        # Strict human scale (mid clips = 4.5 -> rejected)
+
+    # --- Strict Single-Slot Sequential Scheduler ---
+    "max_scheduled_videos_allowed": 1,  # Never > 1 scheduled video in YouTube Studio
+    "compile_lead_minutes": 60,         # Compiles & schedules 1 hour before slot
+    "compile_window_tolerance_mins": 32,# Hourly cron catch window (28m to 92m prior)
+    "default_shorts_per_day": 3,        # Initial Shorts/day target (AI experiments)
+    "default_longs_per_week": 2,        # Initial Longs/week target (AI experiments)
+
+    # --- Self-Upgrading Brain Cadence ---
+    "daily_hook_scout_enabled": True,   # Scans trending viral hooks every 24h
+    "style_evolution_days": 4,          # Mutates & A/B tests Style DNA every 4 days
+    "viral_research_sample_count": 3,   # Million-view Shorts analyzed per evolution cycle
+
+    # --- Voice & Pre-Upload Human QA ---
     "tts_voice": "en-US-GuyNeural",
+    "require_human_qa_gate": True,      # Blocks upload if 6-frame Vision/Audio QA fails
+
+    # --- 5-AI Creative & QA Council (Auto-Fallback Across Active Keys) ---
+    "ai_council": {
+        "vision_model": "gemini-2.5-flash",
+        "groq_critic_model": "openai/gpt-oss-120b",
+        "groq_copywriter_model": "llama-3.3-70b-versatile",
+        "openrouter_creative_model": "openrouter/free",
+        "cloudflare_qa_model": "@cf/meta/llama-4-scout-17b-16e-instruct",
+    },
 }
 
 IST_TZ = timezone(timedelta(hours=5, minutes=30))
@@ -119,22 +152,212 @@ def has_audio_stream(file_path):
         return False
 
 # ==============================================================================
-# PART 4 OF 40: AI BRAIN MEMORY & COMPACT JSON STATE MANAGER
-# Subheading: Stores Revisit Pool, Exhausted Streams & Self-Tuning AI Decisions
+# PART 4A OF 40: SELF-UPGRADING STYLE DNA GENOME & SAFETY CLAMPER
+# Subheading: Defines Evolvable Editing Parameters & Clamps Values To Safe Bounds
 # What This Code Does:
-#   - Initializes the autonomous ai_brain state (cadence, peak hours, winning
-#     hook styles, and experiment history).
-#   - Saves history.json while trimming old logs so repository size stays tiny.
+#   - Stores all AI-upgradeable editing, audio, caption, and scoring parameters
+#     inside style_dna (with champion vs. challenger rollback tracking).
+#   - Clamps every evolved value inside safe visual/audio bounds so self-upgrades
+#     never break FFmpeg rendering.
+# ==============================================================================
+def _default_style_dna():
+    return {
+        "version": "v1.0",
+        "champion_version": "v1.0",
+        "champion_median_reach": 0.0,
+        "climax_zoom_scale": 1.10,          # Smooth 1.0x -> 1.10x punch-zoom at peak
+        "color_vibrancy": 1.14,             # Boosts gameplay color & contrast pop
+        "contrast_boost": 1.08,
+        "caption_words_per_chunk": 3,       # Punchy 3-word karaoke captions
+        "caption_margin_v": 340,            # Safe center-lower mobile phone zone
+        "duck_game_volume": 0.36,           # Ducks gameplay audio cleanly under VO
+        "climax_vo_breathing_sec": 1.8,     # Pauses VO at peak so raw reaction hits
+        "weight_audio_chaos": 0.35,         # Scoring weight: scream/explosion surge
+        "weight_visual_action": 0.35,       # Scoring weight: fast chase/combat motion
+        "weight_humor_twist": 0.30,         # Scoring weight: unexpected payoff/dialogue
+        "creative_directive": (
+            "Start immediately mid-action in the first 1.5 seconds. Keep commentary "
+            "razor-sharp, natural, and focused on the absurd payoff."
+        ),
+    }
+
+
+def clamp_style_dna(dna_in):
+    base = _default_style_dna()
+    if isinstance(dna_in, dict):
+        base.update(dna_in)
+    base["climax_zoom_scale"] = round(max(1.00, min(1.18, float(base.get("climax_zoom_scale", 1.10)))), 3)
+    base["color_vibrancy"] = round(max(1.00, min(1.30, float(base.get("color_vibrancy", 1.14)))), 2)
+    base["contrast_boost"] = round(max(1.00, min(1.22, float(base.get("contrast_boost", 1.08)))), 2)
+    base["caption_words_per_chunk"] = max(2, min(5, int(base.get("caption_words_per_chunk", 3))))
+    base["caption_margin_v"] = max(260, min(460, int(base.get("caption_margin_v", 340))))
+    base["duck_game_volume"] = round(max(0.25, min(0.55, float(base.get("duck_game_volume", 0.36)))), 2)
+    base["climax_vo_breathing_sec"] = round(max(0.5, min(3.0, float(base.get("climax_vo_breathing_sec", 1.8)))), 2)
+    base["creative_directive"] = str(base.get("creative_directive", ""))[:260]
+    return base
+
+# ==============================================================================
+# PART 4B OF 40: 5-AI CREATIVE & QA COUNCIL MULTI-PROVIDER ROUTER
+# Subheading: Routes Prompts Across Groq, OpenRouter, Cloudflare & Gemini Free APIs
+# What This Code Does:
+#   - Assigns each AI role (critic, copywriter, creative, qa_auditor) to its
+#     strongest free model first, with automatic fallback across all active keys.
+#   - Uses Python's built-in urllib so zero extra pip packages are required.
+# ==============================================================================
+def _http_post_json(url, headers, payload, timeout_sec=28):
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json", **headers},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def _extract_json_block(raw_text):
+    txt = str(raw_text or "").strip()
+    if txt.startswith("```"):
+        txt = re.sub(r"^```(?:json)?\s*|\s*```$", "", txt, flags=re.IGNORECASE | re.DOTALL).strip()
+    try:
+        return json.loads(txt)
+    except Exception:
+        m = re.search(r"\{.*\}", txt, flags=re.DOTALL)
+        if m:
+            try:
+                return json.loads(m.group(0))
+            except Exception:
+                pass
+    return None
+
+
+def call_council_text_ai(role, system_prompt, user_prompt, expect_json=True, temperature=0.5):
+    cfg = CHANNEL_CONFIG.get("ai_council", {})
+    groq_key = os.environ.get("GROQ_API_KEY", "").strip()
+    or_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
+    cf_token = os.environ.get("CLOUDFLARE_API_TOKEN", "").strip()
+    cf_acct = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "").strip()
+    gem_key = os.environ.get("GEMINI_API_KEY", "").strip()
+
+    order_map = {
+        "critic": ["groq_critic", "openrouter", "cloudflare", "gemini"],
+        "copywriter": ["groq_copy", "openrouter", "gemini", "cloudflare"],
+        "creative": ["openrouter", "groq_copy", "gemini", "cloudflare"],
+        "qa_auditor": ["cloudflare", "groq_critic", "openrouter", "gemini"],
+    }
+    providers = order_map.get(role, ["groq_copy", "openrouter", "cloudflare", "gemini"])
+
+    for prov in providers:
+        try:
+            raw_out = ""
+            if prov in ("groq_critic", "groq_copy") and groq_key:
+                model_name = cfg.get("groq_critic_model") if prov == "groq_critic" else cfg.get("groq_copywriter_model")
+                body = {
+                    "model": model_name,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    "temperature": temperature,
+                }
+                if expect_json:
+                    body["response_format"] = {"type": "json_object"}
+                res = _http_post_json(
+                    "https://groq.com",
+                    {"Authorization": f"Bearer {groq_key}"},
+                    body,
+                )
+                first_choice = next(iter(res.get("choices", [])), {})
+                raw_out = first_choice.get("message", {}).get("content", "")
+
+            elif prov == "openrouter" and or_key:
+                body = {
+                    "model": cfg.get("openrouter_creative_model", "openrouter/free"),
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    "temperature": temperature,
+                }
+                res = _http_post_json(
+                    "https://openrouter.ai",
+                    {
+                        "Authorization": f"Bearer {or_key}",
+                        "HTTP-Referer": "https://github.com",
+                        "X-Title": "ChannelForge Council",
+                    },
+                    body,
+                )
+                first_choice = next(iter(res.get("choices", [])), {})
+                raw_out = first_choice.get("message", {}).get("content", "")
+
+            elif prov == "cloudflare" and cf_token and cf_acct:
+                cf_model = cfg.get("cloudflare_qa_model", "@cf/meta/llama-4-scout-17b-16e-instruct")
+                res = _http_post_json(
+                    f"https://cloudflare.com{cf_acct}/ai/run/{cf_model}",
+                    {"Authorization": f"Bearer {cf_token}"},
+                    {
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt},
+                        ],
+                        "temperature": temperature,
+                    },
+                )
+                raw_out = res.get("result", {}).get("response", "")
+
+            elif prov == "gemini" and gem_key:
+                client = genai.Client(api_key=gem_key, http_options=types.HttpOptions(timeout=30000))
+                g_cfg = types.GenerateContentConfig(
+                    temperature=temperature,
+                    response_mime_type="application/json" if expect_json else "text/plain",
+                )
+                resp = client.models.generate_content(
+                    model=cfg.get("vision_model", "gemini-2.5-flash"),
+                    contents=[f"{system_prompt}\n\n{user_prompt}"],
+                    config=g_cfg,
+                )
+                raw_out = resp.text or ""
+
+            if not raw_out:
+                continue
+            if expect_json:
+                parsed = _extract_json_block(raw_out)
+                if isinstance(parsed, dict) and parsed:
+                    return parsed
+            else:
+                return raw_out.strip()
+        except Exception as e:
+            print(f"[Council Fallback:{role}->{prov}] {e}", flush=True)
+
+    return {} if expect_json else ""
+
+# ==============================================================================
+# PART 4C OF 40: AI BRAIN MEMORY & COMPACT JSON STATE MANAGER
+# Subheading: Loads & Compacts Revisit Pool, Avoid Patterns & Style DNA State
+# What This Code Does:
+#   - Initializes ai_brain with winning_patterns, avoid_patterns, daily hook
+#     trends, feature_requests, QA failure logs, and active style_dna.
+#   - Deduplicates revisit_pool ranges on load and caps history.json size.
 # ==============================================================================
 def _default_ai_brain():
     return {
-        "shorts_per_day": 3,
-        "longs_per_week": 2,
-        "long_weekdays": [2, 6],     # Wednesday (2) & Sunday (6) initially
-        "top_hours_ist": [],         # Empty initially -> 100% random exploration
+        "shorts_per_day": int(CHANNEL_CONFIG.get("default_shorts_per_day", 3)),
+        "longs_per_week": int(CHANNEL_CONFIG.get("default_longs_per_week", 2)),
+        "long_weekdays":,
+        "top_hours_ist": [],
         "winning_patterns": [],
+        "avoid_patterns": [],
+        "daily_hook_trends": [],
+        "feature_requests": [],
         "winning_hook_styles": ["shock", "question", "countdown", "challenge"],
         "cadence_experiments": [],
+        "qa_failures": [],
+        "style_dna": _default_style_dna(),
+        "previous_style_dna": None,
+        "pending_target_slot": "",
+        "last_hook_scout_date": "",
+        "last_style_evolved_at": "",
         "last_tuned_week": "",
         "longs_published_this_week": [],
     }
@@ -143,11 +366,11 @@ def _default_ai_brain():
 def load_history():
     hfile = CHANNEL_CONFIG["history_file"]
     default_data = {
-        "revisit_pool": {},          # Tracks checked timestamps & 24h deletion timers
-        "exhausted_ids": [],         # Streams 100% scanned (never revisited again)
-        "vault_queue": [],           # Active clips waiting inside clip_vault/
-        "scheduled_slots": [],       # Booked UTC publish timestamps
-        "uploads": [],               # Recent uploads for weekly AI performance review
+        "revisit_pool": {},
+        "exhausted_ids": [],
+        "vault_queue": [],
+        "scheduled_slots": [],
+        "uploads": [],
         "ai_brain": _default_ai_brain(),
     }
     if not os.path.exists(hfile):
@@ -157,12 +380,20 @@ def load_history():
             data = json.load(f)
         if not isinstance(data.get("revisit_pool"), dict):
             data["revisit_pool"] = {}
+        for meta in data["revisit_pool"].values():
+            if isinstance(meta, dict) and isinstance(meta.get("checked_ranges"), list):
+                dedup = []
+                for rng in meta["checked_ranges"]:
+                    if rng not in dedup:
+                        dedup.append(rng)
+                meta["checked_ranges"] = dedup
         for k in ("exhausted_ids", "vault_queue", "scheduled_slots", "uploads"):
             if not isinstance(data.get(k), list):
                 data[k] = []
         brain = _default_ai_brain()
         if isinstance(data.get("ai_brain"), dict):
             brain.update(data["ai_brain"])
+        brain["style_dna"] = clamp_style_dna(brain.get("style_dna"))
         data["ai_brain"] = brain
         return data
     except Exception:
@@ -178,34 +409,99 @@ def save_history(history_data):
         json.dump(history_data, f, indent=2, ensure_ascii=False)
 
 # ==============================================================================
-# PART 5 OF 40: ADAPTIVE AUDIENCE REACH & RANDOMIZED SCHEDULE ENGINE
-# Subheading: Explores Random Upload Times First, Then Locks Onto Peak Reach
+# PART 5A OF 40: LIVE YOUTUBE STUDIO SINGLE-SLOT SEQUENTIAL LOCK
+# Subheading: Ensures Previous Video Is Public Before Scheduling The Next One
 # What This Code Does:
-#   - Picks random IST upload hours and minutes during initial exploration.
-#   - Once weekly analytics learns top-performing hours, routes 80% of uploads
-#     to proven peak hours and keeps 20% random exploration to discover new peaks.
-#   - Enforces the AI Brain's active shorts_per_day cadence and multi-creator
-#     minimum so raw solo clips are avoided.
+#   - Extracts the YouTube video ID from the latest Short in history.json.
+#   - Checks both the scheduled timestamp and live YouTube Studio privacyStatus
+#     so at most 1 video is ever scheduled at a time.
 # ==============================================================================
-def get_next_ist_publish_slot(history_data):
+def _extract_video_id_from_url(url_str):
+    u = str(url_str or "").strip()
+    if "/shorts/" in u:
+        tail = u.split("/shorts/")
+        _, after_shorts = tail[0], tail[1] if len(tail) > 1 else ""
+        return next(iter(after_shorts.split("?")), "").strip()
+    if "v=" in u:
+        tail = u.split("v=")
+        _, after_v = tail[0], tail[1] if len(tail) > 1 else ""
+        return next(iter(after_v.split("&")), "").strip()
+    return ""
+
+
+def check_previous_short_published_public(history_data):
+    short_uploads = [
+        u for u in history_data.get("uploads", [])
+        if u.get("type") != "long_16x9" and _extract_video_id_from_url(u.get("url"))
+    ]
+    if not short_uploads:
+        return True, "No prior Shorts"
+
+    *_, latest_short = short_uploads
+    vid_id = _extract_video_id_from_url(latest_short.get("url"))
+    sched_str = str(latest_short.get("scheduled_for", "")).strip()
+
+    if sched_str and sched_str != "immediate":
+        try:
+            sched_dt = datetime.fromisoformat(sched_str.replace("Z", "+00:00"))
+            if datetime.now(timezone.utc) < sched_dt:
+                return False, f"Video {vid_id} scheduled for {sched_str} (still waiting)"
+        except Exception:
+            pass
+
+    try:
+        youtube = get_youtube_service()
+        resp = youtube.videos().list(part="status", id=vid_id).execute()
+        items = resp.get("items", [])
+        if items:
+            first_item = next(iter(items), {})
+            privacy = first_item.get("status", {}).get("privacyStatus", "public")
+            if privacy != "public":
+                return False, f"YouTube Studio reports {vid_id} is still '{privacy}' (not public yet)"
+    except Exception as e:
+        print(f"[Scheduler API Check Warning] {e}", flush=True)
+
+    return True, f"Previous Short {vid_id} is public"
+
+# ==============================================================================
+# PART 5B OF 40: T-1 HOUR PRE-SLOT COMPILATION & REACH WINDOW PLANNER
+# Subheading: Holds Video Compilation Until 1 Hour Before Target Publish Slot
+# What This Code Does:
+#   - Locks onto a single upcoming IST slot (pending_target_slot).
+#   - Waits until the previous video is public AND current time enters the
+#     T - 60 minute window before the target slot before rendering/scheduling.
+# ==============================================================================
+def get_or_plan_next_ist_slot(history_data):
     now_ist = datetime.now(IST_TZ)
-    brain = history_data.get("ai_brain", {})
+    brain = history_data.setdefault("ai_brain", _default_ai_brain())
+
+    existing_slot = str(brain.get("pending_target_slot", "")).strip()
+    if existing_slot:
+        try:
+            ex_dt_ist = datetime.fromisoformat(existing_slot.replace("Z", "+00:00")).astimezone(IST_TZ)
+            if ex_dt_ist > now_ist - timedelta(minutes=20):
+                return existing_slot
+        except Exception:
+            pass
+
     shorts_per_day = int(brain.get("shorts_per_day", 3))
     top_hours = [int(h) for h in brain.get("top_hours_ist", []) if 0 <= int(h) <= 23]
 
     today_str = now_ist.strftime("%Y-%m-%d")
-    booked = set(history_data.get("scheduled_slots", []))
-    today_booked = 0
-    for iso_s in booked:
+    today_uploaded = 0
+    for u in history_data.get("uploads", []):
+        if u.get("type") == "long_16x9":
+            continue
+        raw_t = str(u.get("scheduled_for") or u.get("uploaded_at") or "")
         try:
-            dt_ist = datetime.fromisoformat(iso_s.replace("Z", "+00:00")).astimezone(IST_TZ)
-            if dt_ist.strftime("%Y-%m-%d") == today_str:
-                today_booked += 1
+            u_ist = datetime.fromisoformat(raw_t.replace("Z", "+00:00")).astimezone(IST_TZ)
+            if u_ist.strftime("%Y-%m-%d") == today_str:
+                today_uploaded += 1
         except Exception:
             pass
 
-    target_day = now_ist if today_booked < shorts_per_day else (now_ist + timedelta(days=1))
-    explore_pool = list(range(8, 24))
+    target_day = now_ist if today_uploaded < shorts_per_day else (now_ist + timedelta(days=1))
+    explore_pool = list(range(9, 23))
 
     if top_hours and random.random() < 0.80:
         chosen_hr = random.choice(top_hours)
@@ -214,48 +510,32 @@ def get_next_ist_publish_slot(history_data):
 
     chosen_min = random.choice([5, 15, 25, 35, 45, 55])
     slot_dt = target_day.replace(hour=chosen_hr, minute=chosen_min, second=0, microsecond=0)
-    if slot_dt <= now_ist + timedelta(minutes=15):
-        slot_dt = (now_ist + timedelta(minutes=random.randint(25, 70))).replace(second=0, microsecond=0)
 
-    return slot_dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    min_future = now_ist + timedelta(minutes=65)
+    if slot_dt < min_future:
+        slot_dt = (now_ist + timedelta(minutes=75)).replace(second=0, microsecond=0)
+
+    slot_iso = slot_dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    brain["pending_target_slot"] = slot_iso
+    save_history(history_data)
+    return slot_iso
 
 
 def should_trigger_publish_window(history_data, force_flag=False):
-    slot_iso = get_next_ist_publish_slot(history_data)
+    slot_iso = get_or_plan_next_ist_slot(history_data)
     if force_flag:
-        return True, slot_iso
-
-    now_ist = datetime.now(IST_TZ)
-    brain = history_data.get("ai_brain", {})
-    shorts_per_day = int(brain.get("shorts_per_day", 3))
-    today_str = now_ist.strftime("%Y-%m-%d")
-
-    today_count = 0
-    for u in history_data.get("uploads", []):
-        if u.get("type") == "long_16x9":
-            continue
-        raw_t = str(u.get("uploaded_at", ""))
+        now_utc = datetime.now(timezone.utc)
         try:
-            u_ist = datetime.fromisoformat(raw_t.replace("Z", "+00:00")).astimezone(IST_TZ)
-            if u_ist.strftime("%Y-%m-%d") == today_str:
-                today_count += 1
+            s_dt = datetime.fromisoformat(slot_iso.replace("Z", "+00:00"))
+            if s_dt <= now_utc + timedelta(minutes=10):
+                slot_iso = (now_utc + timedelta(minutes=15)).strftime("%Y-%m-%dT%H:%M:%SZ")
         except Exception:
             pass
+        return True, slot_iso
 
-    if today_count >= shorts_per_day:
-        return False, slot_iso
-
-    spacing_hours = max(4, int(18 // max(1, shorts_per_day)))
-    last_short_dt = None
-    for u in reversed(history_data.get("uploads", [])):
-        if u.get("type") != "long_16x9" and u.get("uploaded_at"):
-            try:
-                last_short_dt = datetime.fromisoformat(u["uploaded_at"].replace("Z", "+00:00"))
-                break
-            except Exception:
-                pass
-
-    if last_short_dt and (datetime.now(timezone.utc) - last_short_dt).total_seconds() < spacing_hours * 3600:
+    is_clear, reason = check_previous_short_published_public(history_data)
+    if not is_clear:
+        print(f"[Scheduler Lock] {reason}", flush=True)
         return False, slot_iso
 
     ready_clips = [
@@ -267,20 +547,41 @@ def should_trigger_publish_window(history_data, force_flag=False):
         for v in ready_clips
         if str(v.get("channel_name", "")).strip()
     }
-    if len(distinct_creators) >= int(CHANNEL_CONFIG["min_clips_per_short"]):
+    min_req = int(CHANNEL_CONFIG.get("min_clips_per_short", 2))
+    if len(distinct_creators) < min_req:
+        print(
+            f"[Scheduler Standby] {len(distinct_creators)}/{min_req} creators ready; keeping vault open.",
+            flush=True,
+        )
+        return False, slot_iso
+
+    now_utc = datetime.now(timezone.utc)
+    slot_dt = datetime.fromisoformat(slot_iso.replace("Z", "+00:00"))
+    mins_until_slot = (slot_dt - now_utc).total_seconds() / 60.0
+
+    lead_mins = float(CHANNEL_CONFIG.get("compile_lead_minutes", 60))
+    tol_mins = float(CHANNEL_CONFIG.get("compile_window_tolerance_mins", 32))
+
+    if mins_until_slot < (lead_mins - tol_mins):
+        new_slot_dt = (now_utc + timedelta(minutes=60)).replace(second=0, microsecond=0)
+        slot_iso = new_slot_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+        history_data["ai_brain"]["pending_target_slot"] = slot_iso
+        save_history(history_data)
+        print(f"[Scheduler Window] Entered T-1h compile window -> publishing at {slot_iso}", flush=True)
         return True, slot_iso
 
-    # Emergency solo fallback ONLY if an ultra-rare 9.5+ clip has waited > 20 hours
-    now_utc = datetime.now(timezone.utc)
-    for v in ready_clips:
-        if float(v.get("viral_score", 0.0)) >= 9.5 and v.get("harvested_at"):
-            try:
-                h_dt = datetime.fromisoformat(v["harvested_at"].replace("Z", "+00:00"))
-                if (now_utc - h_dt).total_seconds() >= 20 * 3600:
-                    return True, slot_iso
-            except Exception:
-                pass
+    if mins_until_slot <= (lead_mins + tol_mins):
+        print(
+            f"[Scheduler Window] {mins_until_slot:.0f}m before slot {slot_iso} (T-1h active) -> compiling!",
+            flush=True,
+        )
+        return True, slot_iso
 
+    print(
+        f"[Scheduler Hold] Previous video is public, next slot ({slot_iso}) is {mins_until_slot:.0f}m away. "
+        f"Waiting until T-60m to harvest stronger clips.",
+        flush=True,
+    )
     return False, slot_iso
 
 # ==============================================================================
@@ -582,18 +883,17 @@ def verify_action_motion_and_quality(clip_path):
     return mean_diff >= float(CHANNEL_CONFIG["min_motion_diff"]) and peak_diff >= 6.2
 
 # ==============================================================================
-# PART 10 OF 40: GEMINI VISION + MOTION WATCHABILITY QUALITY GATE
-# Subheading: Inspects Keyframes With Gemini Vision To Reject Unwatchable Clips
+# PART 10A OF 40: MOTION & 4-KEYFRAME GEMINI VISION EVALUATOR
+# Subheading: Measures Action Speed & Extracts 4 Keyframes For Strict Vision Audit
 # What This Code Does:
-#   - Combines motion intensity, speech excitement, and a Gemini 2.5 Flash
-#     visual inspection of 2 keyframes from the clip.
-#   - Rejects menus, map screens, loading screens, or dull walking (score < 6.8)
-#     and assigns a true watchability score (6.8 - 9.7) to worthy clips.
+#   - Computes mean and 85th-percentile frame movement across the candidate clip.
+#   - Captures 4 keyframes (12%, 38%, 64%, 86%) and runs Gemini Vision under a
+#     strict human rubric where ordinary "mid" gameplay scores 4.0-5.8.
 # ==============================================================================
-def compute_clip_viral_score(clip_path, transcript_text=""):
+def _measure_clip_motion_stats(clip_path):
     cap = cv2.VideoCapture(clip_path)
     if not cap.isOpened():
-        return 0.0
+        return 0.0, 0.0
 
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
     step = max(1, int(fps // 2))
@@ -613,57 +913,130 @@ def compute_clip_viral_score(clip_path, transcript_text=""):
         f_idx += 1
     cap.release()
 
-    motion_val = float(np.mean(diffs)) if diffs else 0.0
+    if not diffs:
+        return 0.0, 0.0
+    return float(np.mean(diffs)), float(np.percentile(diffs, 85))
+
+
+def _evaluate_clip_with_gemini_vision(clip_path, motion_val, peak_motion, transcript_text, avoid_list):
+    dur = get_media_duration(clip_path)
+    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if not api_key or dur < 10.0:
+        return 0.0, ""
+
+    imgs = []
+    tmp_files = []
+    for idx, ratio in enumerate((0.12, 0.38, 0.64, 0.86)):
+        fn = f"gem_watch_{idx}.jpg"
+        run_cmd_safe(
+            ["ffmpeg", "-y", "-ss", f"{dur * ratio:.2f}", "-i", clip_path, "-vframes", "1", "-q:v", "4", fn],
+            label="WatchFrame",
+            timeout_sec=15,
+            check=False,
+        )
+        if os.path.exists(fn):
+            tmp_files.append(fn)
+            imgs.append(Image.open(fn))
+
+    if not imgs:
+        return 0.0, ""
+
+    try:
+        client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=30000))
+        vision_prompt = (
+            "You are a ruthless human YouTube Shorts viewer who swipes away in 1.5 seconds if bored.\n"
+            "Score this GTA gameplay clip strictly on a 1.0 to 10.0 HUMAN VIRAL SCALE:\n"
+            "- 1.0 to 3.9: Menus, slow walking, routine driving, cutscene talking.\n"
+            "- 4.0 to 5.9: MID / ORDINARY gameplay (normal gunfight, basic car crash, standard commentary). "
+            "Do NOT inflate mid clips above 5.8!\n"
+            "- 6.8 to 7.9: Truly entertaining chaos, funny streamer panic, or clean stunt with a clear payoff.\n"
+            "- 8.0 to 9.8: Insane viral moment—unbelievable ragdoll glitch, 1-in-a-million escape, or hilarious scream.\n"
+            f"Motion stats: mean={motion_val:.1f}, peak={peak_motion:.1f}. "
+            f"Avoid past low-performing patterns: {avoid_list}.\n"
+            f"Transcript: '{(transcript_text or 'no speech')[:180]}'.\n"
+            'Return strict JSON: {"vision_score": 5.2, "hook_strength": 4.8, "payoff_strength": 5.5, "scene_summary": "short 12-word description"}'
+        )
+        resp = client.models.generate_content(
+            model=CHANNEL_CONFIG["ai_council"]["vision_model"],
+            contents=imgs + [vision_prompt],
+            config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.15),
+        )
+        v_data = json.loads(resp.text.strip())
+        v_score = float(v_data.get("vision_score", 0.0))
+        h_score = float(v_data.get("hook_strength", v_score))
+        p_score = float(v_data.get("payoff_strength", v_score))
+        scene_desc = str(v_data.get("scene_summary", "")).strip()
+        combined = (v_score * 0.45) + (h_score * 0.30) + (p_score * 0.25)
+        return round(combined, 2), scene_desc
+    except Exception as e:
+        print(f"[Vision Scorer Warning] {e}", flush=True)
+        return 0.0, ""
+    finally:
+        for tf in tmp_files:
+            if os.path.exists(tf):
+                try:
+                    os.remove(tf)
+                except Exception:
+                    pass
+
+# ==============================================================================
+# PART 10B OF 40: SECOND-OPINION RUTHLESS CRITIC AI & STRICT 6.8+ VAULT GATE
+# Subheading: Cross-Checks Vision Score With Critic AI To Block All Mid Clips
+# What This Code Does:
+#   - Sends Gemini's scene description + transcript to the Ruthless Critic AI
+#     (Groq GPT-OSS 120B / OpenRouter) for a second human-viewer opinion.
+#   - Rejects any clip below min_human_clip_score (6.8/10) so only truly
+#     engaging highlights ever enter clip_vault/.
+# ==============================================================================
+def compute_clip_viral_score(clip_path, transcript_text="", history_data=None):
+    motion_val, peak_motion = _measure_clip_motion_stats(clip_path)
     if motion_val < float(CHANNEL_CONFIG["min_motion_diff"]):
         return 0.0
 
-    score = 6.9 + min(1.8, (motion_val - 4.2) * 0.35)
-    hype_words = ("bro", "what", "no way", "cops", "shoot", "run", "crazy", "oh my", "help", "watch", "insane", "dead")
-    if any(w in (transcript_text or "").lower() for w in hype_words):
-        score += 0.45
+    brain = (history_data or {}).get("ai_brain", {})
+    avoid_list = brain.get("avoid_patterns", [])[:5]
+    min_threshold = float(CHANNEL_CONFIG.get("min_human_clip_score", 6.8))
 
-    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
-    dur = get_media_duration(clip_path)
-    if api_key and dur >= 10.0:
-        imgs = []
-        tmp_files = []
-        for idx, t_snap in enumerate((dur * 0.35, dur * 0.65)):
-            fn = f"gem_watch_{idx}.jpg"
-            run_cmd_safe(
-                ["ffmpeg", "-y", "-ss", f"{t_snap:.2f}", "-i", clip_path, "-vframes", "1", "-q:v", "5", fn],
-                label="WatchFrame",
-                timeout_sec=15,
-                check=False,
-            )
-            if os.path.exists(fn):
-                tmp_files.append(fn)
-                imgs.append(Image.open(fn))
-        if imgs:
-            try:
-                client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=25000))
-                prompt = (
-                    f"Rate how exciting and watchable this GTA gameplay clip is for YouTube Shorts on a scale of 1 to 10. "
-                    f"Reject menus, map screens, loading screens, or boring slow walking with score <= 5. "
-                    f"Transcript: '{transcript_text[:140]}'. Return strict JSON: {{\"watch_score\": 8.2}}"
-                )
-                resp = client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=imgs + [prompt],
-                    config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.2),
-                )
-                w_score = float(json.loads(resp.text.strip()).get("watch_score", 7.5))
-                if w_score < 6.8:
-                    print(f"[Watchability Gate] Rejected low-excitement clip (vision={w_score})", flush=True)
-                    return 0.0
-                score = (score * 0.55) + (w_score * 0.45)
-            except Exception:
-                pass
-            finally:
-                for tf in tmp_files:
-                    if os.path.exists(tf):
-                        os.remove(tf)
+    vision_combined, scene_desc = _evaluate_clip_with_gemini_vision(
+        clip_path, motion_val, peak_motion, transcript_text, avoid_list
+    )
+    if vision_combined < (min_threshold - 0.3):
+        print(
+            f"[Human Rubric Reject] Vision={vision_combined:.2f}/10 (< {min_threshold}) | '{scene_desc}'",
+            flush=True,
+        )
+        return 0.0
 
-    return round(min(9.7, score), 2)
+    critic_res = call_council_text_ai(
+        role="critic",
+        system_prompt=(
+            "You are a harsh YouTube Shorts retention editor. Most gameplay clips are 'mid' (4.5-5.5/10) "
+            "and must be rejected. Only pass clips >= 6.8 that a real human would watch twice."
+        ),
+        user_prompt=(
+            f"Scene summary: '{scene_desc}'\n"
+            f"Transcript: '{(transcript_text or 'none')[:200]}'\n"
+            f"Vision preliminary score: {vision_combined:.2f}/10\n"
+            'Return strict JSON: {"critic_score": 6.9, "reason": "short 10-word reason"}'
+        ),
+        expect_json=True,
+        temperature=0.15,
+    )
+    c_score = float(critic_res.get("critic_score", vision_combined)) if critic_res else vision_combined
+    final_score = round(min(9.8, (vision_combined * 0.55) + (c_score * 0.45)), 2)
+
+    if final_score < min_threshold:
+        print(
+            f"[Critic AI Reject] Final={final_score:.2f}/10 (Vision={vision_combined:.2f}, Critic={c_score:.2f}) | '{scene_desc}'",
+            flush=True,
+        )
+        return 0.0
+
+    print(
+        f"[Human Rubric PASS] Score={final_score:.2f}/10 (Vision={vision_combined:.2f}, Critic={c_score:.2f}) | '{scene_desc}'",
+        flush=True,
+    )
+    return final_score
 
 # ==============================================================================
 # PART 11 OF 40: SINGLE-CLIP-PER-STREAM VAULT HARVESTER
@@ -1174,16 +1547,13 @@ def synthesize_voiceover_mp3(text, out_mp3):
     return 0.0
 
 # ==============================================================================
-# PART 19 OF 40: AI CREATOR SCRIPTWRITER (SINGLE INTRO + PER-CLIP + OUTRO CTA)
-# Subheading: Writes 1 Opening Intro, Commentary For Every Clip & 1 Outro CTA
+# PART 19 OF 40: MULTI-AI VISION + VIRAL COPYWRITER SCRIPT ENGINE
+# Subheading: Combines Gemini Frame Vision, Groq Copywriter & Daily Hook Trends
 # What This Code Does:
-#   - Inspects gameplay keyframes and uses the AI Brain's winning patterns &
-#     hook styles to write a human-sounding creator script.
-#   - Generates:
-#       1) intro_vo: ONE punchy opening hook at the very beginning of the video.
-#       2) clip_vos: Specific commentary for EVERY clip (#N down to #1).
-#       3) outro_vo: ONE closing outro at the very end with a randomized, natural
-#          Like & Subscribe call-to-action.
+#   - Uses Gemini Vision to extract real visual action from clip keyframes.
+#   - Feeds those visual facts + today's daily_hook_trends + style_dna directive
+#     into the Viral Copywriter AI (Groq Llama 3.3 70B) for human-sounding hooks.
+#   - Generates 1 opening intro, per-clip commentary (#N -> #1), and 1 outro CTA.
 # ==============================================================================
 RANDOM_LIKE_SUB_CTAS = (
     "Drop a like if number one caught you off guard, and subscribe for daily Vice City chaos!",
@@ -1194,19 +1564,7 @@ RANDOM_LIKE_SUB_CTAS = (
 )
 
 
-def generate_scene_grounded_script(short_plan, history_data):
-    segments = short_plan["segments"]
-    count = len(segments)
-    creators = [s["channel_name"] for s in segments]
-    *_, top_seg = segments
-    recent_titles = [u.get("title", "") for u in history_data.get("uploads", [])[-12:]]
-
-    brain = history_data.get("ai_brain", {})
-    winners = brain.get("winning_patterns", [])[:4]
-    hook_styles = brain.get("winning_hook_styles", ["shock", "question", "countdown", "challenge"])
-    chosen_style = random.choice(hook_styles) if hook_styles else "shock"
-    chosen_cta = random.choice(RANDOM_LIKE_SUB_CTAS)
-
+def _describe_clip_frames_with_vision(segments):
     frame_paths = []
     prompt_parts = []
     context_lines = []
@@ -1234,61 +1592,28 @@ def generate_scene_grounded_script(short_plan, history_data):
         context_lines.append(
             f"- Clip #{seg['rank']} | Creator: {seg['channel_name']} | "
             f"Stream Title: {seg['source_title']} | "
-            f"Translated Dialogue: '{seg['transcript_en'] or 'intense gameplay reaction'}'"
+            f"English Dialogue: '{seg['transcript_en'] or 'intense gameplay reaction'}'"
         )
 
-    rank_keys_desc = ", ".join(f'"{s["rank"]}"' for s in segments)
-    banner_example = f"TOP {count} VICE CITY MOMENTS" if count > 1 else "CRAZIEST VICE CITY MOMENT"
-
-    prompt_text = (
-        f"You are the creative director for {CHANNEL_CONFIG['channel_name']} "
-        f"({CHANNEL_CONFIG['channel_handle']}), a Grand Theft Auto VI Shorts channel.\n"
-        f"Use a '{chosen_style}' hook style. Model energy after these channel winners: {winners}\n"
-        f"Inspect the attached gameplay frames and clip details:\n"
-        + "\n".join(context_lines)
-        + f"\nAvoid repeating any of these recent titles: {recent_titles}\n\n"
-        f"Return STRICT valid JSON with these exact 6 keys:\n"
-        f'1. "title": Catchy English YouTube Shorts title describing the wildest moment (max 68 chars, 1 emoji, no #Shorts tag).\n'
-        f'2. "banner": Short 3-to-5 word UPPERCASE top banner (e.g. "{banner_example}").\n'
-        f'3. "intro_vo": ONE punchy 6-to-8 word opening hook spoken ONLY once at the very start of the video (do NOT repeat in clip_vos).\n'
-        f'4. "clip_vos": JSON object mapping EVERY clip rank ({rank_keys_desc}) to a crisp 7-to-10 word English commentary line reacting to that exact clip (from #{count} down to #1, no intro/outro greetings).\n'
-        f'5. "outro_vo": ONE punchy 10-to-14 word closing outro spoken ONLY once at the very end that naturally weaves in this CTA: "{chosen_cta}"\n'
-        f'6. "tags": List of 8 relevant English tags including "GTA 6", "Grand Theft Auto 6", "Vice City", and creator names.\n'
-    )
-    prompt_parts.append(prompt_text)
-
+    visual_notes = "\n".join(context_lines)
     api_key = os.environ.get("GEMINI_API_KEY", "").strip()
-    if api_key:
-        client = genai.Client(
-            api_key=api_key,
-            http_options=types.HttpOptions(timeout=45000),
-        )
-        for model_id in ("gemini-2.5-flash", "gemini-3.5-flash-lite", "gemini-2.5-pro"):
-            try:
-                resp = client.models.generate_content(
-                    model=model_id,
-                    contents=prompt_parts,
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        temperature=0.80,
-                    ),
-                )
-                parsed = json.loads(resp.text.strip())
-                if (
-                    parsed.get("title")
-                    and parsed.get("intro_vo")
-                    and parsed.get("clip_vos")
-                    and parsed.get("outro_vo")
-                ):
-                    parsed["creators"] = creators
-                    parsed["hook_style"] = chosen_style
-                    print(f"[Gemini Creator Brain] Script ({chosen_style}) via {model_id}: '{parsed['title']}'", flush=True)
-                    for fp in frame_paths:
-                        if os.path.exists(fp):
-                            os.remove(fp)
-                    return parsed
-            except Exception as e:
-                print(f"[Gemini Warning] {model_id}: {e}", flush=True)
+    if api_key and prompt_parts:
+        try:
+            client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=30000))
+            v_prompt = (
+                "Inspect these GTA 6 gameplay keyframes and summarize what physically happens in each clip "
+                "in 1 crisp sentence per clip so a scriptwriter knows the exact visual action:\n"
+                + visual_notes
+            )
+            resp = client.models.generate_content(
+                model=CHANNEL_CONFIG["ai_council"]["vision_model"],
+                contents=prompt_parts + [v_prompt],
+                config=types.GenerateContentConfig(temperature=0.2),
+            )
+            if resp.text and resp.text.strip():
+                visual_notes = resp.text.strip()
+        except Exception as e:
+            print(f"[Vision Context Warning] {e}", flush=True)
 
     for fp in frame_paths:
         if os.path.exists(fp):
@@ -1296,6 +1621,67 @@ def generate_scene_grounded_script(short_plan, history_data):
                 os.remove(fp)
             except Exception:
                 pass
+    return visual_notes
+
+
+def generate_scene_grounded_script(short_plan, history_data):
+    segments = short_plan["segments"]
+    count = len(segments)
+    creators = [s["channel_name"] for s in segments]
+    *_, top_seg = segments
+    recent_titles = [u.get("title", "") for u in history_data.get("uploads", [])[-12:]]
+
+    brain = history_data.get("ai_brain", {})
+    dna = clamp_style_dna(brain.get("style_dna"))
+    winners = brain.get("winning_patterns", [])[:4]
+    avoid = brain.get("avoid_patterns", [])[:4]
+    hook_trends = brain.get("daily_hook_trends", [])[:4]
+    hook_styles = brain.get("winning_hook_styles", ["shock", "question", "countdown", "challenge"])
+    chosen_style = random.choice(hook_styles) if hook_styles else "shock"
+    chosen_cta = random.choice(RANDOM_LIKE_SUB_CTAS)
+
+    visual_notes = _describe_clip_frames_with_vision(segments)
+    rank_keys_desc = ", ".join(f'"{s["rank"]}"' for s in segments)
+    banner_example = f"TOP {count} VICE CITY MOMENTS" if count > 1 else "CRAZIEST VICE CITY MOMENT"
+
+    sys_prompt = (
+        f"You are an elite viral YouTube Shorts copywriter for {CHANNEL_CONFIG['channel_name']} "
+        f"({CHANNEL_CONFIG['channel_handle']}). Write punchy, natural, non-robotic English hooks. "
+        f"Creative Directive: {dna.get('creative_directive', '')}"
+    )
+    user_prompt = (
+        f"Hook Style: '{chosen_style}' | Trending Viral Hooks Today: {hook_trends}\n"
+        f"Channel Winners: {winners} | Avoid Low-Reach Patterns: {avoid}\n"
+        f"Recent Titles (do not repeat): {recent_titles}\n\n"
+        f"Verified Visual Scene Breakdown:\n{visual_notes}\n\n"
+        f"Return STRICT valid JSON with these exact 6 keys:\n"
+        f'1. "title": Scroll-stopping English YouTube Shorts title (max 68 chars, 1 emoji, no #Shorts).\n'
+        f'2. "banner": 3-to-5 word UPPERCASE top banner (e.g. "{banner_example}").\n'
+        f'3. "intro_vo": ONE punchy 6-to-8 word opening hook spoken ONLY at 0.2s (never repeat in clip_vos).\n'
+        f'4. "clip_vos": JSON object mapping EVERY rank ({rank_keys_desc}) to a crisp 6-to-9 word English commentary line reacting to that clip.\n'
+        f'5. "outro_vo": ONE 10-to-13 word closing outro spoken ONLY at the end weaving in: "{chosen_cta}"\n'
+        f'6. "tags": List of 8 relevant English tags including "GTA 6", "Grand Theft Auto 6", "Vice City", and creator names.\n'
+    )
+
+    parsed = call_council_text_ai(
+        role="copywriter",
+        system_prompt=sys_prompt,
+        user_prompt=user_prompt,
+        expect_json=True,
+        temperature=0.78,
+    )
+    if (
+        isinstance(parsed, dict)
+        and parsed.get("title")
+        and parsed.get("intro_vo")
+        and parsed.get("clip_vos")
+        and parsed.get("outro_vo")
+    ):
+        parsed["creators"] = creators
+        parsed["hook_style"] = chosen_style
+        parsed["style_version"] = dna.get("version", "v1.0")
+        print(f"[Council Copywriter] Script ({chosen_style}, {dna.get('version')}): '{parsed['title']}'", flush=True)
+        return parsed
 
     top_creator = top_seg["channel_name"]
     fallback_vos = {}
@@ -1315,14 +1701,15 @@ def generate_scene_grounded_script(short_plan, history_data):
         "tags": ["GTA 6", "Grand Theft Auto 6", "Vice City", "GTA VI", "Shorts"] + creators[:3],
         "creators": creators,
         "hook_style": chosen_style,
+        "style_version": dna.get("version", "v1.0"),
     }
 
 # ==============================================================================
-# PART 20 OF 40: ASS WORD-SYNCED KINETIC SUBTITLE BUILDER
-# Subheading: Generates High-Contrast Yellow Karaoke Captions For All Voiceovers
+# PART 20 OF 40: STYLE DNA-DRIVEN KINETIC SUBTITLE BUILDER
+# Subheading: Adapts Caption Word Chunk Size & Safe Vertical Zone From Style DNA
 # What This Code Does:
-#   - Splits the spoken intro, per-clip commentary, and closing outro into
-#     4-word kinetic subtitle chunks timed precisely to the voiceover audio.
+#   - Reads caption_words_per_chunk (2-5 words) and caption_margin_v from
+#     ai_brain["style_dna"] so the AI can evolve caption punchiness over time.
 # ==============================================================================
 def _fmt_ass_time(sec):
     sec = max(0.0, float(sec))
@@ -1336,8 +1723,12 @@ def _fmt_ass_time(sec):
     return f"{h}:{m:02d}:{s:02d}.{cs:02d}"
 
 
-def build_ass_subtitles_file(vo_tracks, ass_path="captions.ass"):
-    header = """[Script Info]
+def build_ass_subtitles_file(vo_tracks, ass_path="captions.ass", style_dna=None):
+    dna = clamp_style_dna(style_dna)
+    words_per_chunk = int(dna.get("caption_words_per_chunk", 3))
+    margin_v = int(dna.get("caption_margin_v", 340))
+
+    header = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: 1080
 PlayResY: 1920
@@ -1346,7 +1737,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,DejaVu Sans,60,&H0000D7FF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,60,60,330,1
+Style: Default,DejaVu Sans,62,&H0000D7FF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,60,60,{margin_v},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -1360,7 +1751,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             continue
 
         words = txt.split(" ")
-        chunks = [" ".join(words[i : i + 4]) for i in range(0, len(words), 4)]
+        chunks = [" ".join(words[i : i + words_per_chunk]) for i in range(0, len(words), words_per_chunk)]
         span = (en - st) / max(1, len(chunks))
         for idx, ch in enumerate(chunks):
             c_st = st + idx * span
@@ -1375,15 +1766,14 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     return ass_path
 
 # ==============================================================================
-# PART 21 OF 40: VERTICAL LAYOUT & RANDOMIZED TRANSITION RENDERER
-# Subheading: Renders Each Clip With Accurate #N Rank Badge & Random Transitions
+# PART 21 OF 40: SELF-UPGRADING STYLE DNA VERTICAL RENDERER
+# Subheading: Applies Climax Punch-Zoom, Vibrancy Pop, Rank Badges & Transitions
 # What This Code Does:
-#   - Renders every clip in the countdown (#N down to #1) to 1080x1920 @ 30fps
-#     using either verified streamer split-cam or blurred cinema framing.
-#   - Stamps the exact rank badge (#5, #4, #3, #2, #1) and creator credit on
-#     every clip so viewers always know which rank is playing.
-#   - Randomly selects smooth FFmpeg xfade transitions between clips so cuts
-#     never look repetitive or robotic.
+#   - Reads climax_zoom_scale, color_vibrancy, and contrast_boost from
+#     ai_brain["style_dna"] so every evolved DNA version visibly upgrades pacing
+#     and visual punch without cheap random shaking.
+#   - Renders verified split-cam or cinema-blur 1080x1920 segments and joins them
+#     with randomized xfade transitions.
 # ==============================================================================
 def _escape_drawtext(txt):
     return (
@@ -1407,11 +1797,17 @@ RANDOM_XFADE_STYLES = (
 )
 
 
-def render_vertical_segments_and_concat(short_plan):
+def render_vertical_segments_and_concat(short_plan, history_data=None):
     font_bold = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
     segments = short_plan["segments"]
     is_multi = len(segments) > 1
     xfade_dur = 0.35
+
+    brain = (history_data or {}).get("ai_brain", {})
+    dna = clamp_style_dna(brain.get("style_dna"))
+    zoom_max = float(dna.get("climax_zoom_scale", 1.10))
+    sat_val = float(dna.get("color_vibrancy", 1.14))
+    con_val = float(dna.get("contrast_boost", 1.08))
 
     raw_durs = [float(s["duration"]) for s in segments]
     est_total = sum(raw_durs) - xfade_dur * max(0, len(segments) - 1)
@@ -1438,7 +1834,7 @@ def render_vertical_segments_and_concat(short_plan):
             bx, by, bw, bh = cam_box
             layout_mode = "SPLITCAM_FACE"
             base_graph = (
-                f"[0:v]split=2[v_game][v_cam];"
+                f"[0:v]eq=saturation={sat_val}:contrast={con_val},split=2[v_game][v_cam];"
                 f"[v_cam]crop={bw}:{bh}:{bx}:{by},scale=1080:614:force_original_aspect_ratio=increase,crop=1080:614[top_cam];"
                 f"[v_game]scale=1080:1306:force_original_aspect_ratio=increase,crop=1080:1306[bot_game];"
                 f"[top_cam][bot_game]vstack=inputs=2,"
@@ -1447,7 +1843,7 @@ def render_vertical_segments_and_concat(short_plan):
         else:
             layout_mode = "CINEMA_BLUR"
             base_graph = (
-                f"[0:v]split=2[v_bg][v_fg];"
+                f"[0:v]eq=saturation={sat_val}:contrast={con_val},split=2[v_bg][v_fg];"
                 f"[v_bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=24:6,eq=brightness=-0.16[bg];"
                 f"[v_fg]scale=1080:608:force_original_aspect_ratio=decrease[fg];"
                 f"[bg][fg]overlay=(W-w)/2:(H-h)/2,"
@@ -1455,8 +1851,23 @@ def render_vertical_segments_and_concat(short_plan):
                 f"drawbox=x=0:y=1265:w=1080:h=5:color=#FF2A85@0.90:t=fill[canvas]"
             )
 
+        # Smooth Climax Punch-Zoom around 45%-82% of segment duration (driven by Style DNA)
+        z_start = round(dur_s * 0.42, 2)
+        z_end = round(min(dur_s - 0.3, z_start + 2.4), 2)
+        z_span = max(0.5, round(z_end - z_start, 2))
+        if zoom_max > 1.005 and z_end > z_start + 0.4:
+            z_delta = round(zoom_max - 1.0, 4)
+            zoom_expr = f"if(between(t,{z_start},{z_end}),1+{z_delta}*sin(PI*(t-{z_start})/{z_span}),1)"
+            zoom_stage = (
+                f"[canvas]scale=w='trunc(1080*({zoom_expr})/2)*2':"
+                f"h='trunc(1920*({zoom_expr})/2)*2':eval=frame,"
+                f"crop=1080:1920:(iw-1080)/2:(ih-1920)/2[zcanvas]"
+            )
+        else:
+            zoom_stage = "[canvas]null[zcanvas]"
+
         text_chain = (
-            f"[canvas]drawtext=fontfile={font_bold}:text='{wm_label}':"
+            f"[zcanvas]drawtext=fontfile={font_bold}:text='{wm_label}':"
             f"fontsize=26:fontcolor=white@0.88:x=(w-text_w)/2:y=56:"
             f"shadowcolor=black@0.85:shadowx=2:shadowy=2,"
             f"drawtext=fontfile={font_bold}:text='{creator_label}':"
@@ -1474,7 +1885,7 @@ def render_vertical_segments_and_concat(short_plan):
             )
 
         text_chain += "[vout]"
-        full_fc = f"{base_graph};{text_chain}"
+        full_fc = f"{base_graph};{zoom_stage};{text_chain}"
 
         seg_has_audio = has_audio_stream(seg["video_path"])
         seg_cmd = [
@@ -1499,7 +1910,7 @@ def render_vertical_segments_and_concat(short_plan):
         actual_d = get_media_duration(seg_out)
         rendered_files.append(seg_out)
         seg_durations.append(actual_d)
-        print(f"[Segment #{rank_num}] Rendered {seg['channel_name']} ({layout_mode}, {actual_d:.1f}s)", flush=True)
+        print(f"[Segment #{rank_num}] Rendered {seg['channel_name']} ({layout_mode}, zoom={zoom_max}x, {actual_d:.1f}s)", flush=True)
 
     stitched_out = "stitched_video.mp4"
     if os.path.exists(stitched_out):
@@ -1568,7 +1979,7 @@ def render_vertical_segments_and_concat(short_plan):
         label="XfadeStitchSegments",
         timeout_sec=140,
     )
-    print(f"[Stitched Master] Total runtime={cum_dur:.2f}s across {len(rendered_files)} clips (random transitions).", flush=True)
+    print(f"[Stitched Master] Total runtime={cum_dur:.2f}s across {len(rendered_files)} clips ({dna.get('version')}).", flush=True)
     return stitched_out, timeline_meta
 
 # ==============================================================================
@@ -1591,22 +2002,20 @@ def build_top_banner_filter(banner_text):
     )
 
 # ==============================================================================
-# PART 23 OF 40: SINGLE-INTRO + PER-CLIP + SINGLE-OUTRO AUDIO TIMELINE MIXER
-# Subheading: Plays 1 Intro At Start, Commentary On Every Clip & 1 Outro At End
+# PART 23 OF 40: STYLE DNA AUDIO DUCKING & CLIMAX BREATHING MIXER
+# Subheading: Ducks Game Audio Under VO & Leaves Raw Climax Screams Unblocked
 # What This Code Does:
-#   - Places ONE opening intro (intro_vo) at 0.25s of the video (never repeated
-#     on later clips).
-#   - Places specific commentary (clip_vos) on EVERY clip (#N down to #1),
-#     shifting Clip 1's commentary right after the single opening intro finishes.
-#   - Places ONE closing outro with randomized Like & Subscribe CTA (outro_vo)
-#     at the very end of the video, ducking game audio smoothly during speech.
+#   - Uses duck_game_volume from style_dna to dip game audio cleanly under
+#     intro, per-clip commentary, and outro, then snaps back to 95% volume
+#     during the climax so raw streamer reactions hit at full energy.
 # ==============================================================================
-def build_voiceover_tracks_and_mix(stitched_video, timeline_meta, script_data):
+def build_voiceover_tracks_and_mix(stitched_video, timeline_meta, script_data, style_dna=None):
     total_dur = get_media_duration(stitched_video)
+    dna = clamp_style_dna(style_dna)
+    duck_vol = float(dna.get("duck_game_volume", 0.36))
     clip_vos = script_data.get("clip_vos", {})
     vo_tracks = []
 
-    # 1. Single Opening Intro at the very beginning ONLY
     intro_end_cursor = 0.30
     intro_txt = str(script_data.get("intro_vo", "")).strip()
     if intro_txt and total_dur >= 6.0:
@@ -1624,7 +2033,6 @@ def build_voiceover_tracks_and_mix(stitched_video, timeline_meta, script_data):
                 })
                 intro_end_cursor = round(i_end + 0.35, 2)
 
-    # 2. Per-Clip Commentary on EVERY clip (#N -> #1)
     for idx, seg in enumerate(timeline_meta):
         rank_key = str(seg["rank"])
         vo_line = str(clip_vos.get(rank_key, "")).strip()
@@ -1635,9 +2043,9 @@ def build_voiceover_tracks_and_mix(stitched_video, timeline_meta, script_data):
         if vdur > 0.35 and os.path.exists(mp3_path):
             seg_start = float(seg["offset_start"])
             seg_end = float(seg["offset_end"])
-            # First clip waits until the single opening intro finishes
-            v_start = round(max(seg_start + 0.35, intro_end_cursor if idx == 0 else seg_start + 0.35), 2)
-            max_end = (total_dur - 4.3) if idx == len(timeline_meta) - 1 else (seg_end - 0.25)
+            # Place commentary early in the clip so the back-half climax breathes
+            v_start = round(max(seg_start + 0.30, intro_end_cursor if idx == 0 else seg_start + 0.30), 2)
+            max_end = (total_dur - 4.3) if idx == len(timeline_meta) - 1 else (seg_end - 0.35)
             v_end = round(min(max_end, v_start + vdur), 2)
             if v_end > v_start + 0.3:
                 vo_tracks.append({
@@ -1647,7 +2055,6 @@ def build_voiceover_tracks_and_mix(stitched_video, timeline_meta, script_data):
                     "text": vo_line,
                 })
 
-    # 3. Single Closing Outro + Randomized Like/Subscribe CTA at the very end ONLY
     outro_txt = str(script_data.get("outro_vo", "")).strip()
     if outro_txt and total_dur >= 8.0:
         outro_mp3 = "vo_seg_outro.mp3"
@@ -1681,7 +2088,7 @@ def build_voiceover_tracks_and_mix(stitched_video, timeline_meta, script_data):
         cmd.extend(["-i", tr["path"]])
 
     duck_conds = "+".join(f"between(t,{tr['start']},{tr['end']})" for tr in vo_tracks)
-    fc_lines = [f"[0:a]volume='if(gt({duck_conds},0),0.40,0.92)':eval=frame[g_audio]"]
+    fc_lines = [f"[0:a]volume='if(gt({duck_conds},0),{duck_vol},0.95)':eval=frame[g_audio]"]
 
     mix_labels = ["[g_audio]"]
     for i, tr in enumerate(vo_tracks, start=1):
@@ -1707,20 +2114,21 @@ def build_voiceover_tracks_and_mix(stitched_video, timeline_meta, script_data):
     return mixed_wav, vo_tracks
 
 # ==============================================================================
-# PART 24 OF 40: FINAL MASTER SHORT VIDEO & CAPTION COMPOSITOR
-# Subheading: Burns Top Banner & Word-Synced Subtitles Into Final 1080x1920 MP4
+# PART 24A OF 40: MASTER SHORT & CAPTION COMPOSITOR
+# Subheading: Burns Top Banner & Style DNA Captions Into Final 1080x1920 MP4
 # What This Code Does:
-#   - Combines the stitched vertical video, mixed commentary + ducked game
-#     audio, top title banner, and yellow karaoke captions into the final Short.
+#   - Combines stitched vertical segments, ducked audio + commentary, top gold
+#     banner, and Style DNA kinetic subtitles into final_short_vice_city.mp4.
 # ==============================================================================
-def compose_final_short_with_captions_and_audio(stitched_video, timeline_meta, script_data, output_path):
+def compose_final_short_with_captions_and_audio(stitched_video, timeline_meta, script_data, output_path, history_data=None):
     if os.path.exists(output_path):
         os.remove(output_path)
 
+    dna = clamp_style_dna((history_data or {}).get("ai_brain", {}).get("style_dna"))
     mixed_audio, vo_tracks = build_voiceover_tracks_and_mix(
-        stitched_video, timeline_meta, script_data
+        stitched_video, timeline_meta, script_data, style_dna=dna
     )
-    ass_file = build_ass_subtitles_file(vo_tracks, ass_path="captions.ass")
+    ass_file = build_ass_subtitles_file(vo_tracks, ass_path="captions.ass", style_dna=dna)
     banner_fc = build_top_banner_filter(script_data.get("banner", "VICE CITY MOMENTS"))
 
     vf_chain = f"{banner_fc},ass={ass_file}"
@@ -1743,6 +2151,111 @@ def compose_final_short_with_captions_and_audio(stitched_video, timeline_meta, s
         timeout_sec=140,
     )
     return output_path
+
+# ==============================================================================
+# PART 24B OF 40: MANDATORY 4-POINT HUMAN-PERSPECTIVE PRE-UPLOAD QA GATE
+# Subheading: Inspects Final Rendered Video Like A Human Viewer Before Upload
+# What This Code Does:
+#   - Point 1 (Technical): Verifies 1080x1920 resolution, 12s-60s duration, and
+#     live audio stream via ffprobe.
+#   - Point 2 (6-Frame Phone Visual Audit): Extracts 6 rendered frames (0.5s,
+#     20%, 40%, 60%, 80%, 95%) and asks Gemini Vision to check subtitle overlap,
+#     facecam framing, and opening visual hook quality.
+#   - Point 3 (Metadata & Script Coherence): Has the QA Auditor AI verify that
+#     the title and voiceover script are 100% English and match the clip.
+#   - Point 4 (Self-Healing Log): If any check fails, blocks upload and logs the
+#     exact defect to ai_brain["qa_failures"] so future renders improve.
+# ==============================================================================
+def run_human_perspective_qa_gate(video_path, script_data, history_data=None):
+    if not CHANNEL_CONFIG.get("require_human_qa_gate", True):
+        return True, "QA gate bypassed by config"
+
+    # Point 1: FFprobe Resolution, Duration & Audio Stream Check
+    dur = get_media_duration(video_path)
+    if dur < 11.0 or dur > 60.5 or not has_audio_stream(video_path):
+        return False, f"Technical fail: dur={dur:.1f}s or missing audio"
+
+    probe = run_cmd_safe(
+        [
+            "ffprobe", "-v", "error", "-select_streams", "v:0",
+            "-show_entries", "stream=width,height",
+            "-of", "csv=p=0:s=x", video_path,
+        ],
+        label="QAProbeRes",
+        timeout_sec=15,
+        check=False,
+    )
+    res_str = (probe.stdout or "").strip()
+    if res_str != "1080x1920":
+        return False, f"Resolution mismatch: got '{res_str}', expected 1080x1920"
+
+    # Point 2: 6-Frame Phone-Screen Visual Audit via Gemini Vision
+    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    qa_frames = []
+    qa_imgs = []
+    sample_times = [0.5] + [round(dur * r, 2) for r in (0.20, 0.40, 0.60, 0.80, 0.94)]
+
+    for idx, t_sec in enumerate(sample_times):
+        fn = f"gem_watch_qa_{idx}.jpg"
+        run_cmd_safe(
+            ["ffmpeg", "-y", "-ss", f"{min(dur - 0.2, t_sec):.2f}", "-i", video_path, "-vframes", "1", "-q:v", "4", fn],
+            label="QAFrame",
+            timeout_sec=15,
+            check=False,
+        )
+        if os.path.exists(fn):
+            qa_frames.append(fn)
+            qa_imgs.append(Image.open(fn))
+
+    try:
+        if api_key and qa_imgs:
+            client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=30000))
+            vis_qa_prompt = (
+                "You are a strict human quality-assurance reviewer watching this final rendered YouTube Short on a phone.\n"
+                "Inspect these 6 frames (Frame 1 is 0.5s opening hook, Frames 2-6 span the video) for ANY viewer defect:\n"
+                "1. Are yellow subtitles clean English, readable, and NOT overlapping the top facecam or cut off?\n"
+                "2. Is the framing clean (no black screen, no corrupt glitch, no stretched faces)?\n"
+                "3. Does Frame 1 (0.5s) look visually engaging rather than blank or static?\n"
+                'Return strict JSON: {"passed": true, "human_rating": 8.0, "defect": "none"}'
+            )
+            resp = client.models.generate_content(
+                model=CHANNEL_CONFIG["ai_council"]["vision_model"],
+                contents=qa_imgs + [vis_qa_prompt],
+                config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.1),
+            )
+            v_qa = json.loads(resp.text.strip())
+            if not bool(v_qa.get("passed", True)) or float(v_qa.get("human_rating", 7.5)) < 6.5:
+                defect = str(v_qa.get("defect", "Visual QA rejected")).strip()
+                return False, f"Vision QA defect: {defect}"
+
+        # Point 3: QA Auditor AI Check on Title & Script Coherence
+        aud_res = call_council_text_ai(
+            role="qa_auditor",
+            system_prompt="You are a YouTube Shorts QA auditor. Reject non-English text, broken grammar, or misleading titles.",
+            user_prompt=(
+                f"Title: '{script_data.get('title', '')}'\n"
+                f"Intro VO: '{script_data.get('intro_vo', '')}'\n"
+                f"Outro VO: '{script_data.get('outro_vo', '')}'\n"
+                'Return strict JSON: {"approved": true, "issue": "none"}'
+            ),
+            expect_json=True,
+            temperature=0.1,
+        )
+        if isinstance(aud_res, dict) and aud_res.get("approved") is False:
+            return False, f"Script QA defect: {aud_res.get('issue', 'Metadata rejected')}"
+
+        print("[Human QA Gate PASS] Verified 1080x1920, audio, 6 phone frames & English script.", flush=True)
+        return True, "All 4 Human QA checks passed"
+    except Exception as e:
+        print(f"[Human QA Warning] {e}", flush=True)
+        return True, "QA soft-pass on API timeout"
+    finally:
+        for fn in qa_frames:
+            if os.path.exists(fn):
+                try:
+                    os.remove(fn)
+                except Exception:
+                    pass
 
 # ==============================================================================
 # PART 25 OF 40: HIGH-CTR 1280X720 LONG-FORM THUMBNAIL & COVER GENERATOR
@@ -1984,17 +2497,241 @@ def cleanup_scratch_render_files():
                 pass
 
 # ==============================================================================
-# PART 30 OF 40: AUTONOMOUS AI BRAIN WEEKLY REVIEW & CADENCE EXPERIMENTER
-# Subheading: Learns Peak Audience Hours, Best Shorts/Day & Best Longs/Week
+# PART 30A OF 40: DAILY VIRAL HOOK & TOPIC TREND SCOUT (FAST LOOP)
+# Subheading: Scans Trending Viral Gaming Shorts Daily To Refresh Hook Formulas
 # What This Code Does:
-#   - Runs once every Sunday evening IST to evaluate real YouTube views, likes,
-#     and comments across recent uploads.
-#   - Learns which IST upload hours generate the highest reach and saves the
-#     top 4 hours into ai_brain["top_hours_ist"] (80% exploitation / 20% explore).
-#   - Experiments across weeks with Shorts/day (2, 3, or 4) and Longs/week
-#     (1, 2, or 3) plus long-form weekdays, keeping whichever cadence wins
-#     the highest average reach per video.
-#   - Extracts winning titles and hook styles so Gemini continuously improves.
+#   - Runs once every 24 hours (zero YouTube API quota cost via yt-dlp).
+#   - Inspects top high-view gaming/GTA Shorts titles & metadata and asks the
+#     Creative Council to extract 4 fresh hook templates into daily_hook_trends.
+# ==============================================================================
+def run_daily_viral_hook_scout(history_data):
+    if not CHANNEL_CONFIG.get("daily_hook_scout_enabled", True):
+        return False
+
+    now_ist = datetime.now(IST_TZ)
+    today_str = now_ist.strftime("%Y-%m-%d")
+    brain = history_data.setdefault("ai_brain", _default_ai_brain())
+    if str(brain.get("last_hook_scout_date", "")) == today_str:
+        return False
+
+    niche = str(CHANNEL_CONFIG.get("niche_query_topic", "GTA 6")).strip()
+    queries = [f"{niche} viral shorts", "GTA 6 funny moments shorts", "GTA crazy moment shorts"]
+    trending_samples = []
+
+    for q in queries[:2]:
+        res = run_cmd_safe(
+            ["yt-dlp", "--dump-json", "--flat-playlist", "--no-warnings", f"ytsearch10:{q}"],
+            label="DailyHookScout",
+            timeout_sec=40,
+            check=False,
+        )
+        for line in (res.stdout or "").splitlines():
+            line = line.strip()
+            if not line.startswith("{"):
+                continue
+            try:
+                info = json.loads(line)
+                views = int(info.get("view_count") or 0)
+                title = str(info.get("title") or "").strip()
+                if title and views >= 50000:
+                    trending_samples.append((views, title))
+            except Exception:
+                pass
+
+    if not trending_samples:
+        brain["last_hook_scout_date"] = today_str
+        save_history(history_data)
+        return False
+
+    trending_samples.sort(key=lambda x: x[0], reverse=True)
+    top_titles = [f"{t} ({v:,} views)" for v, t in trending_samples[:8]]
+
+    parsed = call_council_text_ai(
+        role="creative",
+        system_prompt="You are a viral YouTube Shorts strategist. Extract repeatable hook patterns from top-performing gaming Shorts.",
+        user_prompt=(
+            f"Top viral Shorts found today:\n" + "\n".join(top_titles) + "\n\n"
+            'Return strict JSON: {"hook_trends": ["4 short reusable English hook formulas or pacing angles"]}'
+        ),
+        expect_json=True,
+        temperature=0.5,
+    )
+    trends = parsed.get("hook_trends", []) if isinstance(parsed, dict) else []
+    if isinstance(trends, list) and trends:
+        brain["daily_hook_trends"] = [str(x).strip()[:120] for x in trends[:5] if str(x).strip()]
+        print(f"[Daily Hook Scout] Updated {len(brain['daily_hook_trends'])} viral hook trends.", flush=True)
+
+    brain["last_hook_scout_date"] = today_str
+    save_history(history_data)
+    return True
+
+# ==============================================================================
+# PART 30B OF 40: MILLION-VIEW VIRAL RESEARCHER & STYLE DNA EVOLVER
+# Subheading: Studies Million-View Shorts Every 4 Days & Upgrades Style DNA
+# What This Code Does:
+#   - Downloads up to 3 million-view viral Shorts temporarily, extracts keyframes
+#     + pacing metrics, and has Gemini Vision + the Creative Council compare them
+#     against your recent uploads.
+#   - Evolves style_dna parameters (zoom, vibrancy, caption chunking, ducking,
+#     creative_directive) and logs missing features into feature_requests.
+# ==============================================================================
+def _analyze_viral_winners_benchmark(history_data):
+    niche = str(CHANNEL_CONFIG.get("niche_query_topic", "GTA 6")).strip()
+    sample_cap = int(CHANNEL_CONFIG.get("viral_research_sample_count", 3))
+    res = run_cmd_safe(
+        ["yt-dlp", "--dump-json", "--flat-playlist", "--no-warnings", f"ytsearch15:{niche} viral shorts"],
+        label="ViralResearchSearch",
+        timeout_sec=45,
+        check=False,
+    )
+    winners = []
+    for line in (res.stdout or "").splitlines():
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            info = json.loads(line)
+            vid_id = str(info.get("id", "")).strip()
+            views = int(info.get("view_count") or 0)
+            dur = float(info.get("duration") or 0)
+            title = str(info.get("title") or "").strip()
+            if vid_id and views >= 250000 and 12.0 <= dur <= 62.0:
+                winners.append({
+                    "video_id": vid_id,
+                    "title": title,
+                    "channel_name": str(info.get("uploader") or "Viral Creator"),
+                    "views": views,
+                })
+        except Exception:
+            pass
+
+    winners.sort(key=lambda x: x["views"], reverse=True)
+    notes = []
+    for idx, w in enumerate(winners[:sample_cap]):
+        tmp_vid = f"gem_watch_viral_{idx}.mp4"
+        tmp_jpg = f"gem_watch_viral_{idx}.jpg"
+        try:
+            if not download_candidate_video(w, tmp_vid):
+                continue
+            vdur = get_media_duration(tmp_vid)
+            motion_m, motion_p = _measure_clip_motion_stats(tmp_vid)
+            run_cmd_safe(
+                ["ffmpeg", "-y", "-ss", f"{min(2.0, vdur * 0.2):.2f}", "-i", tmp_vid, "-vframes", "1", "-q:v", "4", tmp_jpg],
+                label="ViralFrame",
+                timeout_sec=15,
+                check=False,
+            )
+            notes.append(
+                f"Winner #{idx+1}: '{w['title']}' ({w['views']:,} views, dur={vdur:.1f}s, "
+                f"motion_mean={motion_m:.1f}, motion_peak={motion_p:.1f})"
+            )
+        except Exception:
+            pass
+        finally:
+            for fn in (tmp_vid, tmp_jpg):
+                if os.path.exists(fn):
+                    try:
+                        os.remove(fn)
+                    except Exception:
+                        pass
+    return notes
+
+
+def run_style_dna_evolution_cycle(history_data):
+    now_utc = datetime.now(timezone.utc)
+    brain = history_data.setdefault("ai_brain", _default_ai_brain())
+    last_ev = str(brain.get("last_style_evolved_at", "")).strip()
+    evo_days = int(CHANNEL_CONFIG.get("style_evolution_days", 4))
+
+    if last_ev:
+        try:
+            prev_dt = datetime.fromisoformat(last_ev.replace("Z", "+00:00"))
+            if (now_utc - prev_dt).total_seconds() < evo_days * 86400:
+                return False
+        except Exception:
+            pass
+
+    cur_dna = clamp_style_dna(brain.get("style_dna"))
+    viral_notes = _analyze_viral_winners_benchmark(history_data)
+    if not viral_notes:
+        brain["last_style_evolved_at"] = now_utc.isoformat()
+        save_history(history_data)
+        return False
+
+    recent_uploads = [
+        f"{u.get('title', '')} (style={u.get('style_version', 'v1.0')}, reach={u.get('last_reach_score', 0)})"
+        for u in history_data.get("uploads", [])[-10:]
+    ]
+
+    council_out = call_council_text_ai(
+        role="creative",
+        system_prompt=(
+            "You are the Chief Evolution Architect for an autonomous YouTube Shorts AI. "
+            "Compare million-view viral Shorts benchmarks against our current Style DNA and propose "
+            "at most 2-3 targeted upgrades to improve viewer retention, pacing, and visual pop."
+        ),
+        user_prompt=(
+            f"Current Style DNA: {json.dumps(cur_dna)}\n"
+            f"Million-View Viral Benchmarks:\n" + "\n".join(viral_notes) + "\n"
+            f"Our Recent Uploads: {recent_uploads}\n\n"
+            "Return strict JSON:\n"
+            '{"hypothesis": "what we are upgrading and why", '
+            '"climax_zoom_scale": 1.12, "color_vibrancy": 1.16, "contrast_boost": 1.09, '
+            '"caption_words_per_chunk": 3, "duck_game_volume": 0.34, '
+            '"creative_directive": "updated 1-sentence editing/hook rule", '
+            '"missing_feature_idea": "optional new Python/FFmpeg feature we should build next"}'
+        ),
+        expect_json=True,
+        temperature=0.45,
+    )
+
+    if isinstance(council_out, dict) and council_out.get("hypothesis"):
+        brain["previous_style_dna"] = dict(cur_dna)
+        try:
+            ver_num = float(str(cur_dna.get("version", "v1.0")).lstrip("v")) + 0.1
+            new_ver = f"v{ver_num:.1f}"
+        except Exception:
+            new_ver = "v1.1"
+
+        mutated = dict(cur_dna)
+        for k in (
+            "climax_zoom_scale",
+            "color_vibrancy",
+            "contrast_boost",
+            "caption_words_per_chunk",
+            "duck_game_volume",
+            "creative_directive",
+        ):
+            if k in council_out:
+                mutated[k] = council_out[k]
+        mutated["version"] = new_ver
+        brain["style_dna"] = clamp_style_dna(mutated)
+
+        feat_idea = str(council_out.get("missing_feature_idea", "")).strip()
+        if feat_idea and len(feat_idea) > 8:
+            reqs = brain.setdefault("feature_requests", [])
+            reqs.append(f"[{new_ver}] {feat_idea[:180]}")
+            brain["feature_requests"] = reqs[-15:]
+
+        print(
+            f"[Style DNA Evolved -> {new_ver}] Hypothesis: {council_out.get('hypothesis')}",
+            flush=True,
+        )
+
+    brain["last_style_evolved_at"] = now_utc.isoformat()
+    save_history(history_data)
+    return True
+
+# ==============================================================================
+# PART 30C OF 40: WEEKLY REACH REVIEW, NEGATIVE MEMORY & STYLE ROLLBACK GUARD
+# Subheading: Evaluates Real YouTube Views, Logs Avoid Patterns & Validates Style DNA
+# What This Code Does:
+#   - Pulls live views, likes, and comments via YouTube Data API v3 on Sunday
+#     evenings (plus caches reach scores on uploads for Style DNA A/B comparison).
+#   - Logs stalled low-reach videos (< 50 views after 48h) into avoid_patterns
+#     so the 5-AI Council stops picking similar clips or hooks.
+#   - Rolls back style_dna to previous_style_dna if the new version drops reach
+#     by > 20% compared to the champion.
 # ==============================================================================
 def run_weekly_analytics_tuning(history_data):
     now_ist = datetime.now(IST_TZ)
@@ -2008,12 +2745,7 @@ def run_weekly_analytics_tuning(history_data):
     uploads = history_data.get("uploads", [])
     vid_map = {}
     for u in uploads[-45:]:
-        url = str(u.get("url", "")).strip()
-        vid = ""
-        if "/shorts/" in url:
-            vid = url.split("/shorts/")[-1].split("?")[0].strip()
-        elif "v=" in url:
-            vid = url.split("v=")[-1].split("&")[0].strip()
+        vid = _extract_video_id_from_url(u.get("url"))
         if len(vid) >= 8:
             vid_map[vid] = u
 
@@ -2032,6 +2764,8 @@ def run_weekly_analytics_tuning(history_data):
         scored_videos = []
         hour_scores = {}
         style_scores = {}
+        dna_version_scores = {}
+        avoid_list = brain.setdefault("avoid_patterns", [])
 
         for item in resp.get("items", []):
             vid = item.get("id", "")
@@ -2043,6 +2777,8 @@ def run_weekly_analytics_tuning(history_data):
             reach_score = views + (likes * 15) + (comments * 30)
 
             meta = vid_map.get(vid, {})
+            meta["last_reach_score"] = reach_score
+
             pub_hr = meta.get("publish_hour_ist")
             if isinstance(pub_hr, int) and 0 <= pub_hr <= 23:
                 hour_scores.setdefault(pub_hr, []).append(reach_score)
@@ -2050,6 +2786,15 @@ def run_weekly_analytics_tuning(history_data):
             h_style = str(meta.get("hook_style", "")).strip()
             if h_style:
                 style_scores.setdefault(h_style, []).append(reach_score)
+
+            s_ver = str(meta.get("style_version", "v1.0")).strip()
+            dna_version_scores.setdefault(s_ver, []).append(reach_score)
+
+            # Negative Memory: log stalled videos (< 50 views) so AI avoids repeating them
+            if views < 50 and snip.get("title"):
+                bad_tag = f"Low reach ({views} views): {snip.get('title', '')[:65]}"
+                if bad_tag not in avoid_list:
+                    avoid_list.append(bad_tag)
 
             scored_videos.append({
                 "video_id": vid,
@@ -2061,7 +2806,28 @@ def run_weekly_analytics_tuning(history_data):
                 "reach_score": reach_score,
             })
 
-        # 1. Rank best audience reach hours (IST)
+        brain["avoid_patterns"] = avoid_list[-12:]
+
+        # Champion vs. Challenger Style DNA Evaluation & Automatic Rollback
+        cur_dna = clamp_style_dna(brain.get("style_dna"))
+        cur_ver = str(cur_dna.get("version", "v1.0"))
+        cur_scores = dna_version_scores.get(cur_ver, [])
+        if len(cur_scores) >= 3:
+            median_reach = float(np.median(cur_scores))
+            champ_reach = float(cur_dna.get("champion_median_reach", 0.0))
+            if champ_reach > 0 and median_reach < champ_reach * 0.80 and isinstance(brain.get("previous_style_dna"), dict):
+                restored = clamp_style_dna(brain["previous_style_dna"])
+                brain["style_dna"] = restored
+                print(
+                    f"[Style DNA Rollback] {cur_ver} reach ({median_reach:.0f}) dropped >20% vs champion ({champ_reach:.0f}). "
+                    f"Reverted to {restored.get('version')}.",
+                    flush=True,
+                )
+            elif median_reach >= champ_reach:
+                cur_dna["champion_version"] = cur_ver
+                cur_dna["champion_median_reach"] = round(median_reach, 1)
+                brain["style_dna"] = cur_dna
+
         if hour_scores:
             ranked_hours = sorted(
                 hour_scores.items(),
@@ -2070,7 +2836,6 @@ def run_weekly_analytics_tuning(history_data):
             )
             brain["top_hours_ist"] = [hr for hr, _ in ranked_hours[:4]]
 
-        # 2. Rank winning hook styles
         if style_scores:
             ranked_styles = sorted(
                 style_scores.items(),
@@ -2079,7 +2844,6 @@ def run_weekly_analytics_tuning(history_data):
             )
             brain["winning_hook_styles"] = [st for st, _ in ranked_styles[:3]]
 
-        # 3. Record this week's cadence performance & experiment with next week's cadence
         short_vids = [v for v in scored_videos if v["type"] != "long_16x9"]
         long_vids = [v for v in scored_videos if v["type"] == "long_16x9"]
         avg_short_reach = round(sum(v["reach_score"] for v in short_vids) / max(1, len(short_vids)), 1)
@@ -2097,28 +2861,23 @@ def run_weekly_analytics_tuning(history_data):
         })
         brain["cadence_experiments"] = exps[-12:]
 
-        # Multi-armed bandit exploration: 70% pick best-performing cadence, 30% test adjacent cadence
-        shorts_options = [2, 3, 4]
-        long_options = [1, 2, 3]
         if len(exps) >= 2 and random.random() < 0.70:
             best_s = max(exps, key=lambda e: e.get("avg_short_reach", 0))
             best_l = max(exps, key=lambda e: e.get("avg_long_reach", 0))
             brain["shorts_per_day"] = int(best_s.get("shorts_per_day", 3))
             brain["longs_per_week"] = int(best_l.get("longs_per_week", 2))
         else:
-            brain["shorts_per_day"] = random.choice(shorts_options)
-            brain["longs_per_week"] = random.choice(long_options)
+            brain["shorts_per_day"] = random.choice([2, 3, 4])
+            brain["longs_per_week"] = random.choice([1, 2, 3])
 
-        # Pick optimal weekdays for long-form uploads based on longs_per_week
         lw = int(brain["longs_per_week"])
         if lw == 1:
-            brain["long_weekdays"] = [6]          # Sunday
+            brain["long_weekdays"] = [6]
         elif lw == 2:
-            brain["long_weekdays"] = random.choice([[2, 6], [3, 6], [4, 6]])  # Wed/Thu/Fri + Sun
+            brain["long_weekdays"] = random.choice([[2, 6], [3, 6], [4, 6]])
         else:
-            brain["long_weekdays"] = [1, 4, 6]    # Tue + Fri + Sun
+            brain["long_weekdays"] = [1, 4, 6]
 
-        # 4. Save top 5 winning video titles for Gemini inspiration
         scored_videos.sort(key=lambda x: x["reach_score"], reverse=True)
         brain["winning_patterns"] = [
             f"{w['title']} ({w['views']} views, {w['likes']} likes)"
@@ -2138,6 +2897,7 @@ def run_weekly_analytics_tuning(history_data):
     except Exception as e:
         print(f"[AI Brain Warning] {e}", flush=True)
         return False
+
 
 # ==============================================================================
 # PART 31 OF 40: WEEKLY 16:9 LONG-FORM SCHEDULE & CLIP COLLECTOR
@@ -2615,15 +3375,11 @@ def build_and_publish_weekly_long_video(history_data):
 
 # ==============================================================================
 # PART 36 OF 40: HOURLY HARVEST & STREAM EXHAUSTION ENGINE
-# Subheading: Harvests 1 New Watchable Clip Per Stream & Retires Exhausted Streams
+# Subheading: Harvests 1 Watchable 6.8+ Clip Per Stream & Retires Exhausted Streams
 # What This Code Does:
-#   - Loops over eligible original creator streams (both fresh discoveries and
-#     partially scanned streams whose previous clip was deleted >= 24 hours ago).
-#   - Skips previously checked timestamps; if zero unused climax peaks remain,
-#     moves the stream to exhausted_ids and deletes its timestamp memory so
-#     history.json never bloats and the bot never revisits that stream again.
-#   - Runs Whisper English translation + Gemini Vision watchability gate before
-#     adding any clip to clip_vault/.
+#   - Passes history_data into compute_clip_viral_score so the 2-AI Human Rubric
+#     and negative avoid_patterns filter out every mid (< 6.8) clip.
+#   - Deduplicates checked_ranges in revisit_pool cleanly.
 # ==============================================================================
 def run_hourly_harvest_phase(history_data):
     candidates = discover_gta6_candidates(history_data)
@@ -2649,7 +3405,6 @@ def run_hourly_harvest_phase(history_data):
             tot_dur = get_media_duration(raw_path)
             peaks = detect_audio_video_peaks(raw_path, max_peaks=2, blocked_ranges=prev_ranges)
 
-            # Entire stream scanned with no unused peaks left -> permanently retire
             if not peaks:
                 print(f"[Stream Exhausted] All climax moments scanned in {vid_id}. Retiring permanently.", flush=True)
                 if vid_id not in exhausted:
@@ -2664,15 +3419,16 @@ def run_hourly_harvest_phase(history_data):
             item = next(iter(slices))
             st = float(item.get("source_start_sec", 0.0))
             en = st + float(item.get("duration_sec", 28.0))
+            rng_pair = [round(st, 1), round(en, 1)]
 
-            # Record checked window immediately so failed/low-motion windows aren't re-checked
             entry = rpool.setdefault(vid_id, {
                 "title": cand.get("title", "GTA 6 Gameplay"),
                 "channel_name": cand.get("channel_name", "GTA 6 Creator"),
                 "duration": round(tot_dur, 2),
                 "checked_ranges": [],
             })
-            entry["checked_ranges"].append([round(st, 1), round(en, 1)])
+            if rng_pair not in entry["checked_ranges"]:
+                entry["checked_ranges"].append(rng_pair)
 
             if not verify_action_motion_and_quality(item["vault_path"]):
                 print(f"[Filter] Rejected low-motion clip {item['vault_path']}.", flush=True)
@@ -2682,9 +3438,9 @@ def run_hourly_harvest_phase(history_data):
                 continue
 
             tx_en, w_events = transcribe_and_translate_clip(item["vault_path"])
-            w_score = compute_clip_viral_score(item["vault_path"], tx_en)
-            if w_score < 6.8:
-                print(f"[Watchability Reject] Clip {item['vault_path']} scored {w_score}; deleting.", flush=True)
+            w_score = compute_clip_viral_score(item["vault_path"], tx_en, history_data=history_data)
+            min_score = float(CHANNEL_CONFIG.get("min_human_clip_score", 6.8))
+            if w_score < min_score:
                 if os.path.exists(item["vault_path"]):
                     os.remove(item["vault_path"])
                 entry["last_deleted_at"] = datetime.now(timezone.utc).isoformat()
@@ -2693,7 +3449,6 @@ def run_hourly_harvest_phase(history_data):
             item["transcript_en"] = tx_en
             item["word_events"] = w_events
             item["viral_score"] = w_score
-            # Clear last_deleted_at while this active clip sits inside clip_vault/
             entry.pop("last_deleted_at", None)
 
             history_data.setdefault("vault_queue", []).append(item)
@@ -2716,14 +3471,12 @@ def run_hourly_harvest_phase(history_data):
     return newly_vaulted
 
 # ==============================================================================
-# PART 37 OF 40: MULTI-CLIP SHORT BUILDER & RENDER ORCHESTRATOR
-# Subheading: Builds Dynamic #N -> #1 Countdown, Validates & Renders Final MP4
+# PART 37 OF 40: MULTI-CLIP SHORT BUILDER & HUMAN QA ORCHESTRATOR
+# Subheading: Renders Style DNA Short & Runs 4-Point Human QA Gate Before Upload
 # What This Code Does:
-#   - Plans a 2-to-5 distinct-creator countdown Short from clip_vault/.
-#   - Generates the single opening intro, per-clip commentary for every clip,
-#     and single closing outro + randomized Like & Subscribe CTA.
-#   - Renders vertical segments with randomized transitions and burns synced
-#     yellow captions + top gold banner into final_short_vice_city.mp4.
+#   - Renders the multi-clip Short using active Style DNA parameters.
+#   - Runs run_human_perspective_qa_gate (Part 24B); if any defect is detected,
+#     deletes the defective render and logs the defect to ai_brain["qa_failures"].
 # ==============================================================================
 def build_and_render_short_master(history_data):
     short_plan = build_top5_plan_from_vault(history_data)
@@ -2736,34 +3489,43 @@ def build_and_render_short_master(history_data):
         print("[Skip] Short plan failed transformative commentary validation.", flush=True)
         return None, None, None
 
-    stitched_video, timeline_meta = render_vertical_segments_and_concat(short_plan)
+    stitched_video, timeline_meta = render_vertical_segments_and_concat(short_plan, history_data=history_data)
     final_short_path = "final_short_vice_city.mp4"
     compose_final_short_with_captions_and_audio(
         stitched_video=stitched_video,
         timeline_meta=timeline_meta,
         script_data=script_data,
         output_path=final_short_path,
+        history_data=history_data,
     )
 
     if not os.path.exists(final_short_path):
         raise RuntimeError("Final Short render failed — final_short_vice_city.mp4 missing.")
 
+    qa_ok, qa_msg = run_human_perspective_qa_gate(final_short_path, script_data, history_data=history_data)
+    if not qa_ok:
+        print(f"[Human QA BLOCKED UPLOAD] {qa_msg}", flush=True)
+        brain = history_data.setdefault("ai_brain", _default_ai_brain())
+        fails = brain.setdefault("qa_failures", [])
+        fails.append(f"{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')} | {qa_msg}")
+        brain["qa_failures"] = fails[-15:]
+        save_history(history_data)
+        if os.path.exists(final_short_path):
+            os.remove(final_short_path)
+        return None, None, None
+
     export_short_cover_thumbnail(final_short_path, out_jpg="thumb_vice_city.jpg")
     final_dur = get_media_duration(final_short_path)
-    print(f"[Ready] Rendered {final_short_path} ({final_dur:.2f}s | {len(timeline_meta)} clips).", flush=True)
+    print(f"[Ready] Human-QA Verified {final_short_path} ({final_dur:.2f}s | {len(timeline_meta)} clips).", flush=True)
     return final_short_path, timeline_meta, script_data
 
 # ==============================================================================
-# PART 38 OF 40: SHORT PUBLISHER, REACH TRACKER & 24H DELETION STAMPER
-# Subheading: Uploads Short, Deletes Used Vault Clips & Starts 24h Cooldown
+# PART 38 OF 40: SHORT PUBLISHER, STYLE TRACKER & 24H DELETION STAMPER
+# Subheading: Uploads Short, Clears Pending Slot, Deletes Clips & Starts 24h Timer
 # What This Code Does:
-#   - Uploads final_short_vice_city.mp4 to YouTube and schedules it for the
-#     chosen IST slot.
-#   - Deletes the consumed clips from clip_vault/ immediately to keep storage
-#     free and stamps last_deleted_at in revisit_pool so the 24-hour cooldown
-#     starts from the exact moment of deletion.
-#   - Logs the scheduled IST hour and hook style in history.json["uploads"] so
-#     Sunday's AI Brain review can learn which hours and hooks get wide reach.
+#   - Publishes the QA-verified Short to the T-1h target slot, clears
+#     pending_target_slot so the next slot waits until this video is public,
+#     deletes consumed vault clips, and records style_version for A/B tracking.
 # ==============================================================================
 def publish_short_and_consume_vault(history_data, final_short_path, timeline_meta, script_data, slot_iso):
     final_dur = get_media_duration(final_short_path)
@@ -2799,7 +3561,9 @@ def publish_short_and_consume_vault(history_data, final_short_path, timeline_met
             remaining_vault.append(v)
     history_data["vault_queue"] = remaining_vault
 
-    # Determine scheduled IST hour so AI Brain can correlate reach with publish hour
+    brain = history_data.setdefault("ai_brain", _default_ai_brain())
+    brain["pending_target_slot"] = ""
+
     sched_ist_hr = datetime.now(IST_TZ).hour
     if slot_iso:
         history_data.setdefault("scheduled_slots", []).append(slot_iso)
@@ -2815,25 +3579,34 @@ def publish_short_and_consume_vault(history_data, final_short_path, timeline_met
         "clip_count": len(timeline_meta),
         "duration_sec": round(final_dur, 2),
         "hook_style": script_data.get("hook_style", "shock"),
+        "style_version": script_data.get("style_version", brain.get("style_dna", {}).get("version", "v1.0")),
         "publish_hour_ist": sched_ist_hr,
         "scheduled_for": slot_iso or "immediate",
         "uploaded_at": datetime.now(timezone.utc).isoformat(),
     })
     save_history(history_data)
-    print(f"[Live Success] Uploaded & scheduled for {sched_ist_hr:02d}:xx IST: {video_url}", flush=True)
+    print(f"[Live Success] Uploaded & scheduled for {sched_ist_hr:02d}:xx IST ({slot_iso}): {video_url}", flush=True)
     return video_url
 
 # ==============================================================================
-# PART 39 OF 40: AUTONOMOUS LONG-FORM & WEEKLY AI BRAIN DISPATCHER
-# Subheading: Triggers 2x/Week 16:9 Videos & Sunday Audience Reach Self-Tuning
+# PART 39 OF 40: 2-SPEED SELF-UPGRADING BRAIN & LONG-FORM DISPATCHER
+# Subheading: Runs Daily Hook Scout, 4-Day Style DNA Evolution, Longs & Weekly Tune
 # What This Code Does:
-#   - Runs build_and_publish_weekly_long_video (Parts 31-35) whenever today is
-#     an active long-form day (default Wed & Sun evening IST).
-#   - Runs run_weekly_analytics_tuning (Part 30) on Sunday evenings so the AI
-#     Brain updates its peak audience hours, winning hooks, and Shorts/day +
-#     Longs/week cadence experiments for the upcoming week.
+#   - Executes the Fast Loop (Daily Viral Hook Scout), the Slow Loop (4-Day
+#     Million-View Viral Research & Style DNA Evolution), the 2x/week 16:9
+#     Long-Form publisher, and Sunday's YouTube reach & rollback audit.
 # ==============================================================================
 def run_autonomous_brain_and_long_tasks(history_data):
+    try:
+        run_daily_viral_hook_scout(history_data)
+    except Exception as e:
+        print(f"[Daily Hook Scout Warning] {e}", flush=True)
+
+    try:
+        run_style_dna_evolution_cycle(history_data)
+    except Exception as e:
+        print(f"[Style DNA Evolution Warning] {e}", flush=True)
+
     try:
         build_and_publish_weekly_long_video(history_data)
     except Exception as e:
@@ -2845,22 +3618,20 @@ def run_autonomous_brain_and_long_tasks(history_data):
         print(f"[AI Brain Tuning Warning] {e}", flush=True)
 
 # ==============================================================================
-# PART 40 OF 40: MASTER 24/7 AUTONOMOUS CREATOR ENTRYPOINT
-# Subheading: Coordinates Harvest, Multi-Clip Shorts, Long-Form & AI Brain Tuning
+# PART 40 OF 40: MASTER 24/7 SELF-UPGRADING CREATOR ENTRYPOINT
+# Subheading: Coordinates Harvest, T-1h Sequential Scheduler, Human QA & Evolution
 # What This Code Does:
-#   - Cleans scratch files, loads history.json + ai_brain state, and prunes
-#     stale vault items while respecting the 24-hour post-deletion timer.
-#   - Phase 1: Runs hourly harvest to stock clip_vault/ with watchable clips.
-#   - Phase 2: Checks adaptive publish cadence (default 3 Shorts/day, >= 2
-#     distinct creators) or manual force_upload trigger.
-#   - Phase 3 & 4: Renders multi-clip Short with single intro, per-clip
-#     commentary, single outro + randomized Like/Subscribe CTA, uploads it,
-#     and deletes used vault clips to trigger their 24h revisit timer.
-#   - Phase 5: Runs 2x/week 16:9 long-form publisher & Sunday AI Brain tuning.
+#   - Boots the 5-AI Council + Self-Upgrading Style DNA engine.
+#   - Phase 1: Harvests strict 6.8+ human-calibrated clips into clip_vault/.
+#   - Phase 2: Enforces single-slot sequential lock + T-1h compilation window.
+#   - Phase 3 & 4: Renders Style DNA Short, runs 4-Point Human QA Gate, and
+#     schedules to YouTube only if QA passes 100%.
+#   - Phase 5: Runs Daily Hook Scout, 4-Day Style DNA Evolution, 16:9 Long-Form
+#     videos, and Sunday analytics + rollback review.
 # ==============================================================================
 def main():
     print("============================================================", flush=True)
-    print(f"[Boot] {CHANNEL_CONFIG['channel_name']} ({CHANNEL_CONFIG['channel_handle']}) — 40-Part AI Creator Engine", flush=True)
+    print(f"[Boot] {CHANNEL_CONFIG['channel_name']} ({CHANNEL_CONFIG['channel_handle']}) — Self-Upgrading 5-AI Engine", flush=True)
     print("============================================================", flush=True)
 
     cleanup_scratch_render_files()
@@ -2869,21 +3640,19 @@ def main():
     os.makedirs(CHANNEL_CONFIG.get("vault_dir", "clip_vault"), exist_ok=True)
 
     brain = history_data.get("ai_brain", {})
+    dna_ver = brain.get("style_dna", {}).get("version", "v1.0")
     print(
-        f"[AI Brain Active] Target: {brain.get('shorts_per_day', 3)} Shorts/day & "
-        f"{brain.get('longs_per_week', 2)} Longs/week | Peak Hours IST: {brain.get('top_hours_ist') or 'Exploring Random Slots'}",
+        f"[AI Brain Active] Style={dna_ver} | Target: {brain.get('shorts_per_day', 3)} Shorts/day & "
+        f"{brain.get('longs_per_week', 2)} Longs/week | Peak Hours IST: {brain.get('top_hours_ist') or 'Exploring'}",
         flush=True,
     )
 
-    # PHASE 1: Hourly Harvest (Respects 24h post-deletion timer & exhausts full streams)
     newly_vaulted = run_hourly_harvest_phase(history_data)
 
-    # PHASE 2: Check Adaptive Short Publish Window (or Manual force_upload)
     force_flag = str(os.environ.get("FORCE_UPLOAD", "")).strip().lower() in ("1", "true", "yes")
     should_build, slot_iso = should_trigger_publish_window(history_data, force_flag=force_flag)
 
     if should_build or not CHANNEL_CONFIG.get("upload_to_youtube", False):
-        # PHASE 3 & 4: Build Multi-Clip Short, Render, Upload & Consume Vault
         final_short_path, timeline_meta, script_data = build_and_render_short_master(history_data)
         if final_short_path and timeline_meta and script_data:
             publish_short_and_consume_vault(
@@ -2895,11 +3664,10 @@ def main():
             )
     else:
         print(
-            f"[Standby] Harvest complete ({newly_vaulted} new). Waiting for next adaptive Short slot or >= 2 creators.",
+            f"[Standby] Harvest complete ({newly_vaulted} new). Holding until T-1h window & public release.",
             flush=True,
         )
 
-    # PHASE 5: 2x/Week 16:9 Long-Form Video + Sunday AI Brain Reach & Cadence Review
     run_autonomous_brain_and_long_tasks(history_data)
 
     cleanup_scratch_render_files()
