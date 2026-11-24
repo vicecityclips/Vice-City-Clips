@@ -664,7 +664,7 @@ def discover_gta6_candidates(history_data):
     random.shuffle(original_queries)
 
     for q in original_queries[:2]:
-        cmd = ["yt-dlp", "--dump-json", "--flat-playlist", "--no-warnings", f"ytsearch12:{q}"]
+        cmd = ["yt-dlp", "--dump-json", "--flat-playlist", "--no-warnings", f"ytsearch20:{q}"]
         res = run_cmd_safe(cmd, label="YtDlpSearch", timeout_sec=45, check=False)
         for line in (res.stdout or "").splitlines():
             line = line.strip()
@@ -685,7 +685,7 @@ def discover_gta6_candidates(history_data):
                 continue
             if "#shorts" in title.lower() or is_compilation_or_clipper(uploader, title):
                 continue
-            if dur < 480 or dur > 9000:
+            if dur < 360 or dur > 14400:
                 continue
 
             seen_now.add(vid_id)
@@ -734,9 +734,9 @@ def download_candidate_video(candidate, out_path):
     vid_id = str(candidate["video_id"]).strip()
 
     attempts = [
-        {"client": "youtube:player_client=tv_embedded,web", "use_cookies": True, "fmt": "bv*[height<=720]+ba/b[height<=720]/b"},
-        {"client": "youtube:player_client=web_creator,web", "use_cookies": True, "fmt": "bv*[height<=720]+ba/b[height<=720]/b"},
-        {"client": "youtube:player_client=android_vr,tv_embedded", "use_cookies": False, "fmt": "b[height<=720]/bv*[height<=720]+ba/b"},
+        {"client": "", "use_cookies": True, "fmt": "bv*[height<=720]+ba/b[height<=720]/b"},
+        {"client": "youtube:player_client=tv,web", "use_cookies": True, "fmt": "bv*[height<=720]+ba/b[height<=720]/b"},
+        {"client": "youtube:player_client=default,-tv_downgraded,tv", "use_cookies": True, "fmt": "b[height<=720]/bv*[height<=720]+ba/b"},
     ]
 
     for idx, cfg in enumerate(attempts):
