@@ -283,7 +283,9 @@
       ]
     }
   },
-  "exhausted_ids": [],
+  "exhausted_ids": [
+    "dTXD4m4qomY"
+  ],
   "ai_brain": {
     "shorts_per_day": 3,
     "longs_per_week": 2,
