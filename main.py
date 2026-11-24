@@ -80,7 +80,7 @@ CHANNEL_CONFIG = {
 
     # --- 5-AI Creative & QA Council (Auto-Fallback Across Active Keys) ---
     "ai_council": {
-        "vision_model": "gemini-3.0-flash",
+        "vision_model": "gemini-3.5-flash-lite",
         "groq_critic_model": "openai/gpt-oss-120b",
         "groq_copywriter_model": "llama-3.3-70b-versatile",
         "openrouter_creative_model": "openrouter/free",
@@ -313,7 +313,7 @@ def call_council_text_ai(role, system_prompt, user_prompt, expect_json=True, tem
                     response_mime_type="application/json" if expect_json else "text/plain",
                 )
                 resp = client.models.generate_content(
-                    model=cfg.get("vision_model", "gemini-2.5-flash"),
+                    model=cfg.get("vision_model", "gemini-3.5-flash-lite"),
                     contents=[f"{system_prompt}\n\n{user_prompt}"],
                     config=g_cfg,
                 )
@@ -1046,11 +1046,23 @@ def _evaluate_clip_with_gemini_vision(clip_path, motion_val, peak_motion, transc
             f"Transcript: '{(transcript_text or 'no speech')[:180]}'.\n"
             'Return strict JSON: {"vision_score": 5.2, "hook_strength": 4.8, "payoff_strength": 5.5, "scene_summary": "short 12-word description"}'
         )
-        resp = client.models.generate_content(
-            model=CHANNEL_CONFIG["ai_council"]["vision_model"],
-            contents=imgs + [vision_prompt],
-            config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.15),
-        )
+        
+        primary_m = CHANNEL_CONFIG["ai_council"].get("vision_model", "gemini-3.5-flash-lite")
+        resp = None
+        for m_id in (primary_m, "gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3-flash-preview"):
+            try:
+                resp = client.models.generate_content(
+                    model=m_id,
+                    contents=imgs + [vision_prompt],
+                    config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.15),
+                )
+                if resp and resp.text:
+                    break
+            except Exception:
+                continue
+        if not resp or not resp.text:
+            return 0.0, ""
+
         v_data = json.loads(resp.text.strip())
         v_score = float(v_data.get("vision_score", 0.0))
         h_score = float(v_data.get("hook_strength", v_score))
