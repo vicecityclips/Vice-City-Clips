@@ -41,7 +41,88 @@
       "timestamp": "2026-11-23T04:59:34.059527+00:00"
     }
   ],
-  "vault_queue": [],
+  "vault_queue": [
+    {
+      "vault_path": "clip_vault/ys_3h2nuNCY_2068s.mp4",
+      "video_id": "ys_3h2nuNCY",
+      "channel_name": "GameRiot",
+      "source_title": "GTA 6 Gameplay Walkthrough Part 1 - INTRO (PS5 PRO 4K)",
+      "source_total_dur": 2980.77,
+      "source_start_sec": 2068.0,
+      "duration_sec": 28.0,
+      "local_peak_sec": 11.0,
+      "viral_score": 8.7,
+      "transcript_en": "I'll be interested in the sandwich. And we're flying, let's go! We're going.",
+      "word_events": [
+        {
+          "word": "I'll",
+          "start": 0.75,
+          "end": 1.33
+        },
+        {
+          "word": "be",
+          "start": 1.33,
+          "end": 1.37
+        },
+        {
+          "word": "interested",
+          "start": 1.37,
+          "end": 1.57
+        },
+        {
+          "word": "in",
+          "start": 1.57,
+          "end": 1.77
+        },
+        {
+          "word": "the",
+          "start": 1.77,
+          "end": 2.03
+        },
+        {
+          "word": "sandwich.",
+          "start": 2.03,
+          "end": 2.03
+        },
+        {
+          "word": "And",
+          "start": 7.12,
+          "end": 7.64
+        },
+        {
+          "word": "we're",
+          "start": 7.64,
+          "end": 7.84
+        },
+        {
+          "word": "flying,",
+          "start": 7.84,
+          "end": 8.2
+        },
+        {
+          "word": "let's",
+          "start": 8.24,
+          "end": 8.6
+        },
+        {
+          "word": "go!",
+          "start": 8.6,
+          "end": 9.22
+        },
+        {
+          "word": "We're",
+          "start": 13.9,
+          "end": 14.12
+        },
+        {
+          "word": "going.",
+          "start": 14.12,
+          "end": 14.2
+        }
+      ],
+      "harvested_at": "2026-11-24T05:48:40.226910+00:00"
+    }
+  ],
   "scheduled_slots": [
     "2026-11-23T02:00:00Z",
     "2026-11-23T14:00:00Z",
@@ -189,6 +270,17 @@
         ]
       ],
       "last_deleted_at": "2026-11-24T03:49:44.121592+00:00"
+    },
+    "ys_3h2nuNCY": {
+      "title": "GTA 6 Gameplay Walkthrough Part 1 - INTRO (PS5 PRO 4K)",
+      "channel_name": "GameRiot",
+      "duration": 2980.77,
+      "checked_ranges": [
+        [
+          2068.0,
+          2096.0
+        ]
+      ]
     }
   },
   "exhausted_ids": [],
