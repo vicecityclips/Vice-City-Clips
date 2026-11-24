@@ -133,9 +133,13 @@
         [
           550.0,
           578.0
+        ],
+        [
+          31.0,
+          59.0
         ]
       ],
-      "last_deleted_at": "2026-11-23T20:44:47.782767+00:00"
+      "last_deleted_at": "2026-11-24T22:48:43.033318+00:00"
     },
     "ARwju5Gyk64": {
       "title": "Grand Theft Auto VI Gameplay Walkthrough Part 1 - No Commentary (GTA 6 PS5 Gameplay)",
@@ -145,9 +149,13 @@
         [
           664.0,
           692.1
+        ],
+        [
+          403.0,
+          431.1
         ]
       ],
-      "last_deleted_at": "2026-11-23T20:44:47.783183+00:00"
+      "last_deleted_at": "2026-11-24T22:46:52.022841+00:00"
     },
     "fa20ZBsbp34": {
       "title": "I Tried to Put GTA 6's Entire Story in the Correct Order",
@@ -157,9 +165,13 @@
         [
           122.0,
           172.0
+        ],
+        [
+          1000.0,
+          1028.1
         ]
       ],
-      "last_deleted_at": "2026-11-23T20:44:47.783013+00:00"
+      "last_deleted_at": "2026-11-24T22:49:52.864121+00:00"
     },
     "RVpApoEkOao": {
       "title": "Grand Theft Auto 6 - Part 1 - The Beginning",
@@ -627,6 +639,42 @@
         ]
       ],
       "last_deleted_at": "2026-11-24T20:41:52.045886+00:00"
+    },
+    "-D_wt4GXmNw": {
+      "title": "GTA 6 Gameplay Walkthrough Part 3 FULL GAME [4K PS5 PRO] - No Commentary",
+      "channel_name": "MKIceAndFire",
+      "duration": 13264.0,
+      "checked_ranges": [
+        [
+          1396.0,
+          1424.1
+        ]
+      ],
+      "last_deleted_at": "2026-11-24T22:45:52.992213+00:00"
+    },
+    "pEXMP0apxDc": {
+      "title": "GTA 6 - 6-Star Airport Cop Shootout",
+      "channel_name": "Mike The Goon",
+      "duration": 830.0,
+      "checked_ranges": [
+        [
+          480.0,
+          508.1
+        ]
+      ],
+      "last_deleted_at": "2026-11-24T22:47:53.543325+00:00"
+    },
+    "42f6LTXqss0": {
+      "title": "GTA 6 Gameplay Walkthrough Part 1 FULL GAME [4K ULTRA HD PS5 PRO] No Commentary",
+      "channel_name": "Shirrako",
+      "duration": 6315.0,
+      "checked_ranges": [
+        [
+          2820.0,
+          2848.0
+        ]
+      ],
+      "last_deleted_at": "2026-11-24T22:50:42.121491+00:00"
     }
   },
   "exhausted_ids": [
