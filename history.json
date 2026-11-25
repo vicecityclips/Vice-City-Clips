@@ -43,6 +43,81 @@
   ],
   "vault_queue": [
     {
+      "vault_path": "clip_vault/LFBHk2zfIIE_12s.mp4",
+      "video_id": "LFBHk2zfIIE",
+      "channel_name": "eralia",
+      "source_title": "Coming Home ✧ Grand Theft Auto VI First Playthrough ✧ Part 3",
+      "source_total_dur": 10675.0,
+      "source_start_sec": 1455.0,
+      "duration_sec": 28.07,
+      "local_peak_sec": 11.0,
+      "viral_score": 7.16,
+      "transcript_en": "Oh my god. Oh my god. Oh my god. Oh my god.",
+      "word_events": [
+        {
+          "word": "Oh",
+          "start": 3.44,
+          "end": 4.04
+        },
+        {
+          "word": "my",
+          "start": 4.04,
+          "end": 4.2
+        },
+        {
+          "word": "god.",
+          "start": 4.2,
+          "end": 4.48
+        },
+        {
+          "word": "Oh",
+          "start": 4.48,
+          "end": 4.66
+        },
+        {
+          "word": "my",
+          "start": 4.66,
+          "end": 4.66
+        },
+        {
+          "word": "god.",
+          "start": 4.66,
+          "end": 4.66
+        },
+        {
+          "word": "Oh",
+          "start": 4.74,
+          "end": 4.74
+        },
+        {
+          "word": "my",
+          "start": 4.74,
+          "end": 5.04
+        },
+        {
+          "word": "god.",
+          "start": 5.04,
+          "end": 5.18
+        },
+        {
+          "word": "Oh",
+          "start": 5.28,
+          "end": 5.28
+        },
+        {
+          "word": "my",
+          "start": 5.28,
+          "end": 5.28
+        },
+        {
+          "word": "god.",
+          "start": 5.28,
+          "end": 5.28
+        }
+      ],
+      "harvested_at": "2026-11-25T04:56:27.586893+00:00"
+    },
+    {
       "vault_path": "clip_vault/4H1EnZRwoQ0_12s.mp4",
       "video_id": "4H1EnZRwoQ0",
       "channel_name": "Sirloin",
@@ -181,9 +256,13 @@
         [
           750.0,
           778.0
+        ],
+        [
+          2885.0,
+          2913.1
         ]
       ],
-      "last_deleted_at": "2026-11-24T03:49:44.121039+00:00"
+      "last_deleted_at": "2026-11-25T04:59:48.621645+00:00"
     },
     "Zh6VrJuW_i8": {
       "title": "GTA 6 - Prologue [Full Walkthrough - PS5 4K]",
@@ -193,9 +272,13 @@
         [
           758.0,
           786.0
+        ],
+        [
+          409.0,
+          437.0
         ]
       ],
-      "last_deleted_at": "2026-11-24T03:49:44.122020+00:00"
+      "last_deleted_at": "2026-11-25T04:58:32.588952+00:00"
     },
     "EfjuhiFNJYw": {
       "title": "xQc Plays GTA 6 Early | GTA 6 Playthrough #1",
@@ -205,9 +288,13 @@
         [
           724.0,
           752.0
+        ],
+        [
+          2696.0,
+          2724.1
         ]
       ],
-      "last_deleted_at": "2026-11-24T03:49:44.121592+00:00"
+      "last_deleted_at": "2026-11-25T04:57:38.770763+00:00"
     },
     "ys_3h2nuNCY": {
       "title": "GTA 6 Gameplay Walkthrough Part 1 - INTRO (PS5 PRO 4K)",
@@ -831,6 +918,29 @@
         ]
       ],
       "last_deleted_at": "2026-11-25T03:51:27.778311+00:00"
+    },
+    "LFBHk2zfIIE": {
+      "title": "Coming Home ✧ Grand Theft Auto VI First Playthrough ✧ Part 3",
+      "channel_name": "eralia",
+      "duration": 10675.0,
+      "checked_ranges": [
+        [
+          1455.0,
+          1483.1
+        ]
+      ]
+    },
+    "hVhKogCvxLc": {
+      "title": "MY FIRST 5 HOURS IN GTA 6 WERE INSANE!! || Grand Theft Auto VI (Part 1)",
+      "channel_name": "Storymodebae",
+      "duration": 18382.0,
+      "checked_ranges": [
+        [
+          16925.0,
+          16953.1
+        ]
+      ],
+      "last_deleted_at": "2026-11-25T05:00:47.306074+00:00"
     }
   },
   "exhausted_ids": [
