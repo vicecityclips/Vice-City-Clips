@@ -941,6 +941,30 @@
         ]
       ],
       "last_deleted_at": "2026-11-25T05:00:47.306074+00:00"
+    },
+    "OmrLnGF8a68": {
+      "title": "WELCOME TO VICE CITY!!! | First Playthrough of Grand Theft Auto VI (Part 1)",
+      "channel_name": "StaceyRPG Gaming",
+      "duration": 8533.0,
+      "checked_ranges": [
+        [
+          285.0,
+          313.1
+        ]
+      ],
+      "last_deleted_at": "2026-11-25T05:46:49.685835+00:00"
+    },
+    "l-oEKLu4Y3w": {
+      "title": "BACK AT IT AGAIN IN THE VICE CITY!!!! | NO PROMOTIONS",
+      "channel_name": "CarryisLive",
+      "duration": 14410.0,
+      "checked_ranges": [
+        [
+          6336.0,
+          6364.1
+        ]
+      ],
+      "last_deleted_at": "2026-11-25T05:47:28.536787+00:00"
     }
   },
   "exhausted_ids": [
@@ -1005,7 +1029,7 @@
       "weight_humor_twist": 0.3,
       "creative_directive": "Start immediately mid-action in the first 1.5 seconds. Keep commentary razor-sharp, natural, and focused on the absurd payoff."
     },
-    "pending_target_slot": "2026-11-25T04:55:00Z",
+    "pending_target_slot": "2026-11-25T12:25:00Z",
     "last_hook_scout_date": "2026-11-25",
     "last_style_evolved_at": "2026-11-24T15:08:39.310812+00:00",
     "last_tuned_week": "",
