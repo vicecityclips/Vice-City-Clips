@@ -247,10 +247,6 @@
         [
           287.0,
           315.1
-        ],
-        [
-          287.0,
-          315.1
         ]
       ],
       "last_deleted_at": "2026-11-25T11:52:21.104491+00:00"
@@ -635,10 +631,6 @@
         [
           9710.0,
           9738.0
-        ],
-        [
-          9710.0,
-          9738.0
         ]
       ],
       "last_deleted_at": "2026-11-25T11:52:21.105171+00:00"
@@ -867,10 +859,6 @@
         [
           1455.0,
           1483.1
-        ],
-        [
-          1455.0,
-          1483.1
         ]
       ],
       "last_deleted_at": "2026-11-25T11:52:21.103983+00:00"
@@ -994,6 +982,30 @@
         ]
       ],
       "last_deleted_at": "2026-11-25T11:49:31.244976+00:00"
+    },
+    "68JfbN8uwLo": {
+      "title": "Full Chapter 1 Playthrough In Grand Theft Auto 6",
+      "channel_name": "LankManDan",
+      "duration": 5649.0,
+      "checked_ranges": [
+        [
+          1916.0,
+          1944.1
+        ]
+      ],
+      "last_deleted_at": "2026-11-25T12:56:24.979354+00:00"
+    },
+    "CukTYtF72KY": {
+      "title": "GTA 6 Walkthrough Gameplay Part 2 - JASON DUVAL (GRAND THEFT AUTO 6)",
+      "channel_name": "theRadBrad",
+      "duration": 3741.0,
+      "checked_ranges": [
+        [
+          1786.0,
+          1814.1
+        ]
+      ],
+      "last_deleted_at": "2026-11-25T12:57:34.873024+00:00"
     }
   },
   "exhausted_ids": [
@@ -1058,7 +1070,7 @@
       "weight_humor_twist": 0.3,
       "creative_directive": "Start immediately mid-action in the first 1.5 seconds. Keep commentary razor-sharp, natural, and focused on the absurd payoff."
     },
-    "pending_target_slot": "",
+    "pending_target_slot": "2026-11-25T14:12:00Z",
     "last_hook_scout_date": "2026-11-25",
     "last_style_evolved_at": "2026-11-24T15:08:39.310812+00:00",
     "last_tuned_week": "",
