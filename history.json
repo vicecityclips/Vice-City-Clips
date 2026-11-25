@@ -351,9 +351,13 @@
         [
           2755.0,
           2783.1
+        ],
+        [
+          2170.0,
+          2198.1
         ]
       ],
-      "last_deleted_at": "2026-11-24T16:09:59.026637+00:00"
+      "last_deleted_at": "2026-11-25T17:41:09.879027+00:00"
     },
     "HGTNP_tOfIQ": {
       "title": "Grand Theft Auto 6 (GTA 6) Full Gameplay Walkthrough Part 1 | FULL GAME 4K No Commentary",
@@ -363,9 +367,13 @@
         [
           740.0,
           768.1
+        ],
+        [
+          2365.0,
+          2393.1
         ]
       ],
-      "last_deleted_at": "2026-11-24T16:11:06.550807+00:00"
+      "last_deleted_at": "2026-11-25T17:39:56.130864+00:00"
     },
     "RKHyVcR0aZc": {
       "title": "The PERFECT Heist in GTA 6 (No Cops, No Alarms)",
@@ -387,9 +395,13 @@
         [
           1264.0,
           1292.1
+        ],
+        [
+          3665.0,
+          3693.1
         ]
       ],
-      "last_deleted_at": "2026-11-24T16:13:20.201673+00:00"
+      "last_deleted_at": "2026-11-25T17:44:50.483804+00:00"
     },
     "oS61KytyKv0": {
       "title": "WELCOME TO THE ADVENTURE OF A LIFETIME - GTA 6 - Part 1 [4K]",
@@ -447,9 +459,13 @@
         [
           9060.0,
           9088.1
+        ],
+        [
+          9651.0,
+          9679.1
         ]
       ],
-      "last_deleted_at": "2026-11-24T16:35:26.185491+00:00"
+      "last_deleted_at": "2026-11-25T17:43:02.188033+00:00"
     },
     "e-LIKNugH8g": {
       "title": "Grand Theft Auto 6 - Part 4 - Lucia Comes Home From Prison",
@@ -459,9 +475,13 @@
         [
           3470.0,
           3498.1
+        ],
+        [
+          2160.0,
+          2188.1
         ]
       ],
-      "last_deleted_at": "2026-11-24T16:36:21.137763+00:00"
+      "last_deleted_at": "2026-11-25T17:42:07.998714+00:00"
     },
     "Cz8u5zljQ1s": {
       "title": "GTA 6 PS5 Pro Gameplay Walkthrough, Part 1!",
@@ -483,9 +503,13 @@
         [
           15107.0,
           15135.1
+        ],
+        [
+          10035.0,
+          10063.1
         ]
       ],
-      "last_deleted_at": "2026-11-24T16:38:35.359339+00:00"
+      "last_deleted_at": "2026-11-25T17:43:45.640912+00:00"
     },
     "072Z5TcIVUY": {
       "title": "GTA 6 - Free Roam Exploring the MASSIVE Open World in 4K Ultra HD",
@@ -1050,6 +1074,30 @@
         ]
       ],
       "last_deleted_at": "2026-11-25T14:11:19.610309+00:00"
+    },
+    "2kfOgIFv7vc": {
+      "title": "GTA 6 Gameplay Walkthrough Part 8 FULL GAME [4K PS5 PRO] - No Commentary",
+      "channel_name": "MKIceAndFire",
+      "duration": 8260.0,
+      "checked_ranges": [
+        [
+          2753.0,
+          2781.0
+        ]
+      ],
+      "last_deleted_at": "2026-11-25T17:40:19.634739+00:00"
+    },
+    "UfmrSYPbvfw": {
+      "title": "xQc Explores Vice City! | GTA 6 Playthrough #2",
+      "channel_name": "xQc",
+      "duration": 7968.0,
+      "checked_ranges": [
+        [
+          413.0,
+          441.1
+        ]
+      ],
+      "last_deleted_at": "2026-11-25T17:45:34.988177+00:00"
     }
   },
   "exhausted_ids": [
@@ -1114,7 +1162,7 @@
       "weight_humor_twist": 0.3,
       "creative_directive": "Start immediately mid-action in the first 1.5 seconds. Keep commentary razor-sharp, natural, and focused on the absurd payoff."
     },
-    "pending_target_slot": "2026-11-25T17:08:00Z",
+    "pending_target_slot": "2026-11-25T19:00:00Z",
     "last_hook_scout_date": "2026-11-25",
     "last_style_evolved_at": "2026-11-24T15:08:39.310812+00:00",
     "last_tuned_week": "",
