@@ -41,104 +41,15 @@
       "timestamp": "2026-11-23T04:59:34.059527+00:00"
     }
   ],
-  "vault_queue": [
-    {
-      "vault_path": "clip_vault/LFBHk2zfIIE_12s.mp4",
-      "video_id": "LFBHk2zfIIE",
-      "channel_name": "eralia",
-      "source_title": "Coming Home ✧ Grand Theft Auto VI First Playthrough ✧ Part 3",
-      "source_total_dur": 10675.0,
-      "source_start_sec": 1455.0,
-      "duration_sec": 28.07,
-      "local_peak_sec": 11.0,
-      "viral_score": 7.16,
-      "transcript_en": "Oh my god. Oh my god. Oh my god. Oh my god.",
-      "word_events": [
-        {
-          "word": "Oh",
-          "start": 3.44,
-          "end": 4.04
-        },
-        {
-          "word": "my",
-          "start": 4.04,
-          "end": 4.2
-        },
-        {
-          "word": "god.",
-          "start": 4.2,
-          "end": 4.48
-        },
-        {
-          "word": "Oh",
-          "start": 4.48,
-          "end": 4.66
-        },
-        {
-          "word": "my",
-          "start": 4.66,
-          "end": 4.66
-        },
-        {
-          "word": "god.",
-          "start": 4.66,
-          "end": 4.66
-        },
-        {
-          "word": "Oh",
-          "start": 4.74,
-          "end": 4.74
-        },
-        {
-          "word": "my",
-          "start": 4.74,
-          "end": 5.04
-        },
-        {
-          "word": "god.",
-          "start": 5.04,
-          "end": 5.18
-        },
-        {
-          "word": "Oh",
-          "start": 5.28,
-          "end": 5.28
-        },
-        {
-          "word": "my",
-          "start": 5.28,
-          "end": 5.28
-        },
-        {
-          "word": "god.",
-          "start": 5.28,
-          "end": 5.28
-        }
-      ],
-      "harvested_at": "2026-11-25T04:56:27.586893+00:00"
-    },
-    {
-      "vault_path": "clip_vault/4H1EnZRwoQ0_12s.mp4",
-      "video_id": "4H1EnZRwoQ0",
-      "channel_name": "Sirloin",
-      "source_title": "GTA 6 - Full Chapter 5 Walkthrough (No Commentary) 4K",
-      "source_total_dur": 10850.0,
-      "source_start_sec": 9710.0,
-      "duration_sec": 28.0,
-      "local_peak_sec": 11.0,
-      "viral_score": 6.84,
-      "transcript_en": "",
-      "word_events": [],
-      "harvested_at": "2026-11-24T20:40:26.185960+00:00"
-    }
-  ],
+  "vault_queue": [],
   "scheduled_slots": [
     "2026-11-23T02:00:00Z",
     "2026-11-23T14:00:00Z",
     "2026-11-23T20:00:00Z",
     "2026-11-24T14:55:00Z",
     "2026-11-24T05:45:00Z",
-    "2026-11-25T08:05:00Z"
+    "2026-11-25T08:05:00Z",
+    "2026-11-25T12:25:00Z"
   ],
   "uploads": [
     {
@@ -197,6 +108,18 @@
       "publish_hour_ist": 13,
       "scheduled_for": "2026-11-25T08:05:00Z",
       "uploaded_at": "2026-11-24T09:58:51.267732+00:00"
+    },
+    {
+      "title": "GTA 6 Countdown Ends With Insane Bridge Jump! 🚨",
+      "url": "https://youtube.com/shorts/wMfDVNKshVg",
+      "type": "short",
+      "clip_count": 3,
+      "duration_sec": 54.8,
+      "hook_style": "countdown",
+      "style_version": "v1.1",
+      "publish_hour_ist": 17,
+      "scheduled_for": "2026-11-25T12:25:00Z",
+      "uploaded_at": "2026-11-25T11:52:21.105195+00:00"
     }
   ],
   "revisit_pool": {
@@ -304,9 +227,13 @@
         [
           2068.0,
           2096.0
+        ],
+        [
+          1189.0,
+          1217.1
         ]
       ],
-      "last_deleted_at": "2026-11-24T09:58:51.267677+00:00"
+      "last_deleted_at": "2026-11-25T11:48:03.198477+00:00"
     },
     "Is0geNyXdRc": {
       "title": "we need to talk about animals in GTA 6",
@@ -316,9 +243,17 @@
         [
           392.0,
           420.0
+        ],
+        [
+          287.0,
+          315.1
+        ],
+        [
+          287.0,
+          315.1
         ]
       ],
-      "last_deleted_at": "2026-11-24T09:58:51.267197+00:00"
+      "last_deleted_at": "2026-11-25T11:52:21.104491+00:00"
     },
     "zkra3oaa950": {
       "title": "GTA 6 Walkthrough Gameplay Part 4 - DOWN TO EARTH (GRAND THEFT AUTO 6)",
@@ -700,8 +635,13 @@
         [
           9710.0,
           9738.0
+        ],
+        [
+          9710.0,
+          9738.0
         ]
-      ]
+      ],
+      "last_deleted_at": "2026-11-25T11:52:21.105171+00:00"
     },
     "587Q2Wc_rJw": {
       "title": "GTA 6 Part 1 - Vice City - Gameplay Walkthrough (Grand Theft Auto 6)",
@@ -927,8 +867,13 @@
         [
           1455.0,
           1483.1
+        ],
+        [
+          1455.0,
+          1483.1
         ]
-      ]
+      ],
+      "last_deleted_at": "2026-11-25T11:52:21.103983+00:00"
     },
     "hVhKogCvxLc": {
       "title": "MY FIRST 5 HOURS IN GTA 6 WERE INSANE!! || Grand Theft Auto VI (Part 1)",
@@ -1037,6 +982,18 @@
         ]
       ],
       "last_deleted_at": "2026-11-25T09:58:56.796822+00:00"
+    },
+    "eAvBNERCIXw": {
+      "title": "GTA 6 FIRST TIME PLAY – We're Basically Jason & Lucia… Right, Babe?! - GRAND THEFT AUTO VI GAMEPLAY",
+      "channel_name": "Reel Reject Gaming and 3 more",
+      "duration": 12567.0,
+      "checked_ranges": [
+        [
+          5932.0,
+          5960.0
+        ]
+      ],
+      "last_deleted_at": "2026-11-25T11:49:31.244976+00:00"
     }
   },
   "exhausted_ids": [
@@ -1101,7 +1058,7 @@
       "weight_humor_twist": 0.3,
       "creative_directive": "Start immediately mid-action in the first 1.5 seconds. Keep commentary razor-sharp, natural, and focused on the absurd payoff."
     },
-    "pending_target_slot": "2026-11-25T12:25:00Z",
+    "pending_target_slot": "",
     "last_hook_scout_date": "2026-11-25",
     "last_style_evolved_at": "2026-11-24T15:08:39.310812+00:00",
     "last_tuned_week": "",
