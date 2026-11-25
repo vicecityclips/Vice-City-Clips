@@ -1114,10 +1114,10 @@
     "winning_patterns": [],
     "avoid_patterns": [],
     "daily_hook_trends": [
-      "CRAZY [high-stakes action] at [specific location]!",
-      "WTF and Funny Moments! #[number]",
-      "[Creator/character] Finds A [unexpected creature] In [game] 😱",
-      "[Game] just broke the entire internet.."
+      "[Creator] Finds A [Exaggerated Monster/Glitch] In [Game] 😱",
+      "[Game] WTF and Funny Moments! #[Number]",
+      "[Game] just broke the entire internet..",
+      "Killing [NPCs] on [Location] - [Game]"
     ],
     "feature_requests": [
       "[v1.1] Python/FFmpeg auto-tuner that analyzes motion_mean/peak per clip and dynamically adjusts zoom_scale, color_vibrancy, and contrast_boost to match viral benchmarks, then renders with"
@@ -1163,7 +1163,7 @@
       "creative_directive": "Start immediately mid-action in the first 1.5 seconds. Keep commentary razor-sharp, natural, and focused on the absurd payoff."
     },
     "pending_target_slot": "2026-11-25T19:00:00Z",
-    "last_hook_scout_date": "2026-11-25",
+    "last_hook_scout_date": "2026-11-26",
     "last_style_evolved_at": "2026-11-24T15:08:39.310812+00:00",
     "last_tuned_week": "",
     "longs_published_this_week": []
