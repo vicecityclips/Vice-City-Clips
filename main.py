@@ -58,9 +58,9 @@ CHANNEL_CONFIG = {
     "max_vault_items": 10,              # Caps repo size (~45 MB max) for free tier
     "min_clips_per_short": 2,           # Avoids raw solo clips for YPP monetization
     "max_clips_per_short": 5,           # Combines up to 5 distinct creators
-    "max_new_clips_per_run": 3,         # Harvests up to 3 fresh clips per hourly run
-    "min_motion_diff": 4.8,             # Rejects slow walking, menus & static lobbies
-    "min_human_clip_score": 6.8,        # Strict human scale (mid clips = 4.5 -> rejected)
+    "max_new_clips_per_run": 4,         # Harvests up to 4 elite clips per hourly run
+    "min_motion_diff": 5.2,             # Strictly rejects slow driving, menus & static lobbies
+    "min_human_clip_score": 6.8,        # Strict human bar — never lets mid clips enter vault
 
     # --- Strict Single-Slot Sequential Scheduler ---
     "max_scheduled_videos_allowed": 1,  # Never > 1 scheduled video in YouTube Studio
@@ -459,7 +459,9 @@ def check_previous_short_published_public(history_data):
             if privacy != "public":
                 return False, f"YouTube Studio reports {vid_id} is still '{privacy}' (not public yet)"
     except Exception as e:
-        print(f"[Scheduler API Check Warning] {e}", flush=True)
+        err_str = str(e)
+        if "insufficientPermissions" not in err_str and "403" not in err_str:
+            print(f"[Scheduler API Check Warning] {e}", flush=True)
 
     return True, f"Previous Short {vid_id} is public"
 
@@ -615,6 +617,24 @@ def is_compilation_or_clipper(channel_name, video_title):
     return False
 
 
+from concurrent.futures import ThreadPoolExecutor
+
+
+def _search_single_yt_query(q):
+    cmd = ["yt-dlp", "--dump-json", "--flat-playlist", "--no-warnings", f"ytsearch25:{q}"]
+    res = run_cmd_safe(cmd, label="YtDlpParallelSearch", timeout_sec=35, check=False)
+    items = []
+    for line in (res.stdout or "").splitlines():
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            items.append(json.loads(line))
+        except Exception:
+            pass
+    return items
+
+
 def discover_gta6_candidates(history_data):
     now_utc = datetime.now(timezone.utc)
     exhausted = set(history_data.get("exhausted_ids", []))
@@ -628,7 +648,7 @@ def discover_gta6_candidates(history_data):
     found = []
     seen_now = set()
 
-    # 1. Check partially scanned streams whose previous clip was deleted >= 24h ago
+    # 1. Revisit partially scanned streams whose previous clip was deleted >= 24h ago
     for vid_id, meta in list(revisit_pool.items()):
         if vid_id in exhausted:
             revisit_pool.pop(vid_id, None)
@@ -644,7 +664,7 @@ def discover_gta6_candidates(history_data):
                 seen_now.add(vid_id)
                 found.append({
                     "video_id": vid_id,
-                    "url": "https://youtube.com/" + "watch?v=" + vid_id,
+                    "url": "https://youtube.com" + "watch?v=" + vid_id,
                     "title": meta.get("title", "GTA 6 Gameplay"),
                     "channel_name": meta.get("channel_name", "GTA 6 Creator"),
                     "duration": float(meta.get("duration", 1200)),
@@ -653,53 +673,52 @@ def discover_gta6_candidates(history_data):
         except Exception:
             pass
 
-    # 2. Discover brand-new original creator gameplay streams/VODs
-    original_queries = [
+    # 2. Parallel wide-net search across 4 distinct gameplay angles (up to 100 raw results)
+    wide_queries = [
         "GTA 6 full gameplay playthrough",
         "Grand Theft Auto 6 livestream VOD",
         "GTA 6 live stream gameplay",
         "Grand Theft Auto VI playthrough part",
         "GTA 6 story mode gameplay",
+        "GTA 6 freeroam police chase gameplay",
+        "Grand Theft Auto 6 mission gameplay",
+        "GTA 6 online chaotic gameplay stream",
     ]
-    random.shuffle(original_queries)
+    random.shuffle(wide_queries)
+    chosen_queries = wide_queries[:4]
 
-    for q in original_queries[:2]:
-        cmd = ["yt-dlp", "--dump-json", "--flat-playlist", "--no-warnings", f"ytsearch20:{q}"]
-        res = run_cmd_safe(cmd, label="YtDlpSearch", timeout_sec=45, check=False)
-        for line in (res.stdout or "").splitlines():
-            line = line.strip()
-            if not line.startswith("{"):
-                continue
-            try:
-                info = json.loads(line)
-            except Exception:
-                continue
-            vid_id = str(info.get("id", "")).strip()
-            dur = float(info.get("duration") or 0)
-            title = str(info.get("title", "")).strip()
-            uploader = str(info.get("uploader") or info.get("channel") or "").strip()
+    raw_results = []
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        for batch in pool.map(_search_single_yt_query, chosen_queries):
+            raw_results.extend(batch)
 
-            if not vid_id or not uploader or vid_id in exhausted or vid_id in active_vault_ids or vid_id in seen_now:
-                continue
-            if vid_id in revisit_pool:
-                continue
-            if "#shorts" in title.lower() or is_compilation_or_clipper(uploader, title):
-                continue
-            if dur < 360 or dur > 21600:
-                continue
+    for info in raw_results:
+        vid_id = str(info.get("id", "")).strip()
+        dur = float(info.get("duration") or 0)
+        title = str(info.get("title", "")).strip()
+        uploader = str(info.get("uploader") or info.get("channel") or "").strip()
 
-            seen_now.add(vid_id)
-            found.append({
-                "video_id": vid_id,
-                "url": "https://youtube.com/" + "watch?v=" + vid_id,
-                "title": title,
-                "channel_name": uploader,
-                "duration": dur,
-                "is_revisit": False,
-            })
+        if not vid_id or not uploader or vid_id in exhausted or vid_id in active_vault_ids or vid_id in seen_now:
+            continue
+        if vid_id in revisit_pool:
+            continue
+        if "#shorts" in title.lower() or is_compilation_or_clipper(uploader, title):
+            continue
+        if dur < 300 or dur > 25200:
+            continue
+
+        seen_now.add(vid_id)
+        found.append({
+            "video_id": vid_id,
+            "url": "https://youtube.com" + "watch?v=" + vid_id,
+            "title": title,
+            "channel_name": uploader,
+            "duration": dur,
+            "is_revisit": False,
+        })
 
     random.shuffle(found)
-    return found[:8]
+    return found[:24]
 
 # ==============================================================================
 # PART 7 OF 40: SMART HEATMAP SCOUT & SECTION-ONLY STREAM DOWNLOADER
@@ -1008,7 +1027,36 @@ def _measure_clip_motion_stats(clip_path):
     return float(np.mean(diffs)), float(np.percentile(diffs, 85))
 
 
-def _evaluate_clip_with_gemini_vision(clip_path, motion_val, peak_motion, transcript_text, avoid_list):
+def _measure_audio_surge_ratio(clip_path):
+    wav_tmp = "tmp_score_audio.wav"
+    if os.path.exists(wav_tmp):
+        os.remove(wav_tmp)
+    res = run_cmd_safe(
+        ["ffmpeg", "-y", "-i", clip_path, "-vn", "-ac", "1", "-ar", "8000", "-f", "s16le", wav_tmp],
+        label="ScoreAudioPCM",
+        timeout_sec=25,
+        check=False,
+    )
+    if res.returncode != 0 or not os.path.exists(wav_tmp):
+        return 1.0
+    try:
+        raw = np.fromfile(wav_tmp, dtype=np.int16).astype(np.float32)
+        win = 8000
+        if len(raw) < win * 4:
+            return 1.0
+        trimmed = raw[: (len(raw) // win) * win].reshape(-1, win)
+        rms = np.sqrt(np.mean(trimmed ** 2, axis=1))
+        med = float(np.median(rms)) + 1e-5
+        p90 = float(np.percentile(rms, 90))
+        return round(min(4.0, p90 / med), 2)
+    except Exception:
+        return 1.0
+    finally:
+        if os.path.exists(wav_tmp):
+            os.remove(wav_tmp)
+
+
+def _evaluate_clip_with_gemini_vision(clip_path, motion_val, peak_motion, audio_surge, transcript_text, avoid_list):
     dur = get_media_duration(clip_path)
     api_key = os.environ.get("GEMINI_API_KEY", "").strip()
     if not api_key or dur < 10.0:
@@ -1016,7 +1064,7 @@ def _evaluate_clip_with_gemini_vision(clip_path, motion_val, peak_motion, transc
 
     imgs = []
     tmp_files = []
-    for idx, ratio in enumerate((0.12, 0.38, 0.64, 0.86)):
+    for idx, ratio in enumerate((0.10, 0.30, 0.50, 0.70, 0.90)):
         fn = f"gem_watch_{idx}.jpg"
         run_cmd_safe(
             ["ffmpeg", "-y", "-ss", f"{dur * ratio:.2f}", "-i", clip_path, "-vframes", "1", "-q:v", "4", fn],
@@ -1034,27 +1082,27 @@ def _evaluate_clip_with_gemini_vision(clip_path, motion_val, peak_motion, transc
     try:
         client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=30000))
         vision_prompt = (
-            "You are a ruthless human YouTube Shorts viewer who swipes away in 1.5 seconds if bored.\n"
-            "Score this GTA gameplay clip strictly on a 1.0 to 10.0 HUMAN VIRAL SCALE:\n"
-            "- 1.0 to 3.9: Menus, slow walking, routine driving, cutscene talking.\n"
-            "- 4.0 to 5.9: MID / ORDINARY gameplay (normal gunfight, basic car crash, standard commentary). "
-            "Do NOT inflate mid clips above 5.8!\n"
-            "- 6.8 to 7.9: Truly entertaining chaos, funny streamer panic, or clean stunt with a clear payoff.\n"
-            "- 8.0 to 9.8: Insane viral moment—unbelievable ragdoll glitch, 1-in-a-million escape, or hilarious scream.\n"
-            f"Motion stats: mean={motion_val:.1f}, peak={peak_motion:.1f}. "
+            "You are a ruthless human YouTube Shorts viewer who swipes away in 1.2 seconds if a clip feels 'mid'.\n"
+            "Inspect these 5 chronological frames (10%, 30%, 50%, 70%, 90%) and score on a strict 1.0 to 10.0 HUMAN VIRAL SCALE:\n"
+            "- 1.0 to 3.9: Menus, slow driving, walking, talking cutscenes, or empty roads.\n"
+            "- 4.0 to 5.9: MID / ORDINARY gameplay (normal gunfight, basic car crash, routine chase). "
+            "Be strict—85% of gameplay clips belong in 4.0-5.8!\n"
+            "- 6.8 to 7.9: Genuinely funny streamer panic, wild ragdoll physics, near-death escape, or unexpected twist.\n"
+            "- 8.0 to 9.8: Top 1% viral chaos—insane 1-in-a-million stunt, hilarious scream, or jaw-dropping explosion.\n"
+            f"Telemetry: motion_mean={motion_val:.1f}, motion_peak={peak_motion:.1f}, audio_surge={audio_surge:.2f}x.\n"
             f"Avoid past low-performing patterns: {avoid_list}.\n"
-            f"Transcript: '{(transcript_text or 'no speech')[:180]}'.\n"
-            'Return strict JSON: {"vision_score": 5.2, "hook_strength": 4.8, "payoff_strength": 5.5, "scene_summary": "short 12-word description"}'
+            f"Transcript: '{(transcript_text or 'no speech')[:200]}'.\n"
+            'Return strict JSON: {"vision_score": 5.0, "hook_strength": 4.6, "payoff_strength": 5.2, "is_mid_gameplay": true, "scene_summary": "short 14-word description"}'
         )
-        
+
         primary_m = CHANNEL_CONFIG["ai_council"].get("vision_model", "gemini-3.5-flash-lite")
         resp = None
-        for m_id in (primary_m, "gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3-flash-preview"):
+        for m_id in (primary_m, "gemini-3.5-flash-lite"):
             try:
                 resp = client.models.generate_content(
                     model=m_id,
                     contents=imgs + [vision_prompt],
-                    config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.15),
+                    config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.12),
                 )
                 if resp and resp.text:
                     break
@@ -1067,8 +1115,12 @@ def _evaluate_clip_with_gemini_vision(clip_path, motion_val, peak_motion, transc
         v_score = float(v_data.get("vision_score", 0.0))
         h_score = float(v_data.get("hook_strength", v_score))
         p_score = float(v_data.get("payoff_strength", v_score))
+        is_mid = bool(v_data.get("is_mid_gameplay", False))
         scene_desc = str(v_data.get("scene_summary", "")).strip()
-        combined = (v_score * 0.45) + (h_score * 0.30) + (p_score * 0.25)
+
+        combined = (v_score * 0.40) + (h_score * 0.30) + (p_score * 0.30)
+        if is_mid and combined > 5.8:
+            combined = 5.8
         return round(combined, 2), scene_desc
     except Exception as e:
         print(f"[Vision Scorer Warning] {e}", flush=True)
@@ -1080,6 +1132,63 @@ def _evaluate_clip_with_gemini_vision(clip_path, motion_val, peak_motion, transc
                     os.remove(tf)
                 except Exception:
                     pass
+
+
+def compute_clip_viral_score(clip_path, transcript_text="", history_data=None):
+    motion_val, peak_motion = _measure_clip_motion_stats(clip_path)
+    if motion_val < float(CHANNEL_CONFIG["min_motion_diff"]):
+        return 0.0
+
+    audio_surge = _measure_audio_surge_ratio(clip_path)
+    brain = (history_data or {}).get("ai_brain", {})
+    avoid_list = brain.get("avoid_patterns", [])[:5]
+    min_threshold = float(CHANNEL_CONFIG.get("min_human_clip_score", 6.8))
+
+    vision_combined, scene_desc = _evaluate_clip_with_gemini_vision(
+        clip_path, motion_val, peak_motion, audio_surge, transcript_text, avoid_list
+    )
+    if vision_combined < (min_threshold - 0.35):
+        print(
+            f"[Human Rubric Reject] Vision={vision_combined:.2f}/10 (< {min_threshold}) | Surge={audio_surge}x | '{scene_desc}'",
+            flush=True,
+        )
+        return 0.0
+
+    critic_res = call_council_text_ai(
+        role="critic",
+        system_prompt=(
+            "You are a ruthless YouTube Shorts retention editor. Ordinary gameplay ('mid') scores 4.5-5.7 and MUST be rejected. "
+            "Only score >= 6.8 if the clip has an immediate visual hook AND an unforgettable climax/payoff."
+        ),
+        user_prompt=(
+            f"Scene summary: '{scene_desc}'\n"
+            f"Transcript: '{(transcript_text or 'none')[:220]}'\n"
+            f"Telemetry: motion={motion_val:.1f}, peak={peak_motion:.1f}, audio_surge={audio_surge}x\n"
+            f"Vision preliminary score: {vision_combined:.2f}/10\n"
+            'Return strict JSON: {"critic_score": 6.9, "pass_viral_bar": true, "reason": "short 10-word reason"}'
+        ),
+        expect_json=True,
+        temperature=0.12,
+    )
+    c_score = float(critic_res.get("critic_score", vision_combined)) if critic_res else vision_combined
+    if isinstance(critic_res, dict) and critic_res.get("pass_viral_bar") is False and c_score > 6.0:
+        c_score = 6.0
+
+    telemetry_bonus = min(8.5, 5.2 + (motion_val - 5.0) * 0.28 + max(0.0, audio_surge - 1.3) * 0.85)
+    final_score = round(min(9.8, (vision_combined * 0.45) + (c_score * 0.35) + (telemetry_bonus * 0.20)), 2)
+
+    if final_score < min_threshold:
+        print(
+            f"[Critic AI Reject] Final={final_score:.2f}/10 (Vision={vision_combined:.2f}, Critic={c_score:.2f}, Tele={telemetry_bonus:.2f}) | '{scene_desc}'",
+            flush=True,
+        )
+        return 0.0
+
+    print(
+        f"[Human Rubric PASS] Score={final_score:.2f}/10 (Vision={vision_combined:.2f}, Critic={c_score:.2f}, Surge={audio_surge}x) | '{scene_desc}'",
+        flush=True,
+    )
+    return final_score
 
 # ==============================================================================
 # PART 10B OF 40: SECOND-OPINION RUTHLESS CRITIC AI & STRICT 6.8+ VAULT GATE
@@ -1584,9 +1693,12 @@ def build_top5_plan_from_vault(history_data):
         clean_ch, clean_title = sanitize_creator_and_title(
             item.get("channel_name"), item.get("source_title")
         )
-
+        
+        vid_id = str(item.get("video_id", "")).strip()
         segments.append({
             "rank": count - idx,
+            "video_id": vid_id,
+            "source_url": f"https://youtube.com{vid_id}" if vid_id else "",
             "video_path": vpath,
             "start_sec": round(start_s, 2),
             "end_sec": round(start_s + use_dur, 2),
@@ -2499,11 +2611,21 @@ def build_youtube_description(script_data, timeline_meta):
     credit_lines = []
     for seg in timeline_meta:
         ch = str(seg.get("channel_name", "GTA 6 Creator")).strip()
+        vid_id = str(seg.get("video_id") or "").strip()
+        if not vid_id:
+            vbase = os.path.basename(str(seg.get("video_path", "")))
+            if "_" in vbase:
+                vid_id = vbase.rsplit("_", 1)[0].strip()
+        src_url = str(seg.get("source_url") or (f"https://youtube.com{vid_id}" if vid_id else "")).strip()
         rank_num = seg.get("rank", "")
-        if ch and ch.lower() not in seen:
-            seen.add(ch.lower())
+        key = (ch.lower(), src_url)
+        if ch and key not in seen:
+            seen.add(key)
             prefix = f"#{rank_num} - " if len(timeline_meta) > 1 and rank_num else ""
-            credit_lines.append(f"• {prefix}{ch}")
+            if src_url:
+                credit_lines.append(f"• {prefix}{ch} — {src_url}")
+            else:
+                credit_lines.append(f"• {prefix}{ch}")
 
     credits_block = "\n".join(credit_lines) if credit_lines else "• Featured GTA 6 Creators"
     is_solo = len(timeline_meta) == 1
@@ -2518,7 +2640,7 @@ def build_youtube_description(script_data, timeline_meta):
     return (
         f"{script_data.get('title', 'GTA 6 Vice City Highlights')}\n\n"
         f"{mode_summary}\n\n"
-        f"Featured Creators (Full Credit):\n{credits_block}\n\n"
+        f"Featured Creators & Source Videos (Full Credit):\n{credits_block}\n\n"
         f"Subscribe to {CHANNEL_CONFIG['channel_name']} ({CHANNEL_CONFIG['channel_handle']}) "
         f"for daily GTA 6 countdowns & Vice City chaos!\n\n"
         f"#GTA6 #GrandTheftAuto6 #ViceCity #GTAVI #Shorts"
@@ -2589,8 +2711,10 @@ def cleanup_scratch_render_files():
         "captions.ass",
         "tmp_peak_scan.wav",
         "tmp_whisper_clip.wav",
+        "tmp_score_audio.wav",
         "long_stitched.mp4",
     )
+
     for fname in os.listdir("."):
         if fname in exact_names or any(fname.startswith(p) for p in prefixes):
             try:
