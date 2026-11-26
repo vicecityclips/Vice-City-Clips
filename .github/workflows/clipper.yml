@@ -83,7 +83,7 @@ jobs:
           git add history.json clip_vault/
           if ! git diff --staged --quiet; then
             git commit -m "chore: update clip vault and history state [skip ci]"
-            git pull --rebase origin main
+            git pull --rebase -X theirs origin main || (git rebase --abort && git pull --no-rebase -X ours origin main)
             git push origin main
           else
             echo "No changes to history.json or clip_vault/."
