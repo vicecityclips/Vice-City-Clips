@@ -57,16 +57,16 @@ CHANNEL_CONFIG = {
     "history_file": "history.json",
     "max_vault_items": 10,              # Caps repo size (~45 MB max) for free tier
     "min_clips_per_short": 2,           # Avoids raw solo clips for YPP monetization
-    "max_clips_per_short": 5,           # Combines up to 5 distinct creators
+    "max_clips_per_short": 3,           # Combines up to 5 distinct creators
     "max_new_clips_per_run": 4,         # Harvests up to 4 elite clips per hourly run
     "min_motion_diff": 5.2,             # Strictly rejects slow driving, menus & static lobbies
-    "min_human_clip_score": 6.8,        # Strict human bar — never lets mid clips enter vault
+    "min_human_clip_score": 7.0,        # Strict human bar — never lets mid clips enter vault
 
     # --- Strict Single-Slot Sequential Scheduler ---
     "max_scheduled_videos_allowed": 1,  # Never > 1 scheduled video in YouTube Studio
     "compile_lead_minutes": 60,         # Compiles & schedules 1 hour before slot
     "compile_window_tolerance_mins": 32,# Hourly cron catch window (28m to 92m prior)
-    "default_shorts_per_day": 3,        # Initial Shorts/day target (AI experiments)
+    "default_shorts_per_day": 2,        # Initial Shorts/day target (AI experiments)
     "default_longs_per_week": 2,        # Initial Longs/week target (AI experiments)
 
     # --- Self-Upgrading Brain Cadence ---
@@ -427,7 +427,6 @@ def _extract_video_id_from_url(url_str):
         _, after_v = tail[0], tail[1] if len(tail) > 1 else ""
         return next(iter(after_v.split("&")), "").strip()
     return ""
-
 
 def check_previous_short_published_public(history_data):
     short_uploads = [
