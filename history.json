@@ -343,6 +343,10 @@
         [
           3931.0,
           3959.1
+        ],
+        [
+          10236.0,
+          10264.1
         ]
       ],
       "last_deleted_at": "2026-11-25T15:53:04.962176+00:00"
@@ -367,6 +371,10 @@
         [
           143.0,
           171.1
+        ],
+        [
+          2300.0,
+          2328.1
         ]
       ],
       "last_deleted_at": "2026-11-25T15:53:55.063021+00:00"
@@ -403,9 +411,13 @@
         [
           3281.0,
           3309.1
+        ],
+        [
+          1065.0,
+          1093.1
         ]
       ],
-      "last_deleted_at": "2026-11-25T19:48:20.335957+00:00"
+      "last_deleted_at": "2026-11-26T20:14:47.962198+00:00"
     },
     "fUwxQ7Rf9SI": {
       "title": "Grand Theft Auto VI - 1 HOUR OF GTA 6 GAMEPLAY (4K)",
@@ -419,6 +431,10 @@
         [
           2170.0,
           2198.1
+        ],
+        [
+          3009.0,
+          3037.1
         ]
       ],
       "last_deleted_at": "2026-11-25T17:41:09.879027+00:00"
@@ -435,6 +451,10 @@
         [
           2365.0,
           2393.1
+        ],
+        [
+          3086.0,
+          3114.1
         ]
       ],
       "last_deleted_at": "2026-11-25T17:39:56.130864+00:00"
@@ -503,6 +523,10 @@
         [
           8534.0,
           8562.0
+        ],
+        [
+          7165.0,
+          7193.0
         ]
       ],
       "last_deleted_at": "2026-11-25T19:43:10.531975+00:00"
@@ -587,6 +611,10 @@
         [
           226.0,
           254.1
+        ],
+        [
+          3665.0,
+          3693.1
         ]
       ],
       "last_deleted_at": "2026-11-25T19:45:51.492724+00:00"
@@ -639,6 +667,10 @@
         [
           3600.0,
           3628.1
+        ],
+        [
+          3003.0,
+          3031.1
         ]
       ],
       "last_deleted_at": "2026-11-25T19:46:28.367321+00:00"
@@ -671,6 +703,10 @@
         [
           5678.0,
           5706.0
+        ],
+        [
+          1585.0,
+          1613.0
         ]
       ],
       "last_deleted_at": "2026-11-25T19:49:04.637223+00:00"
@@ -719,6 +755,10 @@
         [
           2678.0,
           2706.1
+        ],
+        [
+          8733.0,
+          8761.1
         ]
       ],
       "last_deleted_at": "2026-11-25T19:44:30.985410+00:00"
@@ -1347,6 +1387,10 @@
         [
           25.0,
           53.1
+        ],
+        [
+          740.0,
+          768.1
         ]
       ],
       "last_deleted_at": "2026-11-25T14:08:41.318357+00:00"
@@ -1363,6 +1407,10 @@
         [
           545.0,
           573.1
+        ],
+        [
+          740.0,
+          768.1
         ]
       ],
       "last_deleted_at": "2026-11-25T14:11:19.610309+00:00"
@@ -1379,6 +1427,10 @@
         [
           3921.0,
           3949.0
+        ],
+        [
+          1130.0,
+          1158.0
         ]
       ],
       "last_deleted_at": "2026-11-25T17:40:19.634739+00:00"
@@ -1395,6 +1447,10 @@
         [
           4705.0,
           4733.1
+        ],
+        [
+          5355.0,
+          5383.1
         ]
       ],
       "last_deleted_at": "2026-11-25T17:45:34.988177+00:00"
@@ -1929,6 +1985,116 @@
         [
           537.0,
           565.1
+        ]
+      ]
+    },
+    "eJKZKf0gL-s": {
+      "title": "SMii7Y Plays GTA 6 For The First Time",
+      "channel_name": "SMii7Y and SMii7Yplays",
+      "duration": 16761.0,
+      "checked_ranges": [
+        [
+          4321.0,
+          4349.1
+        ]
+      ]
+    },
+    "K24cuLXKr5c": {
+      "title": "GTA 6 Mission #20 - Tourist Trap (Chapter 1) [Full Walkthrough - PS5 4K]",
+      "channel_name": "GTA Series Videos",
+      "duration": 1244.0,
+      "checked_ranges": [
+        [
+          1195.0,
+          1223.0
+        ]
+      ]
+    },
+    "rE6vprqjjCo": {
+      "title": "GTA 6 - Mission #48 - The Cartel Heist | 4K Ultra HD",
+      "channel_name": "StoryDriven",
+      "duration": 2076.0,
+      "checked_ranges": [
+        [
+          350.0,
+          378.1
+        ]
+      ]
+    },
+    "-UuHA1h-Cf8": {
+      "title": "Can a TANK Survive a 6-STAR Police Chase in GTA 6? | PS5 Pro Gameplay",
+      "channel_name": "GameV",
+      "duration": 572.0,
+      "checked_ranges": [
+        [
+          480.0,
+          508.1
+        ]
+      ]
+    },
+    "9TLwyuGDSmI": {
+      "title": "GTA 6 Open World Police Chase Gameplay – Chaos in the Leonida Keys! | INSANE Police Chase on PS5 Pro",
+      "channel_name": "GameV",
+      "duration": 572.0,
+      "checked_ranges": [
+        [
+          285.0,
+          313.1
+        ]
+      ]
+    },
+    "6M2BKKsmiNc": {
+      "title": "GTA 6 - Car Heist and a high-speed Chase with the Cops (4K)",
+      "channel_name": "Sirloin",
+      "duration": 867.0,
+      "checked_ranges": [
+        [
+          285.0,
+          313.0
+        ]
+      ]
+    },
+    "rjJY2JONK9k": {
+      "title": "How Long Can You Survive With 5 STARS in Vice City? | GTA 6 INSANE Police Chase on PS5 Pro",
+      "channel_name": "GameV",
+      "duration": 595.0,
+      "checked_ranges": [
+        [
+          486.0,
+          514.1
+        ]
+      ]
+    },
+    "Gi5mAIf3d0w": {
+      "title": "GTA 6 - Driving Police Cars & Exploring Leonida Free Roam PS5 Pro 4K Gameplay! (No Commentary)",
+      "channel_name": "NoAnnoyingCommentary",
+      "duration": 3052.0,
+      "checked_ranges": [
+        [
+          1981.0,
+          2009.1
+        ]
+      ]
+    },
+    "ZPcw5Yl_lFk": {
+      "title": "GTA 6 IS HERE! My First Time Playing GTA 6!",
+      "channel_name": "TheGamingLemon",
+      "duration": 18846.0,
+      "checked_ranges": [
+        [
+          10561.0,
+          10589.1
+        ]
+      ]
+    },
+    "XYwMzjdCGFE": {
+      "title": "The Police Remember Everything… in GTA 6 Free Roam #1",
+      "channel_name": "WillyB",
+      "duration": 1225.0,
+      "checked_ranges": [
+        [
+          545.0,
+          573.1
         ]
       ]
     }
