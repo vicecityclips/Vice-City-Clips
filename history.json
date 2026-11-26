@@ -1267,9 +1267,13 @@
         [
           1916.0,
           1944.1
+        ],
+        [
+          1577.0,
+          1605.1
         ]
       ],
-      "last_deleted_at": "2026-11-25T12:56:24.979354+00:00"
+      "last_deleted_at": "2026-11-26T14:08:36.024957+00:00"
     },
     "CukTYtF72KY": {
       "title": "GTA 6 Walkthrough Gameplay Part 2 - JASON DUVAL (GRAND THEFT AUTO 6)",
@@ -1279,9 +1283,13 @@
         [
           1786.0,
           1814.1
+        ],
+        [
+          3606.0,
+          3634.1
         ]
       ],
-      "last_deleted_at": "2026-11-25T12:57:34.873024+00:00"
+      "last_deleted_at": "2026-11-26T14:06:54.736749+00:00"
     },
     "1GeQU0SEC-E": {
       "title": "Can You Live a Normal Life in GTA 6?",
@@ -1486,6 +1494,18 @@
         ]
       ],
       "last_deleted_at": "2026-11-26T13:00:59.503806+00:00"
+    },
+    "PS56fBzx46A": {
+      "title": "GTA 6 Free Roam Gameplay & Exploring the Map! (No Spoilers)",
+      "channel_name": "LuxeDude",
+      "duration": 18545.0,
+      "checked_ranges": [
+        [
+          13809.0,
+          13837.1
+        ]
+      ],
+      "last_deleted_at": "2026-11-26T14:07:58.376082+00:00"
     }
   },
   "exhausted_ids": [
