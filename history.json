@@ -1139,9 +1139,13 @@
         [
           2755.0,
           2783.1
+        ],
+        [
+          4575.0,
+          4603.1
         ]
       ],
-      "last_deleted_at": "2026-11-25T06:51:57.461893+00:00"
+      "last_deleted_at": "2026-11-26T08:20:56.737768+00:00"
     },
     "mATQ5maJ234": {
       "title": "GTA 6 Walkthrough Gameplay Part 3 - LUCIA CAMINOS (GRAND THEFT AUTO 6)",
@@ -1151,9 +1155,13 @@
         [
           608.0,
           636.1
+        ],
+        [
+          4516.0,
+          4544.1
         ]
       ],
-      "last_deleted_at": "2026-11-25T06:52:33.926626+00:00"
+      "last_deleted_at": "2026-11-26T08:21:53.178313+00:00"
     },
     "SuBCq8oBm6M": {
       "title": "GTA-6 Hindi LIVE STREAM | Grand Theft Auto VI | Hindi Gameplay 4K - 8",
@@ -1370,6 +1378,18 @@
         ]
       ],
       "last_deleted_at": "2026-11-26T06:53:13.182008+00:00"
+    },
+    "pUxlD-8gp94": {
+      "title": "GTA 6 - Chapter 2 FULL GAME Walkthrough (No Commentary Gameplay)",
+      "channel_name": "BeardBear",
+      "duration": 14695.0,
+      "checked_ranges": [
+        [
+          9060.0,
+          9088.0
+        ]
+      ],
+      "last_deleted_at": "2026-11-26T08:19:58.217972+00:00"
     }
   },
   "exhausted_ids": [
