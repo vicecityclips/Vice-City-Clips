@@ -1406,6 +1406,30 @@
         ]
       ],
       "last_deleted_at": "2026-11-26T08:19:58.217972+00:00"
+    },
+    "Tk6aFuAQIP8": {
+      "title": "GTA 6 Story Mode is Unhinged",
+      "channel_name": "special edd",
+      "duration": 8594.0,
+      "checked_ranges": [
+        [
+          2686.0,
+          2714.1
+        ]
+      ],
+      "last_deleted_at": "2026-11-26T11:47:03.027409+00:00"
+    },
+    "PDqRBXHcTxo": {
+      "title": "🔴 LIVE! - PLAYING GTA 6 RIGHT NOW! (PS5 PRO)",
+      "channel_name": "Typical Gamer",
+      "duration": 20856.0,
+      "checked_ranges": [
+        [
+          9515.0,
+          9543.1
+        ]
+      ],
+      "last_deleted_at": "2026-11-26T11:48:03.913558+00:00"
     }
   },
   "exhausted_ids": [
@@ -1470,7 +1494,7 @@
       "weight_humor_twist": 0.3,
       "creative_directive": "Start immediately mid-action in the first 1.5 seconds. Keep commentary razor-sharp, natural, and focused on the absurd payoff."
     },
-    "pending_target_slot": "2026-11-26T11:11:00Z",
+    "pending_target_slot": "2026-11-26T14:45:00Z",
     "last_hook_scout_date": "2026-11-26",
     "last_style_evolved_at": "2026-11-24T15:08:39.310812+00:00",
     "last_tuned_week": "",
