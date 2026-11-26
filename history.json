@@ -299,6 +299,10 @@
         [
           799.0,
           827.1
+        ],
+        [
+          285.0,
+          313.1
         ]
       ],
       "last_deleted_at": "2026-11-25T15:49:57.346651+00:00"
@@ -319,6 +323,10 @@
         [
           2696.0,
           2724.1
+        ],
+        [
+          7896.0,
+          7924.1
         ]
       ],
       "last_deleted_at": "2026-11-25T15:50:54.500372+00:00"
@@ -347,6 +355,10 @@
         [
           10236.0,
           10264.1
+        ],
+        [
+          4315.0,
+          4343.1
         ]
       ],
       "last_deleted_at": "2026-11-25T15:53:04.962176+00:00"
@@ -375,6 +387,10 @@
         [
           2300.0,
           2328.1
+        ],
+        [
+          1329.0,
+          1357.1
         ]
       ],
       "last_deleted_at": "2026-11-25T15:53:55.063021+00:00"
@@ -435,6 +451,10 @@
         [
           3009.0,
           3037.1
+        ],
+        [
+          1910.0,
+          1938.1
         ]
       ],
       "last_deleted_at": "2026-11-25T17:41:09.879027+00:00"
@@ -455,6 +475,10 @@
         [
           3086.0,
           3114.1
+        ],
+        [
+          1520.0,
+          1548.1
         ]
       ],
       "last_deleted_at": "2026-11-25T17:39:56.130864+00:00"
@@ -595,6 +619,10 @@
         [
           2160.0,
           2188.1
+        ],
+        [
+          988.0,
+          1016.1
         ]
       ],
       "last_deleted_at": "2026-11-25T17:42:07.998714+00:00"
@@ -615,6 +643,10 @@
         [
           3665.0,
           3693.1
+        ],
+        [
+          1784.0,
+          1812.1
         ]
       ],
       "last_deleted_at": "2026-11-25T19:45:51.492724+00:00"
@@ -635,6 +667,10 @@
         [
           212.0,
           240.1
+        ],
+        [
+          4900.0,
+          4928.1
         ]
       ],
       "last_deleted_at": "2026-11-25T17:43:45.640912+00:00"
@@ -671,6 +707,10 @@
         [
           3003.0,
           3031.1
+        ],
+        [
+          1118.0,
+          1146.1
         ]
       ],
       "last_deleted_at": "2026-11-25T19:46:28.367321+00:00"
@@ -759,6 +799,10 @@
         [
           8733.0,
           8761.1
+        ],
+        [
+          10821.0,
+          10849.1
         ]
       ],
       "last_deleted_at": "2026-11-25T19:44:30.985410+00:00"
@@ -775,6 +819,10 @@
         [
           4969.0,
           4997.1
+        ],
+        [
+          2030.0,
+          2058.1
         ]
       ],
       "last_deleted_at": "2026-11-25T19:47:19.916118+00:00"
@@ -1391,6 +1439,10 @@
         [
           740.0,
           768.1
+        ],
+        [
+          415.0,
+          443.1
         ]
       ],
       "last_deleted_at": "2026-11-25T14:08:41.318357+00:00"
@@ -1411,6 +1463,10 @@
         [
           740.0,
           768.1
+        ],
+        [
+          1065.0,
+          1093.1
         ]
       ],
       "last_deleted_at": "2026-11-25T14:11:19.610309+00:00"
@@ -1431,6 +1487,10 @@
         [
           1130.0,
           1158.0
+        ],
+        [
+          1981.0,
+          2009.0
         ]
       ],
       "last_deleted_at": "2026-11-25T17:40:19.634739+00:00"
@@ -1451,6 +1511,10 @@
         [
           5355.0,
           5383.1
+        ],
+        [
+          3730.0,
+          3758.1
         ]
       ],
       "last_deleted_at": "2026-11-25T17:45:34.988177+00:00"
@@ -2095,6 +2159,94 @@
         [
           545.0,
           573.1
+        ]
+      ]
+    },
+    "1GtrjKhSwzM": {
+      "title": "1 Hour of GTA 6 Free-Roam Gameplay",
+      "channel_name": "TGG",
+      "duration": 4035.0,
+      "checked_ranges": [
+        [
+          736.0,
+          764.1
+        ]
+      ]
+    },
+    "S3NEzaumEnQ": {
+      "title": "🗺️EXPLORING GTA 6🗺️",
+      "channel_name": "Kai Cenat Live",
+      "duration": 24260.0,
+      "checked_ranges": [
+        [
+          4122.0,
+          4150.1
+        ]
+      ]
+    },
+    "IRRkHoSqtr4": {
+      "title": "GTA 6 – CRAZY 6-Star Police Chase & Rampage at Vice Ocean Beach & Military Base!",
+      "channel_name": "GameV",
+      "duration": 490.0,
+      "checked_ranges": [
+        [
+          90.0,
+          118.1
+        ]
+      ]
+    },
+    "PDN9C5Iq9gA": {
+      "title": "1.5 Hours of GTA 6 Free Roam! (No Spoilers)",
+      "channel_name": "Typical Gamer",
+      "duration": 5382.0,
+      "checked_ranges": [
+        [
+          3992.0,
+          4020.0
+        ]
+      ]
+    },
+    "NwQKirh2dxE": {
+      "title": "Testing Everything In GTA 6",
+      "channel_name": "LazarBeam",
+      "duration": 841.0,
+      "checked_ranges": [
+        [
+          740.0,
+          768.1
+        ]
+      ]
+    },
+    "cJAKqpuVyoA": {
+      "title": "GTA 6 FIRST PLAY THROUGH - EPISODE 1!",
+      "channel_name": "H2ODelirious",
+      "duration": 13413.0,
+      "checked_ranges": [
+        [
+          283.0,
+          311.0
+        ]
+      ]
+    },
+    "52mTu06qp-w": {
+      "title": "I Spent 24 Hours Robbing Houses in GTA 6..",
+      "channel_name": "LennyBarn",
+      "duration": 1258.0,
+      "checked_ranges": [
+        [
+          866.0,
+          894.1
+        ]
+      ]
+    },
+    "q1jR850CE_o": {
+      "title": "Robbing Every Bank In GTA 6 Free Roam!",
+      "channel_name": "Kai Cenat Live",
+      "duration": 3814.0,
+      "checked_ranges": [
+        [
+          2170.0,
+          2198.1
         ]
       ]
     }
