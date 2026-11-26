@@ -1171,9 +1171,13 @@
         [
           15631.0,
           15659.1
+        ],
+        [
+          9190.0,
+          9218.1
         ]
       ],
-      "last_deleted_at": "2026-11-25T08:22:01.474508+00:00"
+      "last_deleted_at": "2026-11-26T09:56:40.763309+00:00"
     },
     "ESPAPqSizU4": {
       "title": "GTA 6 PLAYTHROUGH (PART 8)",
@@ -1183,9 +1187,13 @@
         [
           2625.0,
           2653.1
+        ],
+        [
+          610.0,
+          638.1
         ]
       ],
-      "last_deleted_at": "2026-11-25T08:23:04.236453+00:00"
+      "last_deleted_at": "2026-11-26T09:55:50.597862+00:00"
     },
     "eEERhKQZWmY": {
       "title": "The Beginning of GTA 6.. (Ep. 1)",
@@ -1454,7 +1462,7 @@
       "weight_humor_twist": 0.3,
       "creative_directive": "Start immediately mid-action in the first 1.5 seconds. Keep commentary razor-sharp, natural, and focused on the absurd payoff."
     },
-    "pending_target_slot": "2026-11-26T08:25:00Z",
+    "pending_target_slot": "2026-11-26T11:11:00Z",
     "last_hook_scout_date": "2026-11-26",
     "last_style_evolved_at": "2026-11-24T15:08:39.310812+00:00",
     "last_tuned_week": "",
