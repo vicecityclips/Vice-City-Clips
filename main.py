@@ -1054,16 +1054,20 @@ def _measure_audio_surge_ratio(clip_path):
         if os.path.exists(wav_tmp):
             os.remove(wav_tmp)
 
-
-def _evaluate_clip_with_gemini_vision(clip_path, motion_val, peak_motion, audio_surge, transcript_text, avoid_list=None):
+def _evaluate_clip_with_gemini_vision(clip_path, motion_val, peak_motion, audio_surge, transcript_text="", avoid_list=None):
     avoid_list = avoid_list or []
-    dur = float(get_media_duration(clip_path) or 0.0)
-    motion_val = float(motion_val or 0.0)
-    peak_motion = float(peak_motion or 0.0)
-    audio_surge = float(audio_surge or 0.0)
-    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
-    if not api_key or dur < 10.0:
-        return 0.0, ""
+    if isinstance(audio_surge, str) and not transcript_text:
+        transcript_text = audio_surge
+        audio_surge = 0.0
+    def _safe_float(v):
+        try:
+            return float(v or 0.0)
+        except (ValueError, TypeError):
+            return 0.0
+    dur = _safe_float(get_media_duration(clip_path))
+    motion_val = _safe_float(motion_val)
+    peak_motion = _safe_float(peak_motion)
+    audio_surge = _safe_float(audio_surge)
 
     imgs = []
     tmp_files = []
