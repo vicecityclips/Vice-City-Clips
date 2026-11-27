@@ -1817,7 +1817,7 @@ def _describe_clip_frames_with_vision(segments):
         )
 
     visual_notes = "\n".join(context_lines)
-    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("OPENROUTER_API_KEY") or os.environ.get("GROQ_API_KEY")
     if api_key and prompt_parts:
         try:
             client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=30000))
