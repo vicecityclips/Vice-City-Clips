@@ -1057,7 +1057,10 @@ def _measure_audio_surge_ratio(clip_path):
 
 def _evaluate_clip_with_gemini_vision(clip_path, motion_val, peak_motion, audio_surge, transcript_text, avoid_list=None):
     avoid_list = avoid_list or []
-    dur = get_media_duration(clip_path)
+    dur = float(get_media_duration(clip_path) or 0.0)
+    motion_val = float(motion_val or 0.0)
+    peak_motion = float(peak_motion or 0.0)
+    audio_surge = float(audio_surge or 0.0)
     api_key = os.environ.get("GEMINI_API_KEY", "").strip()
     if not api_key or dur < 10.0:
         return 0.0, ""
