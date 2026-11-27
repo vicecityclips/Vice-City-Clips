@@ -1835,9 +1835,13 @@
         [
           4575.0,
           4603.1
+        ],
+        [
+          4711.0,
+          4739.1
         ]
       ],
-      "last_deleted_at": "2026-11-26T08:20:56.737768+00:00"
+      "last_deleted_at": "2026-11-27T10:34:45.344328+00:00"
     },
     "mATQ5maJ234": {
       "title": "GTA 6 Walkthrough Gameplay Part 3 - LUCIA CAMINOS (GRAND THEFT AUTO 6)",
@@ -1851,9 +1855,13 @@
         [
           4516.0,
           4544.1
+        ],
+        [
+          4827.0,
+          4855.1
         ]
       ],
-      "last_deleted_at": "2026-11-26T08:21:53.178313+00:00"
+      "last_deleted_at": "2026-11-27T10:35:41.300728+00:00"
     },
     "SuBCq8oBm6M": {
       "title": "GTA-6 Hindi LIVE STREAM | Grand Theft Auto VI | Hindi Gameplay 4K - 8",
@@ -1867,9 +1875,13 @@
         [
           9190.0,
           9218.1
+        ],
+        [
+          2300.0,
+          2328.1
         ]
       ],
-      "last_deleted_at": "2026-11-26T09:56:40.763309+00:00"
+      "last_deleted_at": "2026-11-27T10:37:34.250809+00:00"
     },
     "ESPAPqSizU4": {
       "title": "GTA 6 PLAYTHROUGH (PART 8)",
@@ -1883,9 +1895,13 @@
         [
           610.0,
           638.1
+        ],
+        [
+          1065.0,
+          1093.1
         ]
       ],
-      "last_deleted_at": "2026-11-26T09:55:50.597862+00:00"
+      "last_deleted_at": "2026-11-27T10:36:37.637989+00:00"
     },
     "eEERhKQZWmY": {
       "title": "The Beginning of GTA 6.. (Ep. 1)",
@@ -2299,9 +2315,13 @@
         [
           9060.0,
           9088.0
+        ],
+        [
+          11396.0,
+          11424.0
         ]
       ],
-      "last_deleted_at": "2026-11-26T08:19:58.217972+00:00"
+      "last_deleted_at": "2026-11-27T10:38:17.707259+00:00"
     },
     "Tk6aFuAQIP8": {
       "title": "GTA 6 Story Mode is Unhinged",
@@ -3612,6 +3632,30 @@
         ]
       ],
       "last_deleted_at": "2026-11-27T08:36:24.679482+00:00"
+    },
+    "6Wsym0kTQgM": {
+      "title": "GTA 6 - Mission #65 - Power Play | 4K Ultra HD",
+      "channel_name": "StoryDriven",
+      "duration": 1441.0,
+      "checked_ranges": [
+        [
+          346.0,
+          374.1
+        ]
+      ],
+      "last_deleted_at": "2026-11-27T10:33:49.104658+00:00"
+    },
+    "uJ6xr8WAuqA": {
+      "title": "🔴 GTA 6 DAY 5 LIVE 🔴 61% COMPLETE  🔴 COMPLETING GRAND THEFT AUTO VI 🔴",
+      "channel_name": "ZerkaaPlays",
+      "duration": 11523.0,
+      "checked_ranges": [
+        [
+          2107.0,
+          2135.0
+        ]
+      ],
+      "last_deleted_at": "2026-11-27T10:35:01.176669+00:00"
     }
   },
   "exhausted_ids": [
@@ -3676,7 +3720,7 @@
       "weight_humor_twist": 0.3,
       "creative_directive": "Start immediately mid-action in the first 1.5 seconds. Keep commentary razor-sharp, natural, and focused on the absurd payoff."
     },
-    "pending_target_slot": "2026-11-27T09:15:00Z",
+    "pending_target_slot": "2026-11-27T13:35:00Z",
     "last_hook_scout_date": "2026-11-27",
     "last_style_evolved_at": "2026-11-24T15:08:39.310812+00:00",
     "last_tuned_week": "",
