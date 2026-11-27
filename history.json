@@ -2339,9 +2339,13 @@
         [
           2686.0,
           2714.1
+        ],
+        [
+          4191.0,
+          4219.1
         ]
       ],
-      "last_deleted_at": "2026-11-26T11:47:03.027409+00:00"
+      "last_deleted_at": "2026-11-27T12:58:42.184031+00:00"
     },
     "PDqRBXHcTxo": {
       "title": "🔴 LIVE! - PLAYING GTA 6 RIGHT NOW! (PS5 PRO)",
@@ -2351,9 +2355,13 @@
         [
           9515.0,
           9543.1
+        ],
+        [
+          2826.0,
+          2854.1
         ]
       ],
-      "last_deleted_at": "2026-11-26T11:48:03.913558+00:00"
+      "last_deleted_at": "2026-11-27T12:55:44.325060+00:00"
     },
     "g6cDeB24gmY": {
       "title": "GTA 6 Gameplay: Jason & Lucia Free Roam, Mini Games & More - 8 Minutes Gameplay Concept",
@@ -3712,6 +3720,66 @@
         ]
       ],
       "last_deleted_at": "2026-11-27T11:45:59.232436+00:00"
+    },
+    "E6wiV0eyU7w": {
+      "title": "Playing GTA 6 with 60+ FPS and DLSS 5 - This is Crazy!!",
+      "channel_name": "zWORMz Gaming",
+      "duration": 1327.0,
+      "checked_ranges": [
+        [
+          350.0,
+          378.1
+        ]
+      ],
+      "last_deleted_at": "2026-11-27T12:52:41.945780+00:00"
+    },
+    "AIvSTjArIZo": {
+      "title": "Do GTA 6 NPCs Actually Have Lives?",
+      "channel_name": "Sonny Evans",
+      "duration": 626.0,
+      "checked_ranges": [
+        [
+          25.0,
+          53.1
+        ]
+      ],
+      "last_deleted_at": "2026-11-27T12:53:48.410143+00:00"
+    },
+    "WLq6sojcQ0c": {
+      "title": "Steam Is Finally Dropping The Hammer On GTA6",
+      "channel_name": "OhNoItsAlexx Gaming",
+      "duration": 1047.0,
+      "checked_ranges": [
+        [
+          285.0,
+          313.1
+        ]
+      ],
+      "last_deleted_at": "2026-11-27T12:54:46.705144+00:00"
+    },
+    "IQZ7nDLWfWc": {
+      "title": "Why GTA 6 is bad.",
+      "channel_name": "AndyPants Gaming",
+      "duration": 954.0,
+      "checked_ranges": [
+        [
+          421.0,
+          449.1
+        ]
+      ],
+      "last_deleted_at": "2026-11-27T12:56:38.780532+00:00"
+    },
+    "5lfggQ8LG5A": {
+      "title": "Surviving 6 Stars in GTA 6",
+      "channel_name": "Trojan",
+      "duration": 549.0,
+      "checked_ranges": [
+        [
+          350.0,
+          378.1
+        ]
+      ],
+      "last_deleted_at": "2026-11-27T12:57:42.018615+00:00"
     }
   },
   "exhausted_ids": [
