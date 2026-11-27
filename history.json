@@ -3904,6 +3904,18 @@
         ]
       ],
       "last_deleted_at": "2026-11-27T15:52:43.715446+00:00"
+    },
+    "cEDUO1zjB5c": {
+      "title": "GTA 6 NPC Interactions Are UNREAL",
+      "channel_name": "toaster",
+      "duration": 522.0,
+      "checked_ranges": [
+        [
+          405.0,
+          433.1
+        ]
+      ],
+      "last_deleted_at": "2026-11-27T18:42:11.886272+00:00"
     }
   },
   "exhausted_ids": [
@@ -3920,10 +3932,10 @@
     "winning_patterns": [],
     "avoid_patterns": [],
     "daily_hook_trends": [
-      "I stole the [vehicle] from the [faction] in [game] and...",
-      "GTA 6 moment when [absurd action] broke the game",
-      "POV: You [escaped/rampaged/found] the [iconic thing] in [game]",
-      "Nobody: ... Absolutely nobody: ... [game] moment"
+      "Numbered-series cold open: \"[Game] WTF and Funny Moments! #[N]\" — the episode number is the hook; it implies a live back",
+      "Chaos-label curiosity gap: swap \"funny\" for \"WTF\" / \"FAILS\" / \"Glitches\" up front (\"[Game] FAILS - #[N]\"), because a neg",
+      "Creator-anchor + recency FOMO: \"Best of [Creator] [Game]!\" and \"[Creator] Best MOMENTS In [Game] SO FAR!\" — borrow the c",
+      "Rapid-fire triple-stack pacing: \"Best [Game] Fails, Glitches & Random Moments #N 😂\" — stack three payoff categories plus"
     ],
     "feature_requests": [
       "[v1.1] Python/FFmpeg auto-tuner that analyzes motion_mean/peak per clip and dynamically adjusts zoom_scale, color_vibrancy, and contrast_boost to match viral benchmarks, then renders with"
@@ -3968,8 +3980,8 @@
       "weight_humor_twist": 0.3,
       "creative_directive": "Start immediately mid-action in the first 1.5 seconds. Keep commentary razor-sharp, natural, and focused on the absurd payoff."
     },
-    "pending_target_slot": "2026-11-27T18:09:00Z",
-    "last_hook_scout_date": "2026-11-27",
+    "pending_target_slot": "2026-11-28T17:05:00Z",
+    "last_hook_scout_date": "2026-11-28",
     "last_style_evolved_at": "2026-11-24T15:08:39.310812+00:00",
     "last_tuned_week": "",
     "longs_published_this_week": []
