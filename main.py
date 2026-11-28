@@ -839,8 +839,9 @@ def download_candidate_video(candidate, out_path, target_window=None):
     vid_id = str(candidate["video_id"]).strip()
 
     attempts = [
-        {"client": "youtube:player_client=default,-tv_downgraded,tv", "use_cookies": True, "fmt": "b[height<=720]/bv*[height<=720]+ba/b"},
-        {"client": "youtube:player_client=tv,web", "use_cookies": True, "fmt": "bv*[height<=720]+ba/b[height<=720]/b"},
+        {"client": "youtube:player_client=web,mweb,web_safari", "use_cookies": True, "fmt": "bv*[height<=720][ext=mp4]+ba[ext=m4a]/b[height<=720]/best"},
+        {"client": "youtube:player_client=web_safari,mweb", "use_cookies": False, "fmt": "b[height<=720]/bv*[height<=720]+ba/best"},
+        {"client": "youtube:player_client=default", "use_cookies": True, "fmt": "b[height<=720]/best"},
     ]
 
     for idx, cfg in enumerate(attempts):
@@ -852,6 +853,8 @@ def download_candidate_video(candidate, out_path, target_window=None):
             "--js-runtimes", "deno",
             "--remote-components", "ejs:github",
             "--extractor-args", cfg["client"],
+            "--sleep-requests", "1",
+            "--no-check-certificates",
             "-f", cfg["fmt"],
             "--merge-output-format", "mp4",
             "--no-playlist",
@@ -1087,6 +1090,9 @@ def _evaluate_clip_with_gemini_vision(clip_path, motion_val, peak_motion, audio_
         return 0.0, ""
 
     try:
+        api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+        if not api_key:
+            return 0.0, ""
         client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=30000))
         vision_prompt = (
             "You are a ruthless human YouTube Shorts viewer who swipes away in 1.2 seconds if a clip feels 'mid'.\n"
@@ -1193,65 +1199,6 @@ def compute_clip_viral_score(clip_path, transcript_text="", history_data=None):
 
     print(
         f"[Human Rubric PASS] Score={final_score:.2f}/10 (Vision={vision_combined:.2f}, Critic={c_score:.2f}, Surge={audio_surge}x) | '{scene_desc}'",
-        flush=True,
-    )
-    return final_score
-
-# ==============================================================================
-# PART 10B OF 40: SECOND-OPINION RUTHLESS CRITIC AI & STRICT 6.8+ VAULT GATE
-# Subheading: Cross-Checks Vision Score With Critic AI To Block All Mid Clips
-# What This Code Does:
-#   - Sends Gemini's scene description + transcript to the Ruthless Critic AI
-#     (Groq GPT-OSS 120B / OpenRouter) for a second human-viewer opinion.
-#   - Rejects any clip below min_human_clip_score (6.8/10) so only truly
-#     engaging highlights ever enter clip_vault/.
-# ==============================================================================
-def compute_clip_viral_score(clip_path, transcript_text="", history_data=None):
-    motion_val, peak_motion = _measure_clip_motion_stats(clip_path)
-    if motion_val < float(CHANNEL_CONFIG["min_motion_diff"]):
-        return 0.0
-
-    brain = (history_data or {}).get("ai_brain", {})
-    avoid_list = brain.get("avoid_patterns", [])[:5]
-    min_threshold = float(CHANNEL_CONFIG.get("min_human_clip_score", 6.8))
-
-    vision_combined, scene_desc = _evaluate_clip_with_gemini_vision(
-        clip_path, motion_val, peak_motion, transcript_text, avoid_list
-    )
-    if vision_combined < (min_threshold - 0.3):
-        print(
-            f"[Human Rubric Reject] Vision={vision_combined:.2f}/10 (< {min_threshold}) | '{scene_desc}'",
-            flush=True,
-        )
-        return 0.0
-
-    critic_res = call_council_text_ai(
-        role="critic",
-        system_prompt=(
-            "You are a harsh YouTube Shorts retention editor. Most gameplay clips are 'mid' (4.5-5.5/10) "
-            "and must be rejected. Only pass clips >= 6.8 that a real human would watch twice."
-        ),
-        user_prompt=(
-            f"Scene summary: '{scene_desc}'\n"
-            f"Transcript: '{(transcript_text or 'none')[:200]}'\n"
-            f"Vision preliminary score: {vision_combined:.2f}/10\n"
-            'Return strict JSON: {"critic_score": 6.9, "reason": "short 10-word reason"}'
-        ),
-        expect_json=True,
-        temperature=0.15,
-    )
-    c_score = float(critic_res.get("critic_score", vision_combined)) if critic_res else vision_combined
-    final_score = round(min(9.8, (vision_combined * 0.55) + (c_score * 0.45)), 2)
-
-    if final_score < min_threshold:
-        print(
-            f"[Critic AI Reject] Final={final_score:.2f}/10 (Vision={vision_combined:.2f}, Critic={c_score:.2f}) | '{scene_desc}'",
-            flush=True,
-        )
-        return 0.0
-
-    print(
-        f"[Human Rubric PASS] Score={final_score:.2f}/10 (Vision={vision_combined:.2f}, Critic={c_score:.2f}) | '{scene_desc}'",
         flush=True,
     )
     return final_score
