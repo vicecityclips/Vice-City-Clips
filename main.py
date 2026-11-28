@@ -725,8 +725,10 @@ def discover_gta6_candidates(history_data):
 # What This Code Does:
 #   - Fetches stream metadata & YouTube's Most Replayed Heatmap BEFORE downloading
 #     any video, avoiding 3-hour VOD timeouts completely.
+#   - Uses cookieless android_vr / ios / web_safari clients so expired browser
+#     cookies never trigger HTTP 403 Forbidden blocks on GitHub runners.
 #   - Picks the highest unvisited heatmap spike (or smart unvisited segment on
-#     brand-new streams) and downloads ONLY a 45s window via --download-sections.
+#     brand-new streams) and downloads ONLY a 46s window via --download-sections.
 # ==============================================================================
 def _prepare_cookies_file():
     for candidate_path in ("yt_cookies.txt", "cookies.txt"):
@@ -754,19 +756,16 @@ def _is_range_blocked(ts_mid, blocked_ranges, pad=22.0):
 
 
 def find_smart_stream_window(vid_id, fallback_dur=1200.0, blocked_ranges=None):
-    cookies_file = _prepare_cookies_file()
     cmd = [
         "yt-dlp",
         "--js-runtimes", "deno",
         "--remote-components", "ejs:github",
-        "--extractor-args", "youtube:player_client=default,-tv_downgraded,tv",
+        "--extractor-args", "youtube:player_client=android_vr,ios,web_safari",
         "--dump-single-json",
         "--no-warnings",
         "--skip-download",
+        "--", vid_id,
     ]
-    if cookies_file:
-        cmd.extend(["--cookies", cookies_file])
-    cmd.extend(["--", vid_id])
 
     res = run_cmd_safe(cmd, label=f"HeatmapProbe_{vid_id}", timeout_sec=35, check=False)
     info = {}
@@ -835,19 +834,15 @@ def download_candidate_video(candidate, out_path, target_window=None):
     if os.path.exists(out_path):
         os.remove(out_path)
 
-    cookies_file = _prepare_cookies_file()
     vid_id = str(candidate["video_id"]).strip()
 
     attempts = [
-        {"client": "youtube:player_client=web,mweb,web_safari", "use_cookies": True, "fmt": "bv*[height<=720][ext=mp4]+ba[ext=m4a]/b[height<=720]/best"},
-        {"client": "youtube:player_client=web_safari,mweb", "use_cookies": False, "fmt": "b[height<=720]/bv*[height<=720]+ba/best"},
-        {"client": "youtube:player_client=default", "use_cookies": True, "fmt": "b[height<=720]/best"},
+        {"client": "youtube:player_client=android_vr,ios", "fmt": "b[height<=720]/bv*[height<=720]+ba/best"},
+        {"client": "youtube:player_client=web_safari,mweb", "fmt": "b[height<=720]/bv*[height<=720]+ba/best"},
+        {"client": "youtube:player_client=default", "fmt": "b[height<=720]/best"},
     ]
 
     for idx, cfg in enumerate(attempts):
-        if cfg["use_cookies"] and not cookies_file:
-            continue
-
         cmd = [
             "yt-dlp",
             "--js-runtimes", "deno",
@@ -865,8 +860,6 @@ def download_candidate_video(candidate, out_path, target_window=None):
         else:
             cmd.extend(["--max-filesize", "120M"])
 
-        if cfg["use_cookies"] and cookies_file:
-            cmd.extend(["--cookies", cookies_file])
         cmd.extend(["-o", out_path, "--", vid_id])
 
         res = run_cmd_safe(cmd, label=f"Download_{vid_id}_{idx}", timeout_sec=75, check=False)
