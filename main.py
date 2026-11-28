@@ -57,10 +57,10 @@ CHANNEL_CONFIG = {
     "history_file": "history.json",
     "max_vault_items": 10,              # Caps repo size (~45 MB max) for free tier
     "min_clips_per_short": 2,           # Avoids raw solo clips for YPP monetization
-    "max_clips_per_short": 3,           # Combines up to 5 distinct creators
-    "max_new_clips_per_run": 4,         # Harvests up to 4 elite clips per hourly run
-    "min_motion_diff": 5.2,             # Strictly rejects slow driving, menus & static lobbies
-    "min_human_clip_score": 7.0,        # Strict human bar — never lets mid clips enter vault
+    "max_clips_per_short": 3,           # Combines up to 3 distinct creators
+    "max_new_clips_per_run": 6,         # Harvests up to 6 elite clips per hourly run
+    "min_motion_diff": 4.8,             # Rejects static menus/slow walking while keeping fast chases
+    "min_human_clip_score": 6.4,        # Calibrated bar: rejects mid 4.0-5.8 clips, keeps top 10% action
 
     # --- Strict Single-Slot Sequential Scheduler ---
     "max_scheduled_videos_allowed": 1,  # Never > 1 scheduled video in YouTube Studio
@@ -663,7 +663,7 @@ def discover_gta6_candidates(history_data):
                 seen_now.add(vid_id)
                 found.append({
                     "video_id": vid_id,
-                    "url": "https://youtube.com" + "watch?v=" + vid_id,
+                    "url": "https://youtube.com" + "/watch?v=" + vid_id,
                     "title": meta.get("title", "GTA 6 Gameplay"),
                     "channel_name": meta.get("channel_name", "GTA 6 Creator"),
                     "duration": float(meta.get("duration", 1200)),
@@ -1650,7 +1650,7 @@ def build_top5_plan_from_vault(history_data):
         segments.append({
             "rank": count - idx,
             "video_id": vid_id,
-            "source_url": f"https://youtube.com{vid_id}" if vid_id else "",
+            "source_url": ("https://youtube.com" + "/watch?v=" + vid_id) if vid_id else "",
             "video_path": vpath,
             "start_sec": round(start_s, 2),
             "end_sec": round(start_s + use_dur, 2),
@@ -2568,7 +2568,7 @@ def build_youtube_description(script_data, timeline_meta):
             vbase = os.path.basename(str(seg.get("video_path", "")))
             if "_" in vbase:
                 vid_id = vbase.rsplit("_", 1)[0].strip()
-        src_url = str(seg.get("source_url") or (f"https://youtube.com{vid_id}" if vid_id else "")).strip()
+        src_url = str(seg.get("source_url") or (("https://youtube.com" + "/watch?v=" + vid_id) if vid_id else "")).strip()
         rank_num = seg.get("rank", "")
         key = (ch.lower(), src_url)
         if ch and key not in seen:
