@@ -296,6 +296,626 @@
         }
       ],
       "harvested_at": "2026-11-28T17:35:26.795146+00:00"
+    },
+    {
+      "vault_path": "clip_vault/dTXD4m4qomY_12s.mp4",
+      "video_id": "dTXD4m4qomY",
+      "channel_name": "Jay Dunna",
+      "source_title": "GTA 6 Chapter 1 COMPLETE WALKTHROUGH (All Missions & Missables)",
+      "source_total_dur": 1216.0,
+      "source_start_sec": 805.0,
+      "duration_sec": 28.0,
+      "local_peak_sec": 11.0,
+      "viral_score": 6.66,
+      "transcript_en": "It is kind of hidden around back. You can go through the doorway here for this mission. And this gaping is a bit tricky because you have to take care of all the enemies. Make sure Donnie doesn't have dying. If you find a grenade there, you can throw out the vehicle to make a little easier. Because it goes boom and takes care of a few of them there. And after that Donnie will get rolling and you're trying to catch up, but you won't. So you just follow him through town just trying to get towards it. And after that's done, you'll build a table with Lucia. And we are approaching the point of no return. So my recommendation...",
+      "word_events": [
+        {
+          "word": "It",
+          "start": 0.18,
+          "end": 0.7
+        },
+        {
+          "word": "is",
+          "start": 0.7,
+          "end": 0.98
+        },
+        {
+          "word": "kind",
+          "start": 0.98,
+          "end": 1.1
+        },
+        {
+          "word": "of",
+          "start": 1.1,
+          "end": 1.2
+        },
+        {
+          "word": "hidden",
+          "start": 1.2,
+          "end": 1.3
+        },
+        {
+          "word": "around",
+          "start": 1.3,
+          "end": 1.6
+        },
+        {
+          "word": "back.",
+          "start": 1.6,
+          "end": 1.86
+        },
+        {
+          "word": "You",
+          "start": 1.98,
+          "end": 1.98
+        },
+        {
+          "word": "can",
+          "start": 1.98,
+          "end": 2.1
+        },
+        {
+          "word": "go",
+          "start": 2.1,
+          "end": 2.24
+        },
+        {
+          "word": "through",
+          "start": 2.24,
+          "end": 2.38
+        },
+        {
+          "word": "the",
+          "start": 2.38,
+          "end": 2.54
+        },
+        {
+          "word": "doorway",
+          "start": 2.54,
+          "end": 2.78
+        },
+        {
+          "word": "here",
+          "start": 2.78,
+          "end": 3.12
+        },
+        {
+          "word": "for",
+          "start": 3.12,
+          "end": 3.3
+        },
+        {
+          "word": "this",
+          "start": 3.3,
+          "end": 3.5
+        },
+        {
+          "word": "mission.",
+          "start": 3.5,
+          "end": 3.98
+        },
+        {
+          "word": "And",
+          "start": 4.44,
+          "end": 4.5
+        },
+        {
+          "word": "this",
+          "start": 4.5,
+          "end": 4.62
+        },
+        {
+          "word": "gaping",
+          "start": 4.62,
+          "end": 4.92
+        },
+        {
+          "word": "is",
+          "start": 4.92,
+          "end": 5.04
+        },
+        {
+          "word": "a",
+          "start": 5.04,
+          "end": 5.12
+        },
+        {
+          "word": "bit",
+          "start": 5.12,
+          "end": 5.22
+        },
+        {
+          "word": "tricky",
+          "start": 5.22,
+          "end": 5.44
+        },
+        {
+          "word": "because",
+          "start": 5.44,
+          "end": 5.7
+        },
+        {
+          "word": "you",
+          "start": 5.7,
+          "end": 5.82
+        },
+        {
+          "word": "have",
+          "start": 5.82,
+          "end": 6.02
+        },
+        {
+          "word": "to",
+          "start": 6.02,
+          "end": 6.12
+        },
+        {
+          "word": "take",
+          "start": 6.12,
+          "end": 6.36
+        },
+        {
+          "word": "care",
+          "start": 6.36,
+          "end": 6.56
+        },
+        {
+          "word": "of",
+          "start": 6.56,
+          "end": 6.68
+        },
+        {
+          "word": "all",
+          "start": 6.68,
+          "end": 6.78
+        },
+        {
+          "word": "the",
+          "start": 6.78,
+          "end": 6.86
+        },
+        {
+          "word": "enemies.",
+          "start": 6.86,
+          "end": 7.02
+        },
+        {
+          "word": "Make",
+          "start": 7.08,
+          "end": 7.28
+        },
+        {
+          "word": "sure",
+          "start": 7.28,
+          "end": 7.46
+        },
+        {
+          "word": "Donnie",
+          "start": 7.46,
+          "end": 7.74
+        },
+        {
+          "word": "doesn't",
+          "start": 7.74,
+          "end": 7.98
+        },
+        {
+          "word": "have",
+          "start": 7.98,
+          "end": 8.18
+        },
+        {
+          "word": "dying.",
+          "start": 8.18,
+          "end": 8.52
+        },
+        {
+          "word": "If",
+          "start": 9.06,
+          "end": 9.18
+        },
+        {
+          "word": "you",
+          "start": 9.18,
+          "end": 9.36
+        },
+        {
+          "word": "find",
+          "start": 9.36,
+          "end": 9.5
+        },
+        {
+          "word": "a",
+          "start": 9.5,
+          "end": 9.66
+        },
+        {
+          "word": "grenade",
+          "start": 9.66,
+          "end": 9.8
+        },
+        {
+          "word": "there,",
+          "start": 9.8,
+          "end": 10.08
+        },
+        {
+          "word": "you",
+          "start": 10.08,
+          "end": 10.12
+        },
+        {
+          "word": "can",
+          "start": 10.12,
+          "end": 10.26
+        },
+        {
+          "word": "throw",
+          "start": 10.26,
+          "end": 10.42
+        },
+        {
+          "word": "out",
+          "start": 10.42,
+          "end": 10.56
+        },
+        {
+          "word": "the",
+          "start": 10.56,
+          "end": 10.64
+        },
+        {
+          "word": "vehicle",
+          "start": 10.64,
+          "end": 10.82
+        },
+        {
+          "word": "to",
+          "start": 10.82,
+          "end": 10.96
+        },
+        {
+          "word": "make",
+          "start": 10.96,
+          "end": 11.1
+        },
+        {
+          "word": "a",
+          "start": 11.1,
+          "end": 11.26
+        },
+        {
+          "word": "little",
+          "start": 11.26,
+          "end": 11.38
+        },
+        {
+          "word": "easier.",
+          "start": 11.38,
+          "end": 11.7
+        },
+        {
+          "word": "Because",
+          "start": 11.92,
+          "end": 12.02
+        },
+        {
+          "word": "it",
+          "start": 12.02,
+          "end": 12.16
+        },
+        {
+          "word": "goes",
+          "start": 12.16,
+          "end": 12.36
+        },
+        {
+          "word": "boom",
+          "start": 12.36,
+          "end": 12.72
+        },
+        {
+          "word": "and",
+          "start": 12.72,
+          "end": 12.92
+        },
+        {
+          "word": "takes",
+          "start": 12.92,
+          "end": 13.12
+        },
+        {
+          "word": "care",
+          "start": 13.12,
+          "end": 13.38
+        },
+        {
+          "word": "of",
+          "start": 13.38,
+          "end": 13.5
+        },
+        {
+          "word": "a",
+          "start": 13.5,
+          "end": 13.62
+        },
+        {
+          "word": "few",
+          "start": 13.62,
+          "end": 13.72
+        },
+        {
+          "word": "of",
+          "start": 13.72,
+          "end": 13.88
+        },
+        {
+          "word": "them",
+          "start": 13.88,
+          "end": 13.96
+        },
+        {
+          "word": "there.",
+          "start": 13.96,
+          "end": 14.4
+        },
+        {
+          "word": "And",
+          "start": 14.82,
+          "end": 14.96
+        },
+        {
+          "word": "after",
+          "start": 14.96,
+          "end": 15.1
+        },
+        {
+          "word": "that",
+          "start": 15.1,
+          "end": 15.4
+        },
+        {
+          "word": "Donnie",
+          "start": 15.4,
+          "end": 15.62
+        },
+        {
+          "word": "will",
+          "start": 15.62,
+          "end": 15.74
+        },
+        {
+          "word": "get",
+          "start": 15.74,
+          "end": 15.96
+        },
+        {
+          "word": "rolling",
+          "start": 15.96,
+          "end": 16.26
+        },
+        {
+          "word": "and",
+          "start": 16.26,
+          "end": 16.7
+        },
+        {
+          "word": "you're",
+          "start": 16.7,
+          "end": 16.88
+        },
+        {
+          "word": "trying",
+          "start": 16.88,
+          "end": 17.04
+        },
+        {
+          "word": "to",
+          "start": 17.04,
+          "end": 17.16
+        },
+        {
+          "word": "catch",
+          "start": 17.16,
+          "end": 17.32
+        },
+        {
+          "word": "up,",
+          "start": 17.32,
+          "end": 17.66
+        },
+        {
+          "word": "but",
+          "start": 17.92,
+          "end": 17.92
+        },
+        {
+          "word": "you",
+          "start": 17.92,
+          "end": 18.04
+        },
+        {
+          "word": "won't.",
+          "start": 18.04,
+          "end": 18.62
+        },
+        {
+          "word": "So",
+          "start": 18.98,
+          "end": 19.08
+        },
+        {
+          "word": "you",
+          "start": 19.08,
+          "end": 19.24
+        },
+        {
+          "word": "just",
+          "start": 19.24,
+          "end": 19.44
+        },
+        {
+          "word": "follow",
+          "start": 19.44,
+          "end": 19.68
+        },
+        {
+          "word": "him",
+          "start": 19.68,
+          "end": 19.92
+        },
+        {
+          "word": "through",
+          "start": 19.92,
+          "end": 20.14
+        },
+        {
+          "word": "town",
+          "start": 20.14,
+          "end": 20.42
+        },
+        {
+          "word": "just",
+          "start": 20.42,
+          "end": 20.72
+        },
+        {
+          "word": "trying",
+          "start": 20.72,
+          "end": 20.84
+        },
+        {
+          "word": "to",
+          "start": 20.84,
+          "end": 20.94
+        },
+        {
+          "word": "get",
+          "start": 20.94,
+          "end": 21.06
+        },
+        {
+          "word": "towards",
+          "start": 21.06,
+          "end": 21.32
+        },
+        {
+          "word": "it.",
+          "start": 21.32,
+          "end": 21.9
+        },
+        {
+          "word": "And",
+          "start": 22.12,
+          "end": 22.28
+        },
+        {
+          "word": "after",
+          "start": 22.28,
+          "end": 22.44
+        },
+        {
+          "word": "that's",
+          "start": 22.44,
+          "end": 22.68
+        },
+        {
+          "word": "done,",
+          "start": 22.68,
+          "end": 22.86
+        },
+        {
+          "word": "you'll",
+          "start": 22.86,
+          "end": 23.0
+        },
+        {
+          "word": "build",
+          "start": 23.0,
+          "end": 23.2
+        },
+        {
+          "word": "a",
+          "start": 23.2,
+          "end": 23.34
+        },
+        {
+          "word": "table",
+          "start": 23.34,
+          "end": 23.56
+        },
+        {
+          "word": "with",
+          "start": 23.56,
+          "end": 23.72
+        },
+        {
+          "word": "Lucia.",
+          "start": 23.72,
+          "end": 24.18
+        },
+        {
+          "word": "And",
+          "start": 24.8,
+          "end": 25.0
+        },
+        {
+          "word": "we",
+          "start": 25.0,
+          "end": 25.14
+        },
+        {
+          "word": "are",
+          "start": 25.14,
+          "end": 25.34
+        },
+        {
+          "word": "approaching",
+          "start": 25.34,
+          "end": 25.72
+        },
+        {
+          "word": "the",
+          "start": 25.72,
+          "end": 26.02
+        },
+        {
+          "word": "point",
+          "start": 26.02,
+          "end": 26.28
+        },
+        {
+          "word": "of",
+          "start": 26.28,
+          "end": 26.6
+        },
+        {
+          "word": "no",
+          "start": 26.6,
+          "end": 26.76
+        },
+        {
+          "word": "return.",
+          "start": 26.76,
+          "end": 27.16
+        },
+        {
+          "word": "So",
+          "start": 27.34,
+          "end": 27.38
+        },
+        {
+          "word": "my",
+          "start": 27.38,
+          "end": 27.54
+        },
+        {
+          "word": "recommendation...",
+          "start": 27.54,
+          "end": 27.98
+        }
+      ],
+      "harvested_at": "2026-11-28T18:35:04.644097+00:00"
     }
   ],
   "scheduled_slots": [
@@ -2626,9 +3246,13 @@
         [
           153.0,
           181.0
+        ],
+        [
+          25.0,
+          53.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T17:45:52.741414+00:00"
+      "last_deleted_at": "2026-11-28T18:33:35.613569+00:00"
     },
     "DBI371PR9Us": {
       "title": "GTA 6 Mission #11 - Coming Home (Chapter 1) [Full Walkthrough - PS5 4K]",
@@ -2774,9 +3398,13 @@
         [
           20697.0,
           20725.1
+        ],
+        [
+          1325.0,
+          1353.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T17:45:23.824204+00:00"
+      "last_deleted_at": "2026-11-28T18:30:54.704660+00:00"
     },
     "DvBCL1Bvk6g": {
       "title": "GTA 6 - Mission #63 - Child's Play | 4K Ultra HD",
@@ -4556,6 +5184,41 @@
         ]
       ],
       "last_deleted_at": "2026-11-28T17:38:55.682059+00:00"
+    },
+    "DYDz_cIgoAw": {
+      "title": "GTA 6 Good Ending (Jason & Lucia Survive) - Grand Theft Auto VI",
+      "channel_name": "MELOO",
+      "duration": 535.0,
+      "checked_ranges": [
+        [
+          415.0,
+          443.0
+        ]
+      ],
+      "last_deleted_at": "2026-11-28T18:31:16.001763+00:00"
+    },
+    "PfOBJ6UoQYU": {
+      "title": "Fall asleep while I play GTA VI",
+      "channel_name": "MadMorph",
+      "duration": 14511.0,
+      "checked_ranges": [
+        [
+          7506.0,
+          7534.0
+        ]
+      ],
+      "last_deleted_at": "2026-11-28T18:32:36.416882+00:00"
+    },
+    "dTXD4m4qomY": {
+      "title": "GTA 6 Chapter 1 COMPLETE WALKTHROUGH (All Missions & Missables)",
+      "channel_name": "Jay Dunna",
+      "duration": 1216.0,
+      "checked_ranges": [
+        [
+          805.0,
+          833.0
+        ]
+      ]
     }
   },
   "exhausted_ids": [],
@@ -4570,10 +5233,10 @@
     "winning_patterns": [],
     "avoid_patterns": [],
     "daily_hook_trends": [
-      "Numbered-series cold open: \"[Game] WTF and Funny Moments! #[N]\" — the episode number is the hook; it implies a live back",
-      "Chaos-label curiosity gap: swap \"funny\" for \"WTF\" / \"FAILS\" / \"Glitches\" up front (\"[Game] FAILS - #[N]\"), because a neg",
-      "Creator-anchor + recency FOMO: \"Best of [Creator] [Game]!\" and \"[Creator] Best MOMENTS In [Game] SO FAR!\" — borrow the c",
-      "Rapid-fire triple-stack pacing: \"Best [Game] Fails, Glitches & Random Moments #N 😂\" — stack three payoff categories plus"
+      "I found a wild monster in [game]",
+      "GTA 6 WTF and Funny Moments Part #[N]",
+      "Top 10 FUNNIEST [creator] [game] Moments",
+      "50 INSANE Details In [game]"
     ],
     "feature_requests": [
       "[v1.1] Python/FFmpeg auto-tuner that analyzes motion_mean/peak per clip and dynamically adjusts zoom_scale, color_vibrancy, and contrast_boost to match viral benchmarks, then renders with",
@@ -4619,8 +5282,8 @@
       "weight_humor_twist": 0.3,
       "creative_directive": "Start immediately mid-action within 1.5s, then execute a 1.2x climax zoom at the absurd payoff point with visual emphasis and preserved action audio."
     },
-    "pending_target_slot": "2026-11-28T18:00:00Z",
-    "last_hook_scout_date": "2026-11-28",
+    "pending_target_slot": "2026-11-29T09:15:00Z",
+    "last_hook_scout_date": "2026-11-29",
     "last_style_evolved_at": "2026-11-28T15:46:45.808523+00:00",
     "last_tuned_week": "",
     "longs_published_this_week": []
