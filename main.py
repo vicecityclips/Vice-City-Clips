@@ -834,15 +834,19 @@ def download_candidate_video(candidate, out_path, target_window=None):
     if os.path.exists(out_path):
         os.remove(out_path)
 
+    cookies_file = _prepare_cookies_file()
     vid_id = str(candidate["video_id"]).strip()
 
     attempts = [
-        {"client": "youtube:player_client=android_vr,ios", "fmt": "b[height<=720]/bv*[height<=720]+ba/best"},
-        {"client": "youtube:player_client=mweb,web_safari", "fmt": "b[height<=720]/bv*[height<=720]+ba/best"},
-        {"client": "youtube:player_client=default", "fmt": "b[height<=720]/best"},
+        {"client": "youtube:player_client=web,mweb,web_safari", "use_cookies": True, "fmt": "b[height<=720]/bv*[height<=720]+ba/best"},
+        {"client": "youtube:player_client=android_vr,ios", "use_cookies": False, "fmt": "b[height<=720]/bv*[height<=720]+ba/best"},
+        {"client": "youtube:player_client=default", "use_cookies": True, "fmt": "b[height<=720]/best"},
     ]
 
     for idx, cfg in enumerate(attempts):
+        if cfg["use_cookies"] and not cookies_file:
+            continue
+
         cmd = [
             "yt-dlp",
             "--js-runtimes", "deno",
@@ -860,6 +864,9 @@ def download_candidate_video(candidate, out_path, target_window=None):
             cmd.extend(["--download-sections", f"*{w0:.1f}-{w1:.1f}", "--force-keyframes-at-cuts"])
         else:
             cmd.extend(["--max-filesize", "120M"])
+
+        if cfg["use_cookies"] and cookies_file:
+            cmd.extend(["--cookies", cookies_file])
 
         cmd.extend(["-o", out_path, "--", vid_id])
 
