@@ -721,14 +721,13 @@ def discover_gta6_candidates(history_data):
 
 # ==============================================================================
 # PART 7 OF 40: SMART HEATMAP SCOUT & SECTION-ONLY STREAM DOWNLOADER
-# Subheading: Finds YouTube Most-Replayed Heatmap Peaks & Downloads Only 45s
+# Subheading: Finds YouTube Most-Replayed Heatmap Peaks & Downloads Only 46s
 # What This Code Does:
-#   - Fetches stream metadata & YouTube's Most Replayed Heatmap BEFORE downloading
-#     any video, avoiding 3-hour VOD timeouts completely.
-#   - Skips 18+ age-restricted videos via --match-filter "age_limit < 18" so
-#     cookieless android_vr / ios / web_safari clients never stall on age gates.
-#   - Picks the highest unvisited heatmap spike (or smart unvisited segment on
-#     brand-new streams) and downloads ONLY a 46s window via --download-sections.
+#   - Probes stream metadata & Most-Replayed Heatmap first; if datacenter IP
+#     blocks JSON metadata, safely falls back to candidate duration so streams
+#     are never falsely retired.
+#   - Skips 18+ age-gated trailers via --age-limit 17 without invalid filter syntax.
+#   - Downloads ONLY a 46s window via --download-sections across multiple clients.
 # ==============================================================================
 def _prepare_cookies_file():
     for candidate_path in ("yt_cookies.txt", "cookies.txt"):
@@ -760,8 +759,8 @@ def find_smart_stream_window(vid_id, fallback_dur=1200.0, blocked_ranges=None):
         "yt-dlp",
         "--js-runtimes", "deno",
         "--remote-components", "ejs:github",
-        "--extractor-args", "youtube:player_client=android_vr,ios,web_safari",
-        "--match-filter", "age_limit < 18",
+        "--extractor-args", "youtube:player_client=android_vr,ios,mweb,web_safari",
+        "--age-limit", "17",
         "--dump-single-json",
         "--no-warnings",
         "--skip-download",
@@ -779,14 +778,11 @@ def find_smart_stream_window(vid_id, fallback_dur=1200.0, blocked_ranges=None):
             except Exception:
                 pass
 
-    if not info:
-        return None, 0.0
-
     true_dur = float(info.get("duration") or fallback_dur or 0.0)
     if true_dur < 45.0:
         return None, 0.0
 
-    # 1. Check YouTube's Most Replayed Heatmap peaks first
+    # 1. Check YouTube's Most Replayed Heatmap peaks first (when metadata probe succeeds)
     heatmap = info.get("heatmap") or []
     ranked_peaks = []
     for entry in heatmap:
@@ -812,7 +808,7 @@ def find_smart_stream_window(vid_id, fallback_dur=1200.0, blocked_ranges=None):
         )
         return (w_start, w_end), true_dur
 
-    # 2. Fallback for brand-new streams without heatmap: pick an unvisited 46s zone
+    # 2. Smart Scan fallback: pick an unvisited 46s zone using true_dur / fallback_dur
     step = 65.0
     candidate_mids = []
     cursor = 35.0
@@ -828,7 +824,7 @@ def find_smart_stream_window(vid_id, fallback_dur=1200.0, blocked_ranges=None):
     w_start = max(0.0, round(chosen_mid - 22.0, 1))
     w_end = min(true_dur, round(w_start + 46.0, 1))
     print(
-        f"[Smart Scan] {vid_id}: no heatmap yet -> sampling {w_start}s-{w_end}s of {true_dur:.0f}s stream",
+        f"[Smart Scan] {vid_id}: sampling {w_start}s-{w_end}s of {true_dur:.0f}s stream",
         flush=True,
     )
     return (w_start, w_end), true_dur
@@ -842,7 +838,7 @@ def download_candidate_video(candidate, out_path, target_window=None):
 
     attempts = [
         {"client": "youtube:player_client=android_vr,ios", "fmt": "b[height<=720]/bv*[height<=720]+ba/best"},
-        {"client": "youtube:player_client=web_safari,mweb", "fmt": "b[height<=720]/bv*[height<=720]+ba/best"},
+        {"client": "youtube:player_client=mweb,web_safari", "fmt": "b[height<=720]/bv*[height<=720]+ba/best"},
         {"client": "youtube:player_client=default", "fmt": "b[height<=720]/best"},
     ]
 
@@ -852,7 +848,7 @@ def download_candidate_video(candidate, out_path, target_window=None):
             "--js-runtimes", "deno",
             "--remote-components", "ejs:github",
             "--extractor-args", cfg["client"],
-            "--match-filter", "age_limit < 18",
+            "--age-limit", "17",
             "--sleep-requests", "1",
             "--no-check-certificates",
             "-f", cfg["fmt"],
