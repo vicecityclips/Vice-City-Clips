@@ -41,7 +41,158 @@
       "timestamp": "2026-11-23T04:59:34.059527+00:00"
     }
   ],
-  "vault_queue": [],
+  "vault_queue": [
+    {
+      "vault_path": "clip_vault/RVpApoEkOao_14s.mp4",
+      "video_id": "RVpApoEkOao",
+      "channel_name": "TmarTn2",
+      "source_title": "Grand Theft Auto 6 - Part 1 - The Beginning",
+      "source_total_dur": 3356.82,
+      "source_start_sec": 872.0,
+      "duration_sec": 28.0,
+      "local_peak_sec": 11.0,
+      "viral_score": 6.78,
+      "transcript_en": "Show us that noise. Bro what the fuarts! Run! Run! Run! They'd had a die pack on the cast and it. Okay, okay, let's go, let's go.",
+      "word_events": [
+        {
+          "word": "Show",
+          "start": 1.07,
+          "end": 1.69
+        },
+        {
+          "word": "us",
+          "start": 1.69,
+          "end": 1.85
+        },
+        {
+          "word": "that",
+          "start": 1.85,
+          "end": 2.15
+        },
+        {
+          "word": "noise.",
+          "start": 2.15,
+          "end": 2.95
+        },
+        {
+          "word": "Bro",
+          "start": 7.6,
+          "end": 7.98
+        },
+        {
+          "word": "what",
+          "start": 7.98,
+          "end": 8.3
+        },
+        {
+          "word": "the",
+          "start": 8.3,
+          "end": 8.6
+        },
+        {
+          "word": "fuarts!",
+          "start": 8.6,
+          "end": 9.5
+        },
+        {
+          "word": "Run!",
+          "start": 15.08,
+          "end": 15.64
+        },
+        {
+          "word": "Run!",
+          "start": 16.42,
+          "end": 16.68
+        },
+        {
+          "word": "Run!",
+          "start": 21.51,
+          "end": 21.61
+        },
+        {
+          "word": "They'd",
+          "start": 21.61,
+          "end": 22.01
+        },
+        {
+          "word": "had",
+          "start": 22.01,
+          "end": 22.07
+        },
+        {
+          "word": "a",
+          "start": 22.07,
+          "end": 22.29
+        },
+        {
+          "word": "die",
+          "start": 22.29,
+          "end": 22.45
+        },
+        {
+          "word": "pack",
+          "start": 22.45,
+          "end": 22.73
+        },
+        {
+          "word": "on",
+          "start": 22.73,
+          "end": 22.95
+        },
+        {
+          "word": "the",
+          "start": 22.95,
+          "end": 23.09
+        },
+        {
+          "word": "cast",
+          "start": 23.09,
+          "end": 23.35
+        },
+        {
+          "word": "and",
+          "start": 23.35,
+          "end": 23.57
+        },
+        {
+          "word": "it.",
+          "start": 23.57,
+          "end": 24.07
+        },
+        {
+          "word": "Okay,",
+          "start": 26.6,
+          "end": 26.98
+        },
+        {
+          "word": "okay,",
+          "start": 27.28,
+          "end": 27.56
+        },
+        {
+          "word": "let's",
+          "start": 27.68,
+          "end": 27.74
+        },
+        {
+          "word": "go,",
+          "start": 27.74,
+          "end": 27.78
+        },
+        {
+          "word": "let's",
+          "start": 27.86,
+          "end": 27.9
+        },
+        {
+          "word": "go.",
+          "start": 27.9,
+          "end": 27.98
+        }
+      ],
+      "harvested_at": "2026-11-28T13:02:54.020451+00:00"
+    }
+  ],
   "scheduled_slots": [
     "2026-11-23T02:00:00Z",
     "2026-11-23T14:00:00Z",
@@ -175,9 +326,13 @@
         [
           96.0,
           124.1
+        ],
+        [
+          2690.0,
+          2718.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T02:21:19.524328+00:00"
+      "last_deleted_at": "2026-11-28T13:03:29.194910+00:00"
     },
     "fa20ZBsbp34": {
       "title": "I Tried to Put GTA 6's Entire Story in the Correct Order",
@@ -223,9 +378,12 @@
         [
           1981.0,
           2009.1
+        ],
+        [
+          872.0,
+          900.0
         ]
-      ],
-      "last_deleted_at": "2026-11-27T08:33:16.807491+00:00"
+      ]
     },
     "Zh6VrJuW_i8": {
       "title": "GTA 6 - Prologue [Full Walkthrough - PS5 4K]",
@@ -279,9 +437,13 @@
         [
           1912.0,
           1940.1
+        ],
+        [
+          1851.0,
+          1879.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T08:20:14.867787+00:00"
+      "last_deleted_at": "2026-11-28T13:03:57.739377+00:00"
     },
     "ys_3h2nuNCY": {
       "title": "GTA 6 Gameplay Walkthrough Part 1 - INTRO (PS5 PRO 4K)",
@@ -367,9 +529,13 @@
         [
           2430.0,
           2458.1
+        ],
+        [
+          3086.0,
+          3114.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T01:37:11.121330+00:00"
+      "last_deleted_at": "2026-11-28T12:56:10.169533+00:00"
     },
     "eC0Uenr6-kg": {
       "title": "GTA 6 Gameplay Walkthrough Part 2 FULL GAME [4K PS5 PRO] - No Commentary",
@@ -447,9 +613,13 @@
         [
           1006.0,
           1034.1
+        ],
+        [
+          2550.0,
+          2578.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T01:49:32.276666+00:00"
+      "last_deleted_at": "2026-11-28T12:59:37.960208+00:00"
     },
     "V8gA8RwMvEs": {
       "title": "GTA 6 Gameplay Walkthrough Part 5 FULL GAME [4K PS5 PRO] - No Commentary",
@@ -847,9 +1017,13 @@
         [
           1786.0,
           1814.1
+        ],
+        [
+          17.0,
+          45.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T01:58:43.757950+00:00"
+      "last_deleted_at": "2026-11-28T13:00:07.198925+00:00"
     },
     "78_aTj6ay5M": {
       "title": "GTA 6 - ALL ENDINGS (Good, Bad, Secret, True)",
@@ -911,9 +1085,13 @@
         [
           12251.0,
           12279.1
+        ],
+        [
+          3535.0,
+          3563.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T02:28:07.084256+00:00"
+      "last_deleted_at": "2026-11-28T13:01:24.165703+00:00"
     },
     "cyAPzaLcEsM": {
       "title": "1 Hour of GTA 6 Free Roam Gameplay! (No Spoilers)",
@@ -1151,9 +1329,13 @@
         [
           16984.0,
           17012.0
+        ],
+        [
+          673.0,
+          701.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T00:50:45.636493+00:00"
+      "last_deleted_at": "2026-11-28T13:00:56.924226+00:00"
     },
     "4H1EnZRwoQ0": {
       "title": "GTA 6 - Full Chapter 5 Walkthrough (No Commentary) 4K",
@@ -1195,9 +1377,13 @@
         [
           2684.0,
           2712.1
+        ],
+        [
+          8534.0,
+          8562.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T00:52:58.937599+00:00"
+      "last_deleted_at": "2026-11-28T12:59:13.698698+00:00"
     },
     "-D_wt4GXmNw": {
       "title": "GTA 6 Gameplay Walkthrough Part 3 FULL GAME [4K PS5 PRO] - No Commentary",
@@ -1547,9 +1733,13 @@
         [
           216.0,
           244.1
+        ],
+        [
+          4892.0,
+          4920.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T08:29:00.474465+00:00"
+      "last_deleted_at": "2026-11-28T13:01:49.784482+00:00"
     },
     "l-oEKLu4Y3w": {
       "title": "BACK AT IT AGAIN IN THE VICE CITY!!!! | NO PROMOTIONS",
@@ -1735,9 +1925,13 @@
         [
           870.0,
           898.1
+        ],
+        [
+          90.0,
+          118.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T02:42:11.689923+00:00"
+      "last_deleted_at": "2026-11-28T13:02:14.687076+00:00"
     },
     "iR2NLwDw6JE": {
       "title": "Robbing A MANSION in GTA 6! (Rare Cars)",
@@ -1851,9 +2045,13 @@
         [
           218.0,
           246.1
+        ],
+        [
+          4902.0,
+          4930.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T02:14:27.206685+00:00"
+      "last_deleted_at": "2026-11-28T13:05:24.660919+00:00"
     },
     "vLBOsP_WLU8": {
       "title": "GTA 6 Walkthrough Gameplay Part 8 - VICKI (GRAND THEFT AUTO 6)",
@@ -1919,9 +2117,13 @@
         [
           1325.0,
           1353.1
+        ],
+        [
+          2824.0,
+          2852.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T08:19:02.637519+00:00"
+      "last_deleted_at": "2026-11-28T12:58:28.202637+00:00"
     },
     "jqkhD_E_WnA": {
       "title": "Grand Theft Auto VI Gameplay Walkthrough Part 11 - No Commentary (GTA 6 PS5 Gameplay)",
@@ -1947,9 +2149,13 @@
         [
           5160.0,
           5188.0
+        ],
+        [
+          1000.0,
+          1028.1
         ]
       ],
-      "last_deleted_at": "2026-11-27T08:23:59.621862+00:00"
+      "last_deleted_at": "2026-11-28T12:56:35.746315+00:00"
     },
     "pUxlD-8gp94": {
       "title": "GTA 6 - Chapter 2 FULL GAME Walkthrough (No Commentary Gameplay)",
@@ -2808,9 +3014,13 @@
         [
           4380.0,
           4408.1
+        ],
+        [
+          19856.0,
+          19884.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T01:40:20.265830+00:00"
+      "last_deleted_at": "2026-11-28T13:04:53.971534+00:00"
     },
     "Sv1_DptbiYE": {
       "title": "GTA 6 Mission #9 - Island Dreams (Chapter 1) [Full Walkthrough - PS5 4K]",
@@ -2868,9 +3078,13 @@
         [
           941.0,
           969.1
+        ],
+        [
+          3344.0,
+          3372.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T02:23:06.137085+00:00"
+      "last_deleted_at": "2026-11-28T12:58:01.149143+00:00"
     },
     "QpnimMR63uA": {
       "title": "The Vanoss Crew Plays GTA 6! (Full Livestream VOD) [Day 2 - Part 1]",
@@ -2916,9 +3130,13 @@
         [
           675.0,
           703.1
+        ],
+        [
+          6661.0,
+          6689.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T02:48:43.637189+00:00"
+      "last_deleted_at": "2026-11-28T12:58:53.733421+00:00"
     },
     "yuMlRZAEOW0": {
       "title": "30 Minutes of GTA 6 Free Roam (Heists, Shootouts & More)",
@@ -2928,9 +3146,13 @@
         [
           732.0,
           760.0
+        ],
+        [
+          1461.0,
+          1489.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T02:49:20.868779+00:00"
+      "last_deleted_at": "2026-11-28T13:04:28.320702+00:00"
     },
     "OzTrwPr2Ovs": {
       "title": "GTA 6 – Robbing BIGGEST BANKS With Jason and Lucia! (Crazy 5-Star Police Chase Escape)",
@@ -3084,9 +3306,13 @@
         [
           403.0,
           431.1
+        ],
+        [
+          155.0,
+          183.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T04:58:40.028212+00:00"
+      "last_deleted_at": "2026-11-28T12:57:31.485013+00:00"
     },
     "Ea0UAcUXkGc": {
       "title": "I Tried Hijacking The Cruise Ship In GTA 6",
@@ -3257,9 +3483,13 @@
         [
           7955.0,
           7983.1
+        ],
+        [
+          9450.0,
+          9478.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T10:43:49.377512+00:00"
+      "last_deleted_at": "2026-11-28T12:54:55.631608+00:00"
     },
     "6n8FQKK2iTE": {
       "title": "GTA 6 - Part 3 - Picking Up Lucia From Prison",
@@ -3293,9 +3523,13 @@
         [
           350.0,
           378.1
+        ],
+        [
+          480.0,
+          508.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T12:52:41.945780+00:00"
+      "last_deleted_at": "2026-11-28T12:55:26.681638+00:00"
     },
     "AIvSTjArIZo": {
       "title": "Do GTA 6 NPCs Actually Have Lives?",
@@ -3704,6 +3938,18 @@
         ]
       ],
       "last_deleted_at": "2026-11-28T00:43:25.943742+00:00"
+    },
+    "qfhZFUIL3uU": {
+      "title": "GTA 6 Walkthrough Gameplay Part 7 - TOURIST TRAP (GRAND THEFT AUTO 6)",
+      "channel_name": "theRadBrad",
+      "duration": 3891.0,
+      "checked_ranges": [
+        [
+          3541.0,
+          3569.0
+        ]
+      ],
+      "last_deleted_at": "2026-11-28T13:00:32.082075+00:00"
     }
   },
   "exhausted_ids": [],
