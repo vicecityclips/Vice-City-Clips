@@ -725,8 +725,8 @@ def discover_gta6_candidates(history_data):
 # What This Code Does:
 #   - Fetches stream metadata & YouTube's Most Replayed Heatmap BEFORE downloading
 #     any video, avoiding 3-hour VOD timeouts completely.
-#   - Uses cookieless android_vr / ios / web_safari clients so expired browser
-#     cookies never trigger HTTP 403 Forbidden blocks on GitHub runners.
+#   - Skips 18+ age-restricted videos via --match-filter "age_limit < 18" so
+#     cookieless android_vr / ios / web_safari clients never stall on age gates.
 #   - Picks the highest unvisited heatmap spike (or smart unvisited segment on
 #     brand-new streams) and downloads ONLY a 46s window via --download-sections.
 # ==============================================================================
@@ -761,6 +761,7 @@ def find_smart_stream_window(vid_id, fallback_dur=1200.0, blocked_ranges=None):
         "--js-runtimes", "deno",
         "--remote-components", "ejs:github",
         "--extractor-args", "youtube:player_client=android_vr,ios,web_safari",
+        "--match-filter", "age_limit < 18",
         "--dump-single-json",
         "--no-warnings",
         "--skip-download",
@@ -777,6 +778,9 @@ def find_smart_stream_window(vid_id, fallback_dur=1200.0, blocked_ranges=None):
                 break
             except Exception:
                 pass
+
+    if not info:
+        return None, 0.0
 
     true_dur = float(info.get("duration") or fallback_dur or 0.0)
     if true_dur < 45.0:
@@ -848,6 +852,7 @@ def download_candidate_video(candidate, out_path, target_window=None):
             "--js-runtimes", "deno",
             "--remote-components", "ejs:github",
             "--extractor-args", cfg["client"],
+            "--match-filter", "age_limit < 18",
             "--sleep-requests", "1",
             "--no-check-certificates",
             "-f", cfg["fmt"],
