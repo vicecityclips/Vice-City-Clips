@@ -43,6 +43,156 @@
   ],
   "vault_queue": [
     {
+      "vault_path": "clip_vault/Tk6aFuAQIP8_18s.mp4",
+      "video_id": "Tk6aFuAQIP8",
+      "channel_name": "special edd",
+      "source_title": "GTA 6 Story Mode is Unhinged",
+      "source_total_dur": 8594.0,
+      "source_start_sec": 1981.0,
+      "duration_sec": 28.0,
+      "local_peak_sec": 15.0,
+      "viral_score": 7.51,
+      "transcript_en": "I gotta go, don't need to come out, get up, go in, go in, go in. That little way, I'm gonna ask, and I got some cash!",
+      "word_events": [
+        {
+          "word": "I",
+          "start": 1.55,
+          "end": 1.55
+        },
+        {
+          "word": "gotta",
+          "start": 1.55,
+          "end": 1.55
+        },
+        {
+          "word": "go,",
+          "start": 1.55,
+          "end": 1.95
+        },
+        {
+          "word": "don't",
+          "start": 1.97,
+          "end": 2.15
+        },
+        {
+          "word": "need",
+          "start": 2.15,
+          "end": 2.25
+        },
+        {
+          "word": "to",
+          "start": 2.25,
+          "end": 2.41
+        },
+        {
+          "word": "come",
+          "start": 2.41,
+          "end": 2.41
+        },
+        {
+          "word": "out,",
+          "start": 2.41,
+          "end": 2.73
+        },
+        {
+          "word": "get",
+          "start": 2.73,
+          "end": 2.95
+        },
+        {
+          "word": "up,",
+          "start": 2.95,
+          "end": 3.25
+        },
+        {
+          "word": "go",
+          "start": 5.4,
+          "end": 5.74
+        },
+        {
+          "word": "in,",
+          "start": 5.74,
+          "end": 5.94
+        },
+        {
+          "word": "go",
+          "start": 5.94,
+          "end": 6.16
+        },
+        {
+          "word": "in,",
+          "start": 6.16,
+          "end": 6.3
+        },
+        {
+          "word": "go",
+          "start": 6.3,
+          "end": 6.42
+        },
+        {
+          "word": "in.",
+          "start": 6.42,
+          "end": 7.24
+        },
+        {
+          "word": "That",
+          "start": 15.44,
+          "end": 15.54
+        },
+        {
+          "word": "little",
+          "start": 15.54,
+          "end": 15.68
+        },
+        {
+          "word": "way,",
+          "start": 15.68,
+          "end": 15.82
+        },
+        {
+          "word": "I'm",
+          "start": 15.9,
+          "end": 16.0
+        },
+        {
+          "word": "gonna",
+          "start": 16.0,
+          "end": 16.18
+        },
+        {
+          "word": "ask,",
+          "start": 16.18,
+          "end": 16.44
+        },
+        {
+          "word": "and",
+          "start": 24.82,
+          "end": 25.06
+        },
+        {
+          "word": "I",
+          "start": 25.06,
+          "end": 25.26
+        },
+        {
+          "word": "got",
+          "start": 25.26,
+          "end": 25.46
+        },
+        {
+          "word": "some",
+          "start": 25.46,
+          "end": 25.7
+        },
+        {
+          "word": "cash!",
+          "start": 25.7,
+          "end": 26.14
+        }
+      ],
+      "harvested_at": "2026-11-28T13:55:08.959497+00:00"
+    },
+    {
       "vault_path": "clip_vault/RVpApoEkOao_14s.mp4",
       "video_id": "RVpApoEkOao",
       "channel_name": "TmarTn2",
@@ -294,9 +444,13 @@
         [
           279.0,
           307.0
+        ],
+        [
+          161.0,
+          189.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T02:40:41.379951+00:00"
+      "last_deleted_at": "2026-11-28T13:59:51.105506+00:00"
     },
     "ARwju5Gyk64": {
       "title": "Grand Theft Auto VI Gameplay Walkthrough Part 1 - No Commentary (GTA 6 PS5 Gameplay)",
@@ -569,9 +723,13 @@
         [
           4646.0,
           4674.1
+        ],
+        [
+          7112.0,
+          7140.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T02:19:39.723775+00:00"
+      "last_deleted_at": "2026-11-28T13:55:52.596523+00:00"
     },
     "rQLEb0W7REo": {
       "title": "GTA 6 Walkthrough Gameplay Part 1 - INTRO (GRAND THEFT AUTO 6)",
@@ -737,9 +895,13 @@
         [
           96.0,
           124.1
+        ],
+        [
+          405.0,
+          433.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T02:30:01.113158+00:00"
+      "last_deleted_at": "2026-11-28T13:56:15.422760+00:00"
     },
     "K-_4W5IkFcM": {
       "title": "GTA 6 - Part 1 - WELCOME TO LEONIDA..",
@@ -853,9 +1015,13 @@
         [
           3346.0,
           3374.0
+        ],
+        [
+          3005.0,
+          3033.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T02:30:39.164707+00:00"
+      "last_deleted_at": "2026-11-28T13:58:59.487240+00:00"
     },
     "k1l1J2KQpWc": {
       "title": "GTA 6 Gameplay Walkthrough Part 4 FULL GAME [4K PS5 PRO] - No Commentary",
@@ -1277,9 +1443,13 @@
         [
           7370.0,
           7398.1
+        ],
+        [
+          3015.0,
+          3043.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T01:55:01.928770+00:00"
+      "last_deleted_at": "2026-11-28T14:04:08.469809+00:00"
     },
     "izXcd-bU72k": {
       "title": "🔴EXPLORING VICE CITY - GTA 6 STREAM (EASTER EGGS)",
@@ -1537,9 +1707,13 @@
         [
           4835.0,
           4863.1
+        ],
+        [
+          3145.0,
+          3173.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T02:50:58.772034+00:00"
+      "last_deleted_at": "2026-11-28T14:04:48.256160+00:00"
     },
     "GWEt9P9FsfM": {
       "title": "Grand Theft Auto 6 - Part 3 - Getting Ripped",
@@ -1557,9 +1731,13 @@
         [
           348.0,
           376.1
+        ],
+        [
+          1772.0,
+          1800.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T02:43:46.420189+00:00"
+      "last_deleted_at": "2026-11-28T14:02:50.079465+00:00"
     },
     "ncSPywrEi8M": {
       "title": "A New Chapter - GTA VI Episode 3",
@@ -2185,9 +2363,12 @@
         [
           4191.0,
           4219.1
+        ],
+        [
+          1981.0,
+          2009.0
         ]
-      ],
-      "last_deleted_at": "2026-11-27T12:58:42.184031+00:00"
+      ]
     },
     "PDqRBXHcTxo": {
       "title": "🔴 LIVE! - PLAYING GTA 6 RIGHT NOW! (PS5 PRO)",
@@ -3030,9 +3211,13 @@
         [
           350.0,
           378.0
+        ],
+        [
+          543.0,
+          571.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T01:48:16.825778+00:00"
+      "last_deleted_at": "2026-11-28T14:04:28.674734+00:00"
     },
     "etycvxXlTSc": {
       "title": "IT'S HEIST TIME | Grand Theft Auto 6 - Part 4",
@@ -3094,9 +3279,13 @@
         [
           13992.0,
           14020.1
+        ],
+        [
+          4516.0,
+          4544.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T02:44:38.019775+00:00"
+      "last_deleted_at": "2026-11-28T13:56:41.326745+00:00"
     },
     "1w11tH5tUVU": {
       "title": "GTA 6 Mission #19 - Recalibration (Chapter 1) [Full Walkthrough - PS5 4K]",
@@ -3162,9 +3351,13 @@
         [
           277.0,
           305.1
+        ],
+        [
+          1065.0,
+          1093.1
         ]
       ],
-      "last_deleted_at": "2026-11-27T02:50:08.788043+00:00"
+      "last_deleted_at": "2026-11-28T13:54:24.992679+00:00"
     },
     "raWGp2OqayM": {
       "title": "GTA 6 Lucia - Police Chase, Brutal Robberies, Npc Fights, Free Roam GTA VI Gameplay",
@@ -3186,9 +3379,13 @@
         [
           411.0,
           439.1
+        ],
+        [
+          342.0,
+          370.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T02:52:43.880019+00:00"
+      "last_deleted_at": "2026-11-28T13:57:56.398691+00:00"
     },
     "JLKCydRhcCI": {
       "title": "GTA 6 - Gay Serial Killer Full Mission 4K",
@@ -3198,9 +3395,13 @@
         [
           671.0,
           699.0
+        ],
+        [
+          31.0,
+          59.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T03:47:31.441585+00:00"
+      "last_deleted_at": "2026-11-28T13:54:49.106303+00:00"
     },
     "ZsRpqCFqw_U": {
       "title": "GTA 6 PS5 Pro Gameplay Walkthrough, Part 6!",
@@ -3258,9 +3459,13 @@
         [
           1201.0,
           1229.1
+        ],
+        [
+          551.0,
+          579.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T04:54:04.901080+00:00"
+      "last_deleted_at": "2026-11-28T13:57:05.388312+00:00"
     },
     "7P7ptD7ykiw": {
       "title": "GTA 6 - All 13 Endings Breakdown",
@@ -3270,9 +3475,13 @@
         [
           480.0,
           508.1
+        ],
+        [
+          285.0,
+          313.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T04:55:08.301344+00:00"
+      "last_deleted_at": "2026-11-28T14:01:41.794144+00:00"
     },
     "NuuGDSumo8Y": {
       "title": "GTA 6 Gameplay - Driving Into Vice City in 4K 30FPS (No Commentary)",
@@ -3282,9 +3491,13 @@
         [
           31.0,
           59.1
+        ],
+        [
+          746.0,
+          774.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T04:55:59.471276+00:00"
+      "last_deleted_at": "2026-11-28T14:01:15.478922+00:00"
     },
     "DnZax-eP7Bg": {
       "title": "GTA 6 - Part 8 - Our First Robbery",
@@ -3294,9 +3507,13 @@
         [
           2241.0,
           2269.1
+        ],
+        [
+          3541.0,
+          3569.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T04:56:52.415978+00:00"
+      "last_deleted_at": "2026-11-28T13:59:24.279171+00:00"
     },
     "unQFNN9Eo9I": {
       "title": "GTA 6 True Ending - Jason, Lucia & Tomas Happy Family (Grand Theft Auto 6)",
@@ -3322,9 +3539,13 @@
         [
           795.0,
           823.1
+        ],
+        [
+          1191.0,
+          1219.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T04:59:30.612041+00:00"
+      "last_deleted_at": "2026-11-28T13:57:29.322011+00:00"
     },
     "Hcg067atjCU": {
       "title": "I Raced IShowSpeed To $1,000,000 In GTA 6",
@@ -3447,9 +3668,13 @@
         [
           1573.0,
           1601.1
+        ],
+        [
+          88.0,
+          116.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T08:36:24.679482+00:00"
+      "last_deleted_at": "2026-11-28T13:58:35.484009+00:00"
     },
     "6Wsym0kTQgM": {
       "title": "GTA 6 - Mission #65 - Power Play | 4K Ultra HD",
@@ -3511,9 +3736,13 @@
         [
           220.0,
           248.1
+        ],
+        [
+          545.0,
+          573.1
         ]
       ],
-      "last_deleted_at": "2026-11-27T11:45:59.232436+00:00"
+      "last_deleted_at": "2026-11-28T14:03:17.543562+00:00"
     },
     "E6wiV0eyU7w": {
       "title": "Playing GTA 6 with 60+ FPS and DLSS 5 - This is Crazy!!",
@@ -3563,9 +3792,13 @@
         [
           421.0,
           449.1
+        ],
+        [
+          220.0,
+          248.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T12:56:38.780532+00:00"
+      "last_deleted_at": "2026-11-28T14:03:43.228676+00:00"
     },
     "5lfggQ8LG5A": {
       "title": "Surviving 6 Stars in GTA 6",
@@ -3950,6 +4183,30 @@
         ]
       ],
       "last_deleted_at": "2026-11-28T13:00:32.082075+00:00"
+    },
+    "JVXbhH7NRGw": {
+      "title": "🔴 LIVE! - PLAYING GTA 6 RIGHT NOW!",
+      "channel_name": "Typical Gamer",
+      "duration": 13019.0,
+      "checked_ranges": [
+        [
+          25.0,
+          53.0
+        ]
+      ],
+      "last_deleted_at": "2026-11-28T13:58:14.927403+00:00"
+    },
+    "IrcNkgDu4_k": {
+      "title": "Grand Theft Auto VI #3 (STARTING CHAPTER 3) | Joe Bartolozzi",
+      "channel_name": "Joe Bart VODs",
+      "duration": 19311.0,
+      "checked_ranges": [
+        [
+          8741.0,
+          8769.0
+        ]
+      ],
+      "last_deleted_at": "2026-11-28T14:02:07.694799+00:00"
     }
   },
   "exhausted_ids": [],
