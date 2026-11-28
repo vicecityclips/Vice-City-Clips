@@ -41,308 +41,7 @@
       "timestamp": "2026-11-23T04:59:34.059527+00:00"
     }
   ],
-  "vault_queue": [
-    {
-      "vault_path": "clip_vault/Tk6aFuAQIP8_18s.mp4",
-      "video_id": "Tk6aFuAQIP8",
-      "channel_name": "special edd",
-      "source_title": "GTA 6 Story Mode is Unhinged",
-      "source_total_dur": 8594.0,
-      "source_start_sec": 1981.0,
-      "duration_sec": 28.0,
-      "local_peak_sec": 15.0,
-      "viral_score": 7.51,
-      "transcript_en": "I gotta go, don't need to come out, get up, go in, go in, go in. That little way, I'm gonna ask, and I got some cash!",
-      "word_events": [
-        {
-          "word": "I",
-          "start": 1.55,
-          "end": 1.55
-        },
-        {
-          "word": "gotta",
-          "start": 1.55,
-          "end": 1.55
-        },
-        {
-          "word": "go,",
-          "start": 1.55,
-          "end": 1.95
-        },
-        {
-          "word": "don't",
-          "start": 1.97,
-          "end": 2.15
-        },
-        {
-          "word": "need",
-          "start": 2.15,
-          "end": 2.25
-        },
-        {
-          "word": "to",
-          "start": 2.25,
-          "end": 2.41
-        },
-        {
-          "word": "come",
-          "start": 2.41,
-          "end": 2.41
-        },
-        {
-          "word": "out,",
-          "start": 2.41,
-          "end": 2.73
-        },
-        {
-          "word": "get",
-          "start": 2.73,
-          "end": 2.95
-        },
-        {
-          "word": "up,",
-          "start": 2.95,
-          "end": 3.25
-        },
-        {
-          "word": "go",
-          "start": 5.4,
-          "end": 5.74
-        },
-        {
-          "word": "in,",
-          "start": 5.74,
-          "end": 5.94
-        },
-        {
-          "word": "go",
-          "start": 5.94,
-          "end": 6.16
-        },
-        {
-          "word": "in,",
-          "start": 6.16,
-          "end": 6.3
-        },
-        {
-          "word": "go",
-          "start": 6.3,
-          "end": 6.42
-        },
-        {
-          "word": "in.",
-          "start": 6.42,
-          "end": 7.24
-        },
-        {
-          "word": "That",
-          "start": 15.44,
-          "end": 15.54
-        },
-        {
-          "word": "little",
-          "start": 15.54,
-          "end": 15.68
-        },
-        {
-          "word": "way,",
-          "start": 15.68,
-          "end": 15.82
-        },
-        {
-          "word": "I'm",
-          "start": 15.9,
-          "end": 16.0
-        },
-        {
-          "word": "gonna",
-          "start": 16.0,
-          "end": 16.18
-        },
-        {
-          "word": "ask,",
-          "start": 16.18,
-          "end": 16.44
-        },
-        {
-          "word": "and",
-          "start": 24.82,
-          "end": 25.06
-        },
-        {
-          "word": "I",
-          "start": 25.06,
-          "end": 25.26
-        },
-        {
-          "word": "got",
-          "start": 25.26,
-          "end": 25.46
-        },
-        {
-          "word": "some",
-          "start": 25.46,
-          "end": 25.7
-        },
-        {
-          "word": "cash!",
-          "start": 25.7,
-          "end": 26.14
-        }
-      ],
-      "harvested_at": "2026-11-28T13:55:08.959497+00:00"
-    },
-    {
-      "vault_path": "clip_vault/RVpApoEkOao_14s.mp4",
-      "video_id": "RVpApoEkOao",
-      "channel_name": "TmarTn2",
-      "source_title": "Grand Theft Auto 6 - Part 1 - The Beginning",
-      "source_total_dur": 3356.82,
-      "source_start_sec": 872.0,
-      "duration_sec": 28.0,
-      "local_peak_sec": 11.0,
-      "viral_score": 6.78,
-      "transcript_en": "Show us that noise. Bro what the fuarts! Run! Run! Run! They'd had a die pack on the cast and it. Okay, okay, let's go, let's go.",
-      "word_events": [
-        {
-          "word": "Show",
-          "start": 1.07,
-          "end": 1.69
-        },
-        {
-          "word": "us",
-          "start": 1.69,
-          "end": 1.85
-        },
-        {
-          "word": "that",
-          "start": 1.85,
-          "end": 2.15
-        },
-        {
-          "word": "noise.",
-          "start": 2.15,
-          "end": 2.95
-        },
-        {
-          "word": "Bro",
-          "start": 7.6,
-          "end": 7.98
-        },
-        {
-          "word": "what",
-          "start": 7.98,
-          "end": 8.3
-        },
-        {
-          "word": "the",
-          "start": 8.3,
-          "end": 8.6
-        },
-        {
-          "word": "fuarts!",
-          "start": 8.6,
-          "end": 9.5
-        },
-        {
-          "word": "Run!",
-          "start": 15.08,
-          "end": 15.64
-        },
-        {
-          "word": "Run!",
-          "start": 16.42,
-          "end": 16.68
-        },
-        {
-          "word": "Run!",
-          "start": 21.51,
-          "end": 21.61
-        },
-        {
-          "word": "They'd",
-          "start": 21.61,
-          "end": 22.01
-        },
-        {
-          "word": "had",
-          "start": 22.01,
-          "end": 22.07
-        },
-        {
-          "word": "a",
-          "start": 22.07,
-          "end": 22.29
-        },
-        {
-          "word": "die",
-          "start": 22.29,
-          "end": 22.45
-        },
-        {
-          "word": "pack",
-          "start": 22.45,
-          "end": 22.73
-        },
-        {
-          "word": "on",
-          "start": 22.73,
-          "end": 22.95
-        },
-        {
-          "word": "the",
-          "start": 22.95,
-          "end": 23.09
-        },
-        {
-          "word": "cast",
-          "start": 23.09,
-          "end": 23.35
-        },
-        {
-          "word": "and",
-          "start": 23.35,
-          "end": 23.57
-        },
-        {
-          "word": "it.",
-          "start": 23.57,
-          "end": 24.07
-        },
-        {
-          "word": "Okay,",
-          "start": 26.6,
-          "end": 26.98
-        },
-        {
-          "word": "okay,",
-          "start": 27.28,
-          "end": 27.56
-        },
-        {
-          "word": "let's",
-          "start": 27.68,
-          "end": 27.74
-        },
-        {
-          "word": "go,",
-          "start": 27.74,
-          "end": 27.78
-        },
-        {
-          "word": "let's",
-          "start": 27.86,
-          "end": 27.9
-        },
-        {
-          "word": "go.",
-          "start": 27.9,
-          "end": 27.98
-        }
-      ],
-      "harvested_at": "2026-11-28T13:02:54.020451+00:00"
-    }
-  ],
+  "vault_queue": [],
   "scheduled_slots": [
     "2026-11-23T02:00:00Z",
     "2026-11-23T14:00:00Z",
@@ -350,7 +49,8 @@
     "2026-11-24T14:55:00Z",
     "2026-11-24T05:45:00Z",
     "2026-11-25T08:05:00Z",
-    "2026-11-25T12:25:00Z"
+    "2026-11-25T12:25:00Z",
+    "2026-11-28T17:05:00Z"
   ],
   "uploads": [
     {
@@ -421,6 +121,18 @@
       "publish_hour_ist": 17,
       "scheduled_for": "2026-11-25T12:25:00Z",
       "uploaded_at": "2026-11-25T11:52:21.105195+00:00"
+    },
+    {
+      "title": "GTA 6 WTF & Funny Moments #3 😱",
+      "url": "https://youtube.com/shorts/shuUPmr8Bvc",
+      "type": "short",
+      "clip_count": 3,
+      "duration_sec": 54.8,
+      "hook_style": "countdown",
+      "style_version": "v1.1",
+      "publish_hour_ist": 22,
+      "scheduled_for": "2026-11-28T17:05:00Z",
+      "uploaded_at": "2026-11-28T15:46:45.805303+00:00"
     }
   ],
   "revisit_pool": {
@@ -536,8 +248,13 @@
         [
           872.0,
           900.0
+        ],
+        [
+          872.0,
+          900.0
         ]
-      ]
+      ],
+      "last_deleted_at": "2026-11-28T15:46:45.805281+00:00"
     },
     "Zh6VrJuW_i8": {
       "title": "GTA 6 - Prologue [Full Walkthrough - PS5 4K]",
@@ -815,9 +532,13 @@
         [
           411.0,
           439.1
+        ],
+        [
+          2241.0,
+          2269.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T01:47:07.281144+00:00"
+      "last_deleted_at": "2026-11-28T15:35:17.169812+00:00"
     },
     "PONwxNK7Hss": {
       "title": "GTA 6 Gameplay Walkthrough Full Chapter 2: Paradise Lost (No Commentary)",
@@ -995,9 +716,13 @@
         [
           2170.0,
           2198.1
+        ],
+        [
+          675.0,
+          703.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T02:29:01.944179+00:00"
+      "last_deleted_at": "2026-11-28T15:40:33.210890+00:00"
     },
     "RcPFb7yaJwQ": {
       "title": "GTA 6 | PS5 Pro Gameplay (4K)",
@@ -1295,9 +1020,13 @@
         [
           2105.0,
           2133.1
+        ],
+        [
+          3411.0,
+          3439.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T02:45:31.790852+00:00"
+      "last_deleted_at": "2026-11-28T15:34:00.037102+00:00"
     },
     "AmcY5pQBMp0": {
       "title": "GTA 6 Gameplay Walkthrough - Part 6!! 🔴",
@@ -1399,9 +1128,13 @@
         [
           671.0,
           699.1
+        ],
+        [
+          746.0,
+          774.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T02:33:14.666618+00:00"
+      "last_deleted_at": "2026-11-28T15:42:46.758467+00:00"
     },
     "PH6WdBYOzSI": {
       "title": "🔴 GTA 6 Has Me Hooked! (LIVE Gameplay)",
@@ -1431,9 +1164,13 @@
         [
           11666.0,
           11694.1
+        ],
+        [
+          11536.0,
+          11564.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T01:51:16.615428+00:00"
+      "last_deleted_at": "2026-11-28T15:34:25.139859+00:00"
     },
     "45FqURpMNCs": {
       "title": "GTA 6 - CHAPTER 2! Playing GTA 6 for the First Time",
@@ -1595,9 +1332,13 @@
         [
           10035.0,
           10063.1
+        ],
+        [
+          7500.0,
+          7528.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T02:13:27.320615+00:00"
+      "last_deleted_at": "2026-11-28T15:40:10.354247+00:00"
     },
     "42f6LTXqss0": {
       "title": "GTA 6 Gameplay Walkthrough Part 1 FULL GAME [4K ULTRA HD PS5 PRO] No Commentary",
@@ -1719,9 +1460,13 @@
         [
           9261.0,
           9289.1
+        ],
+        [
+          1000.0,
+          1028.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T02:31:24.673721+00:00"
+      "last_deleted_at": "2026-11-28T15:33:31.488884+00:00"
     },
     "IVdJA8ejWb8": {
       "title": "This made gaming fun again.",
@@ -1995,9 +1740,13 @@
         [
           4711.0,
           4739.1
+        ],
+        [
+          5101.0,
+          5129.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T10:34:45.344328+00:00"
+      "last_deleted_at": "2026-11-28T15:39:45.344346+00:00"
     },
     "eEERhKQZWmY": {
       "title": "The Beginning of GTA 6.. (Ep. 1)",
@@ -2307,9 +2056,13 @@
         [
           15300.0,
           15328.1
+        ],
+        [
+          2099.0,
+          2127.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T02:48:05.183506+00:00"
+      "last_deleted_at": "2026-11-28T15:38:24.814061+00:00"
     },
     "x9GPhT9sV-U": {
       "title": "GTA 6 - Part 2 - The Girl Next Door..",
@@ -2387,9 +2140,13 @@
         [
           11396.0,
           11424.0
+        ],
+        [
+          14000.0,
+          14028.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T10:38:17.707259+00:00"
+      "last_deleted_at": "2026-11-28T15:38:50.699682+00:00"
     },
     "Tk6aFuAQIP8": {
       "title": "GTA 6 Story Mode is Unhinged",
@@ -2407,8 +2164,13 @@
         [
           1981.0,
           2009.0
+        ],
+        [
+          1981.0,
+          2009.0
         ]
-      ]
+      ],
+      "last_deleted_at": "2026-11-28T15:46:45.804419+00:00"
     },
     "PDqRBXHcTxo": {
       "title": "🔴 LIVE! - PLAYING GTA 6 RIGHT NOW! (PS5 PRO)",
@@ -2422,9 +2184,13 @@
         [
           2826.0,
           2854.1
+        ],
+        [
+          2420.0,
+          2448.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T12:55:44.325060+00:00"
+      "last_deleted_at": "2026-11-28T15:37:56.977359+00:00"
     },
     "g6cDeB24gmY": {
       "title": "GTA 6 Gameplay: Jason & Lucia Free Roam, Mini Games & More - 8 Minutes Gameplay Concept",
@@ -2438,9 +2204,13 @@
         [
           285.0,
           313.0
+        ],
+        [
+          352.0,
+          380.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T14:18:00.924644+00:00"
+      "last_deleted_at": "2026-11-28T15:34:50.148675+00:00"
     },
     "Tg90IZCrd9g": {
       "title": "xQc Reuniting With Lucia | GTA 6 Playthrough #3",
@@ -2454,9 +2224,13 @@
         [
           2170.0,
           2198.1
+        ],
+        [
+          3021.0,
+          3049.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T14:09:24.090344+00:00"
+      "last_deleted_at": "2026-11-28T15:36:38.926786+00:00"
     },
     "Sroy4lSkQ7w": {
       "title": "Vanoss crew GTA6 FULL LIVESTREAM",
@@ -3271,9 +3045,13 @@
         [
           4061.0,
           4089.1
+        ],
+        [
+          2940.0,
+          2968.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T01:52:16.505105+00:00"
+      "last_deleted_at": "2026-11-28T15:36:12.162297+00:00"
     },
     "gd971Izqz4c": {
       "title": "🔥💥GTA 6 LIVE !!  MISSION COMPLETE 4K GAMEPLAY TAMIL!!",
@@ -3283,9 +3061,13 @@
         [
           13870.0,
           13898.1
+        ],
+        [
+          13941.0,
+          13969.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T01:57:26.833261+00:00"
+      "last_deleted_at": "2026-11-28T15:35:46.395424+00:00"
     },
     "ac5wYqgCK3Q": {
       "title": "It's so good! GTA6 LIVESTREAM w/ DansGaming - PS5 Pro Gameplay - Part 9",
@@ -3423,9 +3205,17 @@
         [
           96.0,
           124.1
+        ],
+        [
+          415.0,
+          443.0
+        ],
+        [
+          415.0,
+          443.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T02:51:49.092867+00:00"
+      "last_deleted_at": "2026-11-28T15:46:45.804880+00:00"
     },
     "o9EDyUGfBbA": {
       "title": "Sneaking Into the Police Station in GTA 6 (Free Roam)",
@@ -3467,9 +3257,13 @@
         [
           5473.0,
           5501.1
+        ],
+        [
+          1981.0,
+          2009.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T03:48:32.788182+00:00"
+      "last_deleted_at": "2026-11-28T15:43:13.906746+00:00"
     },
     "knbkAi6gTi8": {
       "title": "GTA 6 - Mission #47 - Bricked Up | 4K Ultra HD",
@@ -3479,9 +3273,13 @@
         [
           92.0,
           120.1
+        ],
+        [
+          1118.0,
+          1146.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T03:49:27.087974+00:00"
+      "last_deleted_at": "2026-11-28T15:41:01.918909+00:00"
     },
     "qHoSGF92Kvs": {
       "title": "GTA 6 - Last Mission: The End of the Road Walkthrough Gameplay (4K PS5 PRO)",
@@ -3716,9 +3514,13 @@
         [
           3801.0,
           3829.1
+        ],
+        [
+          22505.0,
+          22533.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T08:35:16.966026+00:00"
+      "last_deleted_at": "2026-11-28T15:33:06.554353+00:00"
     },
     "iPPPIkvP2sA": {
       "title": "The First 1 Hour of GTA 6 Gameplay",
@@ -3784,9 +3586,13 @@
         [
           5605.0,
           5633.1
+        ],
+        [
+          3730.0,
+          3758.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T10:44:43.313779+00:00"
+      "last_deleted_at": "2026-11-28T15:39:18.886464+00:00"
     },
     "ey0qks0aQ-c": {
       "title": "GTA 6 - Ocean Beach Shootout + Five Star Escape",
@@ -3828,9 +3634,13 @@
         [
           25.0,
           53.1
+        ],
+        [
+          415.0,
+          443.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T12:53:48.410143+00:00"
+      "last_deleted_at": "2026-11-28T15:41:58.538122+00:00"
     },
     "WLq6sojcQ0c": {
       "title": "Steam Is Finally Dropping The Hammer On GTA6",
@@ -3840,9 +3650,13 @@
         [
           285.0,
           313.1
+        ],
+        [
+          476.0,
+          504.0
         ]
       ],
-      "last_deleted_at": "2026-11-27T12:54:46.705144+00:00"
+      "last_deleted_at": "2026-11-28T15:36:59.555392+00:00"
     },
     "IQZ7nDLWfWc": {
       "title": "Why GTA 6 is bad.",
@@ -4343,7 +4157,8 @@
       "Rapid-fire triple-stack pacing: \"Best [Game] Fails, Glitches & Random Moments #N 😂\" — stack three payoff categories plus"
     ],
     "feature_requests": [
-      "[v1.1] Python/FFmpeg auto-tuner that analyzes motion_mean/peak per clip and dynamically adjusts zoom_scale, color_vibrancy, and contrast_boost to match viral benchmarks, then renders with"
+      "[v1.1] Python/FFmpeg auto-tuner that analyzes motion_mean/peak per clip and dynamically adjusts zoom_scale, color_vibrancy, and contrast_boost to match viral benchmarks, then renders with",
+      "[v1.2] Python/FFmpeg dynamic motion-normalization filter that auto-scales zoom_scale and color_vibrancy based on real-time motion_mean thresholds to match viral motion profiles"
     ],
     "winning_hook_styles": [
       "shock",
@@ -4354,6 +4169,22 @@
     "cadence_experiments": [],
     "qa_failures": [],
     "style_dna": {
+      "version": "v1.2",
+      "champion_version": "v1.0",
+      "champion_median_reach": 0.0,
+      "climax_zoom_scale": 1.12,
+      "color_vibrancy": 1.16,
+      "contrast_boost": 1.09,
+      "caption_words_per_chunk": 3,
+      "caption_margin_v": 340,
+      "duck_game_volume": 0.34,
+      "climax_vo_breathing_sec": 1.8,
+      "weight_audio_chaos": 0.35,
+      "weight_visual_action": 0.35,
+      "weight_humor_twist": 0.3,
+      "creative_directive": "updated 1-sentence editing/hook rule"
+    },
+    "previous_style_dna": {
       "version": "v1.1",
       "champion_version": "v1.0",
       "champion_median_reach": 0.0,
@@ -4369,25 +4200,9 @@
       "weight_humor_twist": 0.3,
       "creative_directive": "Start immediately mid-action within 1.5s, then execute a 1.2x climax zoom at the absurd payoff point with visual emphasis and preserved action audio."
     },
-    "previous_style_dna": {
-      "version": "v1.0",
-      "champion_version": "v1.0",
-      "champion_median_reach": 0.0,
-      "climax_zoom_scale": 1.1,
-      "color_vibrancy": 1.14,
-      "contrast_boost": 1.08,
-      "caption_words_per_chunk": 3,
-      "caption_margin_v": 340,
-      "duck_game_volume": 0.36,
-      "climax_vo_breathing_sec": 1.8,
-      "weight_audio_chaos": 0.35,
-      "weight_visual_action": 0.35,
-      "weight_humor_twist": 0.3,
-      "creative_directive": "Start immediately mid-action in the first 1.5 seconds. Keep commentary razor-sharp, natural, and focused on the absurd payoff."
-    },
-    "pending_target_slot": "2026-11-28T17:05:00Z",
+    "pending_target_slot": "",
     "last_hook_scout_date": "2026-11-28",
-    "last_style_evolved_at": "2026-11-24T15:08:39.310812+00:00",
+    "last_style_evolved_at": "2026-11-28T15:46:45.808523+00:00",
     "last_tuned_week": "",
     "longs_published_this_week": []
   }
